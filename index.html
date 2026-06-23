@@ -247,7 +247,6 @@ tr:hover td{background:var(--bg)}
       </div>
       <div id="tab-hoy">
         <div class="filter-row">
-          <select id="filtro-estado-hoy" onchange="loadPedidosHoy()"><option value="">Todos los estados</option><option>Pendiente</option><option>En preparación</option><option>Listo</option><option>Enviado</option></select>
           <select id="filtro-origen-hoy" onchange="loadPedidosHoy()"><option value="">Propio y externo</option><option value="propio">Producción propia</option><option value="externo">Proveedor externo</option></select>
         </div>
         <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-pedidos-hoy"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
@@ -326,7 +325,7 @@ tr:hover td{background:var(--bg)}
     <div class="page" id="page-envios">
       <div class="ph"><h1 class="pt">Envíos</h1><button class="btn" onclick="openModal('modal-transportista')"><i class="ti ti-plus"></i>Nuevo transportista</button></div>
       <div class="tabs">
-        <div class="tab active" onclick="switchTab(this,'tab-envios-hoy')">Pendientes</div>
+        <div class="tab active" onclick="switchTab(this,'tab-envios-hoy')">Hoy</div>
         <div class="tab" onclick="switchTab(this,'tab-envios-hist')">Histórico</div>
       </div>
 
@@ -995,10 +994,14 @@ async function loadGraficaPalets(){
 // ── PEDIDOS ───────────────────────────────────────────────────
 async function loadPedidosHoy(){
   const hoy=new Date().toISOString().split('T')[0]
-  const est=document.getElementById('filtro-estado-hoy')?.value||''
   const origen=document.getElementById('filtro-origen-hoy')?.value||''
-  let q=db.from('pedidos').select('*,clientes(nombre),transportistas(nombre)').gte('fecha_recogida',hoy).lte('fecha_recogida',hoy).order('creado_en',{ascending:false})
-  if(est)q=q.eq('estado',est)
+  // Pedidos de hoy en adelante que estén pendientes de preparar o enviar
+  let q=db.from('pedidos').select('*,clientes(nombre),transportistas(nombre)')
+    .gte('fecha_recogida',hoy)
+    .not('estado','eq','Enviado')
+    .not('estado','eq','Anulado')
+    .order('fecha_recogida',{ascending:true})
+    .order('creado_en',{ascending:false})
   if(origen==='externo')q=q.not('proveedor','is',null)
   if(origen==='propio')q=q.is('proveedor',null)
   const {data}=await q
@@ -1233,13 +1236,21 @@ async function guardarCliente(){
 // ── PREPARACIÓN ───────────────────────────────────────────────
 async function loadPreparacion(){
   const hoy=new Date().toISOString().split('T')[0]
-  const {data}=await db.from('pedidos').select('*,clientes(nombre),transportistas(nombre)').in('estado',['Pendiente','En preparación','Listo']).is('proveedor',null).gte('fecha_recogida',hoy).order('fecha_recogida')
+  // Mostrar todos los pedidos propios con fecha de recogida desde hoy en adelante,
+  // EXCEPTO Anulados. Los Enviados se quedan hasta que pase su fecha de salida.
+  const {data}=await db.from('pedidos').select('*,clientes(nombre),transportistas(nombre)')
+    .is('proveedor',null)
+    .gte('fecha_recogida',hoy)
+    .not('estado','eq','Anulado')
+    .order('fecha_recogida')
   const todos=data||[]
   const activos=todos.filter(p=>p.estado==='Pendiente'||p.estado==='En preparación')
   const listos=todos.filter(p=>p.estado==='Listo')
+  const enviados=todos.filter(p=>p.estado==='Enviado')
 
   const tablaActivos=await renderTablaPrep(activos)
   const tablaListos=await renderTablaPrep(listos)
+  const tablaEnviados=await renderTablaPrep(enviados)
 
   document.getElementById('tabla-prep').innerHTML=
     '<div style="font-size:13px;font-weight:600;color:var(--text2);padding:8px 12px;background:var(--blue-bg);border-radius:var(--radius);margin-bottom:8px;display:flex;align-items:center;gap:8px">'+
@@ -1247,7 +1258,11 @@ async function loadPreparacion(){
     tablaActivos+
     '<div style="font-size:13px;font-weight:600;color:var(--text2);padding:8px 12px;background:var(--purple-bg);border-radius:var(--radius);margin:16px 0 8px;display:flex;align-items:center;gap:8px">'+
     '<i class="ti ti-check"></i> Listos para enviar <span class="badge b-listo" style="font-size:11px">'+listos.length+'</span></div>'+
-    tablaListos
+    tablaListos+
+    (enviados.length?
+    '<div style="font-size:13px;font-weight:600;color:var(--text2);padding:8px 12px;background:var(--bg2);border-radius:var(--radius);margin:16px 0 8px;display:flex;align-items:center;gap:8px">'+
+    '<i class="ti ti-truck"></i> Enviados hoy <span class="badge b-ok" style="font-size:11px">'+enviados.length+'</span></div>'+
+    tablaEnviados:'')
 }
 async function loadPrepHistorico(){
   const desde=document.getElementById('prep-hist-desde')?.value
@@ -1760,8 +1775,12 @@ async function loadEnvios(){
     .not('estado','eq','Anulado')
     .order('fecha_recogida',{ascending:true})
 
-  // Filtrar solo PENDIENTES: propios sin transporte_pedido marcado, o terceros sin estado Enviado
+  // Lógica de "Hoy":
+  // - Recogida HOY: aparecen siempre (pendientes y confirmados con transporte pedido o ya enviados)
+  // - Días anteriores: solo si aún les falta confirmar (propios sin transporte_pedido, terceros sin Enviado)
   const pendientes=(pedidos||[]).filter(p=>{
+    const esHoy=p.fecha_recogida===hoy
+    if(esHoy) return true  // todos los de hoy aparecen siempre
     if(p.proveedor) return p.estado!=='Enviado'
     return !p.transporte_pedido
   })
