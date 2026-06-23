@@ -1764,23 +1764,27 @@ function verInforme(controlId){
 
 // ── ENVÍOS ────────────────────────────────────────────────────
 async function loadEnvios(){
-  // Ventana de búsqueda: últimos 10 días hasta hoy (pendientes antiguos no se pierden)
   const hoy=new Date().toISOString().split('T')[0]
   const desde=new Date(Date.now()-10*86400000).toISOString().split('T')[0]
+  // Desde hace 10 días hasta 30 días en el futuro para incluir pedidos futuros
+  const hasta=new Date(Date.now()+30*86400000).toISOString().split('T')[0]
 
   const {data:pedidos}=await db.from('pedidos')
     .select('*,clientes(nombre),transportistas(nombre,telefono)')
-    .gte('fecha_recogida',desde).lte('fecha_recogida',hoy)
-    .not('transportista_id','is',null)
+    .gte('fecha_recogida',desde)
+    .lte('fecha_recogida',hasta)
     .not('estado','eq','Anulado')
     .order('fecha_recogida',{ascending:true})
 
   // Lógica de "Hoy":
-  // - Recogida HOY: aparecen siempre (pendientes y confirmados con transporte pedido o ya enviados)
-  // - Días anteriores: solo si aún les falta confirmar (propios sin transporte_pedido, terceros sin Enviado)
+  // - Recogida HOY: aparecen TODOS (con o sin transportista, con o sin transporte confirmado)
+  // - Días anteriores: solo si faltan confirmar (propios sin transporte_pedido, terceros sin Enviado)
+  // - Días futuros: todos los que tienen transportista asignado
   const pendientes=(pedidos||[]).filter(p=>{
     const esHoy=p.fecha_recogida===hoy
-    if(esHoy) return true  // todos los de hoy aparecen siempre
+    const esFuturo=p.fecha_recogida>hoy
+    if(esHoy) return true
+    if(esFuturo) return false
     if(p.proveedor) return p.estado!=='Enviado'
     return !p.transporte_pedido
   })
