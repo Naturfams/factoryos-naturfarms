@@ -935,20 +935,22 @@ async function loadDashboard(){
   p.forEach(x=>{
     const prods=prodMap[x.id]||[]
     const ps=prods.map(pr=>{
-      let s=pr.fruta+(pr.producto?' — '+pr.producto:'')
+      let s='<div style="line-height:1.4;margin-bottom:2px"><strong style="font-size:12px">'+pr.fruta+(pr.producto?' — '+pr.producto:'')+'</strong>'
       const det=[]
-      if(pr.tipo_palet)det.push('🪵 '+pr.tipo_palet)
-      if(pr.precio)det.push('💶 '+pr.precio.toFixed(2)+' €/kg')
-      if(det.length)s+='<br><span style="font-size:11px;color:var(--text2)">'+det.join(' · ')+'</span>'
+      if(pr.num_palets)det.push(pr.num_palets+'pal')
+      if(pr.tipo_palet)det.push(pr.tipo_palet)
+      if(pr.precio)det.push(pr.precio.toFixed(2)+'€/kg')
+      if(det.length)s+='<div style="font-size:10px;color:var(--text2)">'+det.join(' · ')+'</div>'
+      s+='</div>'
       return s
-    }).join('<br><br>')||x.fruta||'—'
+    }).join('')||x.fruta||'—'
     rows+='<tr><td>'+x.referencia+'</td><td>'+(x.clientes?.nombre||'—')+'</td>'+
       '<td>'+(x.proveedor?'<span class="badge b-ext">Externo</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
       '<td style="max-width:200px;white-space:normal">'+ps+'</td>'+
       '<td>'+x.palets+'</td><td>'+(x.transportistas?.nombre||'—')+'</td><td>'+badgeHtml(x.estado)+'</td></tr>'
   })
   document.getElementById('dash-pedidos').innerHTML=p.length?
-    '<table><thead><tr><th>Ref</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Palets</th><th>Transportista</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody></table>':
+    '<table class="tabla-compacta"><thead><tr><th>Ref</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Palets</th><th>Transp.</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody></table>':
     '<div class="empty">Sin pedidos para este día</div>'
 
   const alertas=(stockData||[]).filter(s=>s.cantidad<s.minimo)
@@ -1843,9 +1845,18 @@ async function loadEnvios(){
           return s
         }).join('')||p.fruta||'—'
 
-        const transportEstadoHtml=p.proveedor?
-          '<button class="btn btn-sm btn-success" data-id="'+p.id+'" onclick="marcarEnviadoProveedor(this.dataset.id)"><i class="ti ti-truck"></i>Confirmar salida</button>'
-          :'<button class="btn btn-sm btn-primary" data-id="'+p.id+'" onclick="confirmarTransporte(this.dataset.id)"><i class="ti ti-phone"></i>Marcar pedido</button>'
+        let transportEstadoHtml
+        if(p.proveedor){
+          // Tercero: mostrar "Confirmar salida" si no está Enviado, si ya está Enviado mostrar confirmado
+          transportEstadoHtml=p.estado==='Enviado'
+            ?'<span class="badge b-pass"><i class="ti ti-check"></i> Enviado</span>'
+            :'<button class="btn btn-sm btn-success" data-id="'+p.id+'" onclick="marcarEnviadoProveedor(this.dataset.id)"><i class="ti ti-truck"></i>Confirmar salida</button>'
+        } else {
+          // Propio: mostrar "Marcar pedido" si no confirmado, si ya confirmado mostrar tick + hora
+          transportEstadoHtml=p.transporte_pedido
+            ?'<span class="badge b-pass"><i class="ti ti-check"></i> Pedido</span><div style="font-size:11px;color:var(--text3)">'+fmtDt(p.transporte_pedido_en)+'</div>'
+            :'<button class="btn btn-sm btn-primary" data-id="'+p.id+'" onclick="confirmarTransporte(this.dataset.id)"><i class="ti ti-phone"></i>Marcar pedido</button>'
+        }
 
         filas+='<tr><td>'+p.referencia+'</td>'+
           '<td>'+(p.proveedor?'<span class="badge b-ext">'+p.proveedor.split(' ')[0]+'</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
