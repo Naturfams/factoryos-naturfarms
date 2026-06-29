@@ -482,9 +482,7 @@ tr:hover td{background:var(--bg)}
     <div id="aviso-externo" style="display:none;background:var(--blue-bg);color:var(--blue);padding:12px;border-radius:var(--radius);font-size:13px;margin-bottom:12px">
       <strong><i class="ti ti-info-circle"></i> Pedido externo</strong> — irá directamente a Envíos.<br>
       <div id="proveedor-info" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"></div>
-    <div id="precio-compra-bloque" style="display:none;margin-top:10px">
-      <div class="fg" style="max-width:200px"><label>Precio de compra (€/kg)</label><input type="number" id="np-precio-compra" min="0" step="0.01" placeholder="0.00"></div>
-    </div>
+    <div id="precio-compra-bloque" style="display:none"></div>
     </div>
     <div class="form-sec">Cliente y destino</div>
     <div class="frow">
@@ -979,7 +977,8 @@ function setOrigen(val){
   const esExt=val!=='propio'
   document.getElementById('aviso-externo').style.display=esExt?'block':'none'
   document.getElementById('precio-compra-bloque').style.display=esExt?'block':'none'
-  if(!esExt){document.getElementById('np-precio-compra').value='';document.getElementById('proveedor-info').innerHTML='';return}
+  document.querySelectorAll('[id^="lprc-wrap-"]').forEach(el=>el.style.display=esExt?'block':'none')
+  if(!esExt){const elpc=document.getElementById('np-precio-compra');if(elpc)elpc.value='';document.getElementById('proveedor-info').innerHTML='';return}
   const p=PROVEEDORES[val]||{}
   document.getElementById('proveedor-info').innerHTML=
     '<div><div style="font-size:11px;opacity:.7">PROVEEDOR</div><strong>'+val+'</strong></div>'+
@@ -990,7 +989,7 @@ function setOrigen(val){
 }
 
 // ── PRODUCTOS ─────────────────────────────────────────────────
-function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet='',npalets='',calibre='',precio=''){
+function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet='',npalets='',calibre='',precio='',precioCompra=''){
   lineaCount++
   const id=lineaCount
   const div=document.createElement('div')
@@ -1013,7 +1012,8 @@ function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet=
     '</select></div>'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Cajas</label><input type="number" id="lca-'+id+'" value="'+cajas+'" min="0" style="padding:6px 8px;font-size:13px"></div>'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Peso (kg)</label><input type="number" id="lpb-'+id+'" value="'+peso+'" min="0" step="0.1" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
-    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Precio (€/kg)</label><input type="number" id="lpr-'+id+'" value="'+precio+'" min="0" step="0.01" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
+    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">€/kg venta</label><input type="number" id="lpr-'+id+'" value="'+precio+'" min="0" step="0.01" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
+    '<div class="fg" id="lprc-wrap-'+id+'" style="display:'+(origenActual!=="propio"?"block":"none")+'"><label style="font-size:11px;color:var(--text2);font-weight:500">€/kg compra</label><input type="number" id="lprc-'+id+'" value="'+precioCompra+'" min="0" step="0.01" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
     '<div class="fg" style="display:flex;align-items:flex-end">'+
     (id>1?'<button type="button" class="btn btn-sm btn-danger" onclick="document.getElementById(\'linea-'+id+'\').remove()"><i class="ti ti-trash"></i></button>':'')+
     '</div>'+
@@ -1036,7 +1036,7 @@ function getProductosForm(){
   document.querySelectorAll('#productos-container .producto-linea').forEach(div=>{
     const id=div.id.replace('linea-','')
     const fruta=document.getElementById('lf-'+id)?.value
-    if(fruta)lineas.push({fruta,producto:document.getElementById('lp-'+id)?.value||null,confeccion:document.getElementById('lc-'+id)?.value||null,num_cajas:parseInt(document.getElementById('lca-'+id)?.value)||null,peso_bruto:parseFloat(document.getElementById('lpb-'+id)?.value)||null,tipo_palet:document.getElementById('ltp-'+id)?.value||null,num_palets:parseInt(document.getElementById('lpa-'+id)?.value)||null,calibre:document.getElementById('lca2-'+id)?.value||null,precio:parseFloat(document.getElementById('lpr-'+id)?.value)||null,orden:lineas.length+1})
+    if(fruta)lineas.push({fruta,producto:document.getElementById('lp-'+id)?.value||null,confeccion:document.getElementById('lc-'+id)?.value||null,num_cajas:parseInt(document.getElementById('lca-'+id)?.value)||null,peso_bruto:parseFloat(document.getElementById('lpb-'+id)?.value)||null,tipo_palet:document.getElementById('ltp-'+id)?.value||null,num_palets:parseInt(document.getElementById('lpa-'+id)?.value)||null,calibre:document.getElementById('lca2-'+id)?.value||null,precio:parseFloat(document.getElementById('lpr-'+id)?.value)||null,precio_compra:parseFloat(document.getElementById('lprc-'+id)?.value)||null,orden:lineas.length+1})
   })
   return lineas
 }
@@ -1207,7 +1207,8 @@ async function renderTablaPedidos(data){
       if(pr.confeccion)detalles.push(pr.confeccion)
       if(pr.tipo_palet)detalles.push(pr.tipo_palet)
       if(pr.num_cajas)detalles.push(pr.num_cajas+'cj')
-      if(pr.precio)detalles.push(pr.precio.toFixed(2)+'€/kg')
+      if(pr.precio)detalles.push('<span style="color:var(--accent)">'+pr.precio.toFixed(2)+'€V</span>')
+      if(pr.precio_compra)detalles.push('<span style="color:var(--red)">'+pr.precio_compra.toFixed(2)+'€C</span>')
       if(detalles.length)s+='<div style="font-size:10px;color:var(--text2)">'+detalles.join(' · ')+'</div>'
       s+='</div>'
       return s
@@ -1294,7 +1295,7 @@ async function editarPedido(id){
   document.getElementById('productos-container').innerHTML=''
   lineaCount=0
   setOrigen(p.proveedor||'propio')
-  if(prods&&prods.length)prods.forEach(pr=>addProductoLinea(pr.fruta,pr.producto||'',pr.num_cajas||'',pr.confeccion||'',pr.peso_bruto||'',pr.tipo_palet||'',pr.num_palets||'',pr.calibre||'',pr.precio||''))
+  if(prods&&prods.length)prods.forEach(pr=>addProductoLinea(pr.fruta,pr.producto||'',pr.num_cajas||'',pr.confeccion||'',pr.peso_bruto||'',pr.tipo_palet||'',pr.num_palets||'',pr.calibre||'',pr.precio||'',pr.precio_compra||''))
   else addProductoLinea(p.fruta||'')
   openModal('modal-pedido')
 }
@@ -2627,7 +2628,8 @@ async function imprimirTransportes(fechaParam){
         if(pr.tipo_palet)parts.push(pr.tipo_palet)
         if(pr.confeccion)parts.push(pr.confeccion)
         if(pr.num_cajas)parts.push(pr.num_cajas+'cj')
-        if(pr.precio)parts.push(pr.precio.toFixed(2)+'€/kg')
+        if(pr.precio)parts.push(pr.precio.toFixed(2)+'€V')
+        if(pr.precio_compra)parts.push(pr.precio_compra.toFixed(2)+'€C')
         return parts.join(' | ')
       }).join(' / ') || (p.fruta||'—')
       const transpHtml=p.transporte_pedido?
@@ -2717,10 +2719,11 @@ async function imprimirPedidosHoy(fechaParam){
       if(pr.tipo_palet)parts.push(pr.tipo_palet)
       if(pr.confeccion)parts.push(pr.confeccion)
       if(pr.num_cajas)parts.push(pr.num_cajas+'cj')
-      if(pr.precio)parts.push(pr.precio.toFixed(2)+'€/kg venta')
+      if(pr.precio)parts.push(pr.precio.toFixed(2)+'€V')
+      if(pr.precio_compra)parts.push(pr.precio_compra.toFixed(2)+'€C')
       return parts.join(' | ')
     }).join(' / ') || (p.fruta||'—')
-    const precioCompraStr=p.precio_compra?'Compra: '+parseFloat(p.precio_compra).toFixed(2)+'€/kg':''
+    const precioCompraStr=''
 
     const eColor=estadoColor[p.estado]||'#444'
     const eBg=estadoColor['background_'+p.estado.replace(/ /g,'_')]||'#eee'
