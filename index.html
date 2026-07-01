@@ -190,6 +190,7 @@ tr:hover td{background:var(--bg)}
     <div class="nav-sec">Ventas</div>
     <div class="nav-item" onclick="showPage('pedidos',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-shopping-cart"></i>Pedidos</div>
     <div class="nav-item" onclick="showPage('ped-proveedores',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-building-store"></i>Ped. proveedores<span class="nav-badge" id="badge-pedprov">0</span></div>
+    <div class="nav-item" onclick="showPage('reclamaciones',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-alert-octagon"></i>Reclamaciones</div>
     <div class="nav-item" onclick="showPage('clientes',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-users"></i>Clientes</div>
     <div class="nav-sec">Operaciones</div>
     <div class="nav-item" onclick="showPage('preparacion',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-package"></i>Preparación<span class="nav-badge" id="badge-prep">0</span></div>
@@ -321,6 +322,27 @@ tr:hover td{background:var(--bg)}
           <button class="btn" onclick="loadPedProvHistorico()"><i class="ti ti-search"></i>Buscar</button>
         </div>
         <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-pedprov-hist"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+      </div>
+    </div>
+
+    <!-- RECLAMACIONES -->
+    <div class="page" id="page-reclamaciones">
+      <div class="ph"><h1 class="pt">Reclamaciones</h1><button class="btn btn-primary" onclick="abrirModalReclamacion()"><i class="ti ti-plus"></i>Nueva reclamación</button></div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-reclam-abiertas')">Abiertas</div>
+        <div class="tab" onclick="switchTab(this,'tab-reclam-hist')">Histórico</div>
+      </div>
+      <div id="tab-reclam-abiertas">
+        <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-reclam-abiertas"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+      </div>
+      <div id="tab-reclam-hist" style="display:none">
+        <div class="filter-row">
+          <input type="date" id="reclam-desde">
+          <input type="date" id="reclam-hasta">
+          <select id="reclam-estado"><option value="">Todos</option><option value="abierta">Abierta</option><option value="en_revision">En revisión</option><option value="cerrada">Cerrada</option></select>
+          <button class="btn" onclick="loadReclamacionesHistorico()"><i class="ti ti-search"></i>Buscar</button>
+        </div>
+        <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-reclam-hist"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
       </div>
     </div>
 
@@ -701,36 +723,86 @@ tr:hover td{background:var(--bg)}
 </div>
 
 
+<!-- MODAL RECLAMACIÓN -->
+<div class="modal-bg" id="modal-reclamacion">
+  <div class="modal" style="width:600px">
+    <h3>Nueva reclamación <button class="close-btn" onclick="closeModal('modal-reclamacion')">×</button></h3>
+    <input type="hidden" id="rc-id">
+
+    <div class="fg" style="margin-bottom:12px">
+      <label>Pedido asociado *</label>
+      <select id="rc-pedido-id" onchange="cargarDatosPedidoReclamacion(this.value)"><option value="">— Seleccionar pedido enviado —</option></select>
+    </div>
+    <div id="rc-info-pedido" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:14px;font-size:13px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Cliente</div><strong id="rc-info-cliente">—</strong></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Origen</div><strong id="rc-info-origen">—</strong></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Fecha salida</div><strong id="rc-info-fecha">—</strong></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Lote</div><strong id="rc-info-lote">—</strong></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Palets totales</div><strong id="rc-info-palets">—</strong></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Productos</div><strong id="rc-info-productos">—</strong></div>
+      </div>
+    </div>
+
+    <div class="frow">
+      <div class="fg"><label>Fecha de la reclamación</label><input type="date" id="rc-fecha"></div>
+      <div class="fg"><label>Gravedad</label>
+        <select id="rc-gravedad"><option value="leve">Leve</option><option value="moderada" selected>Moderada</option><option value="grave">Grave</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>Número de pedido</label><input type="text" id="rc-pedido-erp" placeholder="Nº de pedido"></div>
+    <div class="fg"><label>Motivo de la reclamación *</label><input type="text" id="rc-motivo" placeholder="Ej: fruta dañada, palet incompleto, etiquetado incorrecto..."></div>
+    <div class="fg"><label>Observaciones</label><textarea id="rc-obs" rows="3"></textarea></div>
+
+    <div class="form-sec">Cantidad afectada e importe</div>
+    <div class="frow">
+      <div class="fg"><label>Cajas afectadas</label><input type="number" id="rc-cajas-afectadas" min="0" placeholder="0"></div>
+      <div class="fg"><label>Palets afectados</label><input type="number" id="rc-palets-afectados" min="0" placeholder="0"></div>
+    </div>
+    <div class="fg" style="max-width:240px"><label>Importe reclamado (€)</label><input type="number" id="rc-importe" min="0" step="0.01" placeholder="0.00"></div>
+
+    <div id="rc-proveedor-bloque" style="display:none;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
+        <input type="checkbox" id="rc-enviada-proveedor" style="width:18px;height:18px">
+        <span style="font-size:13px;font-weight:500">Reclamación enviada al proveedor</span>
+      </label>
+    </div>
+
+    <div class="form-sec">Fotos <button type="button" class="btn btn-sm" onclick="document.getElementById('rc-foto-input').click()"><i class="ti ti-camera"></i>Añadir foto</button></div>
+    <input type="file" id="rc-foto-input" accept="image/*" multiple style="display:none" onchange="subirFotosReclamacion(this.files)">
+    <div id="rc-fotos-container" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
+
+    <div class="fg"><label>Estado</label>
+      <select id="rc-estado"><option value="abierta">Abierta</option><option value="en_revision">En revisión</option><option value="cerrada">Cerrada</option></select>
+    </div>
+
+    <div class="err-box" id="reclamacion-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('modal-reclamacion')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-reclamacion" onclick="guardarReclamacion()"><i class="ti ti-check"></i>Guardar reclamación</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL RESULTADO DE PARTIDA -->
 <div class="modal-bg" id="modal-resultado">
   <div class="modal" style="width:620px">
     <h3>Resultado de partida <button class="close-btn" onclick="closeModal('modal-resultado')">×</button></h3>
     <input type="hidden" id="res-id">
 
-    <div class="form-sec">Partida de entrada asociada</div>
-    <div class="fg" style="margin-bottom:12px">
-      <label>Seleccionar partida *</label>
-      <select id="res-partida-id" onchange="cargarDatosPartida(this.value)"><option value="">— Seleccionar partida —</option></select>
+    <div class="form-sec">Origen de la partida</div>
+    <div class="frow">
+      <div class="fg"><label>Agricultor</label><input type="text" id="res-agricultor" placeholder="Nombre del agricultor"></div>
+      <div class="fg"><label>Parcela</label><input type="text" id="res-parcela" placeholder="Nombre o referencia"></div>
     </div>
-    <div id="res-info-partida" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:14px;font-size:13px">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Proveedor</div><strong id="res-info-proveedor">—</strong></div>
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Finca</div><strong id="res-info-campo">—</strong></div>
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Producto</div><strong id="res-info-producto">—</strong></div>
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Variedad</div><strong id="res-info-variedad">—</strong></div>
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Lote</div><strong id="res-info-lote">—</strong></div>
-        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Fecha entrada</div><strong id="res-info-fecha">—</strong></div>
-      </div>
+    <div class="frow">
+      <div class="fg"><label>Fecha de confección</label><input type="date" id="res-fecha-conf"></div>
+      <div class="fg"><label>Lote del día</label><input type="text" id="res-lote" placeholder="Lote"></div>
     </div>
+    <div class="fg" style="max-width:260px"><label>Cantidad total trabajada (kg) *</label><input type="number" id="res-cantidad-total" min="0" step="0.1" placeholder="0" oninput="calcularResumenCalidad()"></div>
 
     <div class="form-sec">Kg por calibre <button type="button" class="btn btn-sm" onclick="addLineaResCalibre()"><i class="ti ti-plus"></i>Añadir calibre</button></div>
     <div id="res-calibre-container" style="margin-bottom:8px"></div>
-
-    <div class="form-sec">Datos de confección</div>
-    <div class="frow">
-      <div class="fg"><label>Fecha de confección</label><input type="date" id="res-fecha-conf"></div>
-      <div class="fg"><label>Kg volcados de la partida</label><input type="number" id="res-kg-volcados" min="0" step="0.1" value="0" oninput="calcularResumenCalidad()" placeholder="0"></div>
-    </div>
 
     <div class="form-sec">Mermas</div>
     <div class="frow">
@@ -739,7 +811,7 @@ tr:hover td{background:var(--bg)}
     </div>
 
     <div class="form-sec">Resumen de calidad</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px" id="res-resumen">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px" id="res-resumen">
       <div style="padding:12px;border-radius:var(--radius);background:#EAF3DE;text-align:center">
         <div style="font-size:11px;color:#3B6D11;font-weight:600;text-transform:uppercase;margin-bottom:4px">Primera calidad</div>
         <div style="font-size:22px;font-weight:700;color:#3B6D11" id="res-kg-primera">0 kg</div>
@@ -750,16 +822,23 @@ tr:hover td{background:var(--bg)}
         <div style="font-size:22px;font-weight:700;color:#854F0B" id="res-kg-industria-lbl">0 kg</div>
         <div style="font-size:11px;color:#6b6b67" id="res-pct-industria">0%</div>
       </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">
       <div style="padding:12px;border-radius:var(--radius);background:#FCEBEB;text-align:center">
         <div style="font-size:11px;color:#A32D2D;font-weight:600;text-transform:uppercase;margin-bottom:4px">Podrido</div>
         <div style="font-size:22px;font-weight:700;color:#A32D2D" id="res-kg-podrido-lbl">0 kg</div>
         <div style="font-size:11px;color:#6b6b67" id="res-pct-podrido">0%</div>
       </div>
+      <div style="padding:12px;border-radius:var(--radius);background:#e8e4dc;text-align:center">
+        <div style="font-size:11px;color:#5a5448;font-weight:600;text-transform:uppercase;margin-bottom:4px">Tierra / Desechos</div>
+        <div style="font-size:22px;font-weight:700;color:#5a5448" id="res-kg-tierra">0 kg</div>
+        <div style="font-size:11px;color:#6b6b67" id="res-pct-tierra">0%</div>
+      </div>
     </div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:13px">
-      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Kg volcados</div><strong id="res-volcados-lbl">—</strong></div>
-      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Total clasificado</div><strong id="res-total-lbl">—</strong></div>
-      <div><div style="font-size:10px;color:var(--red);text-transform:uppercase;margin-bottom:3px">Merma partida</div><strong id="res-merma-lbl" style="color:var(--red)">—</strong></div>
+
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-size:13px">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Cantidad total trabajada</div><strong id="res-volcados-lbl">—</strong></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Total clasificado (1ª+2ª+podrido)</div><strong id="res-total-lbl">—</strong></div>
     </div>
 
     <div class="form-sec">Inspector y observaciones</div>
@@ -776,7 +855,7 @@ tr:hover td{background:var(--bg)}
   </div>
 </div>
 
-<!-- MODAL PARTIDA DE ENTRADA -->
+<!-- MODAL PARTIDA DE ENTRADA --><!-- MODAL PARTIDA DE ENTRADA -->
 <div class="modal-bg" id="modal-partida">
   <div class="modal" style="width:680px">
     <h3 id="partida-modal-titulo">Nueva partida de entrada <button class="close-btn" onclick="closeModal('modal-partida')">×</button></h3>
@@ -893,6 +972,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-partidas-hist')loadPartidasHistorico()
   if(tabId==='tab-resultados')loadResultados()
   if(tabId==='tab-pedprov-hist')loadPedProvHistorico()
+  if(tabId==='tab-reclam-hist')loadReclamacionesHistorico()
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -937,8 +1017,8 @@ async function initApp(user){
   document.getElementById('np-fecha').value=hoy
   document.getElementById('dash-fecha-picker').value=hoy
   const elPrintFecha=document.getElementById('print-fecha-historico');if(elPrintFecha)elPrintFecha.value=hoy
-  ;['hist-desde','prep-hist-desde','inf-desde','iqc-desde','envhist-desde','part-hist-desde','pedprov-desde'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=mesAtras})
-  ;['hist-hasta','prep-hist-hasta','inf-hasta','iqc-hasta','envhist-hasta','part-hist-hasta','pedprov-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoy})
+  ;['hist-desde','prep-hist-desde','inf-desde','iqc-desde','envhist-desde','part-hist-desde','pedprov-desde','reclam-desde'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=mesAtras})
+  ;['hist-hasta','prep-hist-hasta','inf-hasta','iqc-hasta','envhist-hasta','part-hist-hasta','pedprov-hasta','reclam-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoy})
   const elEnvPicker=document.getElementById('envios-fecha-picker');if(elEnvPicker)elEnvPicker.value=hoy
   const elPrintEnv=document.getElementById('print-fecha-envios');if(elPrintEnv)elPrintEnv.value=hoy
   loadDashboard()
@@ -1199,7 +1279,7 @@ async function renderTablaPedidos(data){
   data.forEach(p=>{
     const prods=prodMap[p.id]||[]
     const ps=prods.map(pr=>{
-      let s='<div style="line-height:1.5;padding:5px 8px;border-left:3px solid var(--border2);margin-bottom:5px;border-radius:0 4px 4px 0">'
+      let s='<div style="line-height:1.3;padding:3px 6px;border-left:2px solid var(--border2);margin-bottom:2px">'
       s+='<strong style="font-size:12px">'+pr.fruta+(pr.producto?' — '+pr.producto:'')+'</strong>'
       const detalles=[]
       if(pr.num_palets)detalles.push(pr.num_palets+'pal')
@@ -1209,7 +1289,7 @@ async function renderTablaPedidos(data){
       if(pr.num_cajas)detalles.push(pr.num_cajas+'cj')
       if(pr.precio)detalles.push('<span style="color:var(--accent)">'+pr.precio.toFixed(2)+'€V</span>')
       if(pr.precio_compra)detalles.push('<span style="color:var(--red)">'+pr.precio_compra.toFixed(2)+'€C</span>')
-      if(detalles.length)s+='<div style="font-size:10px;color:var(--text2)">'+detalles.join(' · ')+'</div>'
+      if(detalles.length)s+=' <span style="font-size:10px;color:var(--text2)">'+detalles.join(' · ')+'</span>'
       s+='</div>'
       return s
     }).join('')||p.fruta||'—'
@@ -1324,10 +1404,21 @@ async function guardarPedido(){
     const datos={cliente_id:cid,palets,fruta:lineas[0].fruta,lote:document.getElementById('np-lote').value||null,destinatario:document.getElementById('np-dest').value||null,transportista_id:document.getElementById('np-trans').value||null,fecha_recogida:document.getElementById('np-fecha').value||null,observaciones:document.getElementById('np-obs').value||null,idiomas_etiqueta:idiomas,proveedor:esExterno?origenActual:null}
     let pedidoId=id
     if(id){
+      // Comprobar si han cambiado cantidades (cajas, palets o peso) en alguna línea para reiniciar a Pendiente
+      const {data:lineasAntiguas}=await db.from('pedido_productos').select('num_cajas,num_palets,peso_bruto').eq('pedido_id',id).order('orden')
+      const cantidadesIguales=(lineasAntiguas||[]).length===lineas.length&&(lineasAntiguas||[]).every((la,i)=>
+        (la.num_cajas||0)===(lineas[i].num_cajas||0)&&
+        (la.num_palets||0)===(lineas[i].num_palets||0)&&
+        (la.peso_bruto||0)===(lineas[i].peso_bruto||0)
+      )
+      if(!cantidadesIguales){
+        datos.estado='Pendiente'
+        datos.stock_descontado=false
+      }
       const {error}=await db.from('pedidos').update({...datos,modificado_en:new Date().toISOString(),modificado_por:currentPerfil?.nombre}).eq('id',id)
       if(error){toast('Error: '+error.message,'err');return}
       await db.from('pedido_productos').delete().eq('pedido_id',id)
-      toast('Pedido actualizado ✓')
+      toast(cantidadesIguales?'Pedido actualizado ✓':'Pedido actualizado — vuelve a Pendiente por cambio de cantidades ✓')
     } else {
       // Generar referencia basada en la última existente (más fiable que un count, evita colisiones por concurrencia)
       const {data:ultimo}=await db.from('pedidos').select('referencia').order('creado_en',{ascending:false}).limit(1).single()
@@ -1456,7 +1547,7 @@ async function renderTablaPrep(data){
   data.forEach(p=>{
     const prods=prodMap[p.id]||[]
     const ps=prods.length?prods.map(pr=>{
-        let s='<div style="line-height:1.5;padding:5px 8px;border-left:3px solid var(--border2);margin-bottom:5px;border-radius:0 4px 4px 0">'
+        let s='<div style="line-height:1.3;padding:3px 6px;border-left:2px solid var(--border2);margin-bottom:2px">'
         s+='<strong style="font-size:12px">'+pr.fruta+(pr.producto?' — '+pr.producto:'')+'</strong>'
         const det=[]
         if(pr.num_palets)det.push(pr.num_palets+'pal')
@@ -1464,7 +1555,7 @@ async function renderTablaPrep(data){
         if(pr.confeccion)det.push(pr.confeccion)
         if(pr.tipo_palet)det.push(pr.tipo_palet)
         if(pr.num_cajas)det.push(pr.num_cajas+'cj')
-        if(det.length)s+='<div style="font-size:10px;color:var(--text2)">'+det.join(' · ')+'</div>'
+        if(det.length)s+=' <span style="font-size:10px;color:var(--text2)">'+det.join(' · ')+'</span>'
         s+='</div>'
         return s
       }).join(''):(p.fruta||'—')
@@ -2066,7 +2157,7 @@ async function loadEnvios(){
       g.pedidos.forEach(p=>{
         const prods=prodMap[p.id]||[]
         const ps=prods.map(pr=>{
-          let s='<div style="line-height:1.5;padding:5px 8px;border-left:3px solid var(--border2);margin-bottom:5px;border-radius:0 4px 4px 0">'
+          let s='<div style="line-height:1.3;padding:3px 6px;border-left:2px solid var(--border2);margin-bottom:2px">'
           s+='<strong style="font-size:12px">'+pr.fruta+(pr.producto?' — '+pr.producto:'')+'</strong>'
           const det=[]
           if(pr.num_palets)det.push(pr.num_palets+'pal')
@@ -2074,7 +2165,7 @@ async function loadEnvios(){
           if(pr.tipo_palet)det.push(pr.tipo_palet)
           if(pr.num_cajas)det.push(pr.num_cajas+'cj')
           if(pr.precio)det.push('<span style="color:var(--accent);font-weight:600">'+pr.precio.toFixed(2)+'€/kg</span>')
-          if(det.length)s+='<div style="font-size:10px;color:var(--text2)">'+det.join(' · ')+'</div>'
+          if(det.length)s+=' <span style="font-size:10px;color:var(--text2)">'+det.join(' · ')+'</span>'
           s+='</div>'
           return s
         }).join('')||p.fruta||'—'
@@ -3149,7 +3240,7 @@ function renderTablaPedProv(data,mostrarBoton=true){
   data.forEach(p=>{
     const prods=(p.pedido_productos||[])
     const psStr=prods.map(pr=>{
-      let s='<div style="line-height:1.5;padding:5px 8px;border-left:3px solid var(--border2);margin-bottom:5px;border-radius:0 4px 4px 0">'
+      let s='<div style="line-height:1.3;padding:3px 6px;border-left:2px solid var(--border2);margin-bottom:2px">'
       s+='<strong style="font-size:12px">'+pr.fruta+(pr.producto?' — '+pr.producto:'')+'</strong>'
       const det=[]
       if(pr.num_palets)det.push(pr.num_palets+'pal')
@@ -3158,7 +3249,7 @@ function renderTablaPedProv(data,mostrarBoton=true){
       if(pr.tipo_palet)det.push(pr.tipo_palet)
       if(pr.num_cajas)det.push(pr.num_cajas+'cj')
       if(pr.precio)det.push('<span style="color:var(--accent);font-weight:600">'+pr.precio.toFixed(2)+'€/kg</span>')
-      if(det.length)s+='<div style="font-size:10px;color:var(--text2)">'+det.join(' · ')+'</div>'
+      if(det.length)s+=' <span style="font-size:10px;color:var(--text2)">'+det.join(' · ')+'</span>'
       s+='</div>'
       return s
     }).join('') || (p.fruta||'—')
@@ -3326,101 +3417,79 @@ function calcularResumenCalidad(){
   document.querySelectorAll('[id^="rescalkg-"]').forEach(el=>{kgPrimera+=parseFloat(el.value)||0})
   const kgIndustria=parseFloat(document.getElementById('res-kg-industria')?.value)||0
   const kgPodrido=parseFloat(document.getElementById('res-kg-podrido')?.value)||0
-  const kgVolcados=parseFloat(document.getElementById('res-kg-volcados')?.value)||0
   const total=kgPrimera+kgIndustria+kgPodrido
-  const pct=v=>total>0?(v/total*100).toFixed(1)+'%':'0%'
+  const cantidadTotal=parseFloat(document.getElementById('res-cantidad-total')?.value)||0
+  // Tierra/desechos = lo que falta para cuadrar la cantidad total trabajada
+  const kgTierra=cantidadTotal>0?Math.max(0,cantidadTotal-total):0
+  const baseTotal=cantidadTotal>0?cantidadTotal:total
+  const pct=v=>baseTotal>0?(v/baseTotal*100).toFixed(1)+'%':'0%'
+
   document.getElementById('res-kg-primera').textContent=kgPrimera.toFixed(1)+' kg'
   document.getElementById('res-pct-primera').textContent=pct(kgPrimera)
   document.getElementById('res-kg-industria-lbl').textContent=kgIndustria.toFixed(1)+' kg'
   document.getElementById('res-pct-industria').textContent=pct(kgIndustria)
   document.getElementById('res-kg-podrido-lbl').textContent=kgPodrido.toFixed(1)+' kg'
   document.getElementById('res-pct-podrido').textContent=pct(kgPodrido)
-  // Merma: diferencia entre volcados y total clasificado
-  const merma=kgVolcados>0?(kgVolcados-total):null
+  document.getElementById('res-kg-tierra').textContent=kgTierra.toFixed(1)+' kg'
+  document.getElementById('res-pct-tierra').textContent=pct(kgTierra)
+
   const elVolc=document.getElementById('res-volcados-lbl')
   const elTotal=document.getElementById('res-total-lbl')
-  const elMerma=document.getElementById('res-merma-lbl')
-  if(elVolc)elVolc.textContent=kgVolcados>0?kgVolcados.toFixed(1)+' kg':'—'
+  if(elVolc)elVolc.textContent=cantidadTotal>0?cantidadTotal.toFixed(1)+' kg':'—'
   if(elTotal)elTotal.textContent=total.toFixed(1)+' kg'
-  if(elMerma)elMerma.textContent=merma!==null?(merma>=0?'+':'')+merma.toFixed(1)+' kg':'—'
-}
-
-async function cargarDatosPartida(id){
-  if(!id){document.getElementById('res-info-partida').style.display='none';return}
-  const {data:pt}=await db.from('partidas_entrada').select('*').eq('id',id).single()
-  if(!pt)return
-  document.getElementById('res-info-partida').style.display='block'
-  document.getElementById('res-info-proveedor').textContent=pt.proveedor||'—'
-  document.getElementById('res-info-campo').textContent=pt.campo||'—'
-  document.getElementById('res-info-producto').textContent=pt.producto+(pt.variedad?' — '+pt.variedad:'')||'—'
-  document.getElementById('res-info-variedad').textContent=pt.variedad||'—'
-  document.getElementById('res-info-lote').textContent=pt.lote||'—'
-  document.getElementById('res-info-fecha').textContent=fmt(pt.fecha)
-  // Pre-cargar calibres del escandallo si existen
-  const {data:cals}=await db.from('partidas_calibre').select('*').eq('partida_id',id).order('orden')
-  if(cals&&cals.length&&!document.querySelectorAll('[id^="rescal-"]').length){
-    cals.forEach(c=>addLineaResCalibre(c.calibre,''))
-  }
 }
 
 async function abrirModalResultado(resultadoId=null){
   document.getElementById('res-id').value=''
   document.getElementById('res-calibre-container').innerHTML=''
   resCalibreCount=0
+  document.getElementById('res-agricultor').value=''
+  document.getElementById('res-parcela').value=''
+  document.getElementById('res-lote').value=''
+  document.getElementById('res-cantidad-total').value=''
+  document.getElementById('res-fecha-conf').value=new Date().toISOString().split('T')[0]
   document.getElementById('res-kg-industria').value='0'
   document.getElementById('res-kg-podrido').value='0'
   document.getElementById('res-obs').value=''
   document.getElementById('res-inspector').value=currentPerfil?.nombre||''
-  document.getElementById('res-info-partida').style.display='none'
   document.getElementById('resultado-err').style.display='none'
-  calcularResumenCalidad()
-
-  // Cargar lista de partidas para el selector
-  const {data:partidas}=await db.from('partidas_entrada').select('id,fecha,producto,variedad,proveedor,lote').order('fecha',{ascending:false}).limit(100)
-  const sel=document.getElementById('res-partida-id')
-  sel.innerHTML='<option value="">— Seleccionar partida —</option>'
-  ;(partidas||[]).forEach(pt=>{
-    const label=fmt(pt.fecha)+' · '+pt.producto+(pt.variedad?' — '+pt.variedad:'')+(pt.proveedor?' ('+pt.proveedor+')':'')+(pt.lote?' Lote:'+pt.lote:'')
-    sel.innerHTML+='<option value="'+pt.id+'">'+label+'</option>'
-  })
 
   if(resultadoId){
-    // Editar resultado existente
     const {data:res}=await db.from('resultados_partida').select('*').eq('id',resultadoId).single()
     const {data:cals}=await db.from('resultado_calibres').select('*').eq('resultado_id',resultadoId).order('orden')
     if(res){
       document.getElementById('res-id').value=res.id
-      sel.value=res.partida_id
-      await cargarDatosPartida(res.partida_id)
+      document.getElementById('res-agricultor').value=res.agricultor||''
+      document.getElementById('res-parcela').value=res.parcela||''
+      document.getElementById('res-lote').value=res.lote||''
+      document.getElementById('res-cantidad-total').value=res.cantidad_total||''
+      document.getElementById('res-fecha-conf').value=res.fecha_confeccion||''
       document.getElementById('res-kg-industria').value=res.kg_industria||0
       document.getElementById('res-kg-podrido').value=res.kg_podrido||0
-      document.getElementById('res-kg-volcados').value=res.kg_volcados||0
-      document.getElementById('res-fecha-conf').value=res.fecha_confeccion||''
       document.getElementById('res-obs').value=res.observaciones||''
       document.getElementById('res-inspector').value=res.inspector||''
-      document.getElementById('res-calibre-container').innerHTML=''
-      resCalibreCount=0
       ;(cals||[]).forEach(c=>addLineaResCalibre(c.calibre,c.kg))
-      calcularResumenCalidad()
     }
-  } else {
-    addLineaResCalibre()
   }
+  if(!document.querySelectorAll('[id^="rescal-"]').length)addLineaResCalibre()
+  calcularResumenCalidad()
   openModal('modal-resultado')
 }
 
 async function guardarResultado(){
   const id=document.getElementById('res-id').value
-  const partidaId=document.getElementById('res-partida-id').value
+  const cantidadTotal=parseFloat(document.getElementById('res-cantidad-total').value)
   const err=document.getElementById('resultado-err');err.style.display='none'
-  if(!partidaId){err.textContent='Selecciona una partida de entrada';err.style.display='block';return}
+  if(!cantidadTotal){err.textContent='Indica la cantidad total trabajada';err.style.display='block';return}
 
   const datos={
-    partida_id:partidaId,
+    agricultor:document.getElementById('res-agricultor').value||null,
+    parcela:document.getElementById('res-parcela').value||null,
+    lote:document.getElementById('res-lote').value||null,
+    cantidad_total:cantidadTotal,
+    fecha_confeccion:document.getElementById('res-fecha-conf').value||null,
     kg_industria:parseFloat(document.getElementById('res-kg-industria').value)||0,
     kg_podrido:parseFloat(document.getElementById('res-kg-podrido').value)||0,
-    kg_volcados:parseFloat(document.getElementById('res-kg-volcados').value)||null,
-    fecha_confeccion:document.getElementById('res-fecha-conf').value||null,
     observaciones:document.getElementById('res-obs').value||null,
     inspector:document.getElementById('res-inspector').value||null,
     creado_por:currentPerfil?.nombre
@@ -3438,7 +3507,6 @@ async function guardarResultado(){
     toast('Resultado guardado ✓')
   }
 
-  // Guardar calibres
   const cals=[]
   document.querySelectorAll('#res-calibre-container > div').forEach((div,i)=>{
     const idAttr=div.id.replace('rescal-','')
@@ -3453,33 +3521,30 @@ async function guardarResultado(){
 }
 
 async function loadResultados(){
-  const {data}=await db.from('resultados_partida')
-    .select('*,partidas_entrada(producto,variedad,proveedor,campo,lote,fecha)')
-    .order('creado_en',{ascending:false}).limit(50)
+  const {data}=await db.from('resultados_partida').select('*').order('creado_en',{ascending:false}).limit(50)
 
   let rows='',cards=''
   for(const r of data||[]){
     const {data:cals}=await db.from('resultado_calibres').select('*').eq('resultado_id',r.id).order('orden')
     const kgPrimera=(cals||[]).reduce((s,c)=>s+c.kg,0)
-    const total=kgPrimera+r.kg_industria+r.kg_podrido
-    const pct=v=>total>0?(v/total*100).toFixed(1)+'%':'—'
-    const pt=r.partidas_entrada
+    const totalClasif=kgPrimera+r.kg_industria+r.kg_podrido
+    const kgTierra=r.cantidad_total?Math.max(0,r.cantidad_total-totalClasif):0
+    const base=r.cantidad_total||totalClasif
+    const pct=v=>base>0?(v/base*100).toFixed(1)+'%':'—'
 
     const calibresStr=(cals||[]).map(c=>c.calibre+': '+c.kg+'kg').join(' · ')||'—'
 
-    const mermaKg=r.kg_volcados?(r.kg_volcados-(kgPrimera+r.kg_industria+r.kg_podrido)):null
     rows+='<tr>'+
-      '<td>'+fmt(pt?.fecha)+'</td>'+
       '<td>'+(r.fecha_confeccion?fmt(r.fecha_confeccion):'—')+'</td>'+
-      '<td><strong>'+(pt?.producto||'—')+(pt?.variedad?' — '+pt.variedad:'')+'</strong></td>'+
-      '<td>'+(pt?.proveedor||'—')+'</td>'+
-      '<td>'+(pt?.lote||'—')+'</td>'+
-      '<td>'+(r.kg_volcados?r.kg_volcados+' kg':'—')+'</td>'+
+      '<td><strong>'+(r.agricultor||'—')+'</strong></td>'+
+      '<td>'+(r.parcela||'—')+'</td>'+
+      '<td>'+(r.lote||'—')+'</td>'+
+      '<td>'+(r.cantidad_total?r.cantidad_total+' kg':'—')+'</td>'+
       '<td style="font-size:11px;max-width:160px;white-space:normal">'+calibresStr+'</td>'+
       '<td style="color:#3B6D11;font-weight:600">'+kgPrimera.toFixed(1)+' kg<br><span style="font-weight:400;font-size:11px">'+pct(kgPrimera)+'</span></td>'+
       '<td style="color:#854F0B;font-weight:600">'+r.kg_industria+' kg<br><span style="font-weight:400;font-size:11px">'+pct(r.kg_industria)+'</span></td>'+
       '<td style="color:#A32D2D;font-weight:600">'+r.kg_podrido+' kg<br><span style="font-weight:400;font-size:11px">'+pct(r.kg_podrido)+'</span></td>'+
-      '<td style="color:var(--red);font-weight:600">'+(mermaKg!==null?(mermaKg>=0?'+':'')+mermaKg.toFixed(1)+' kg':'—')+'</td>'+
+      '<td style="color:#5a5448;font-weight:600">'+kgTierra.toFixed(1)+' kg<br><span style="font-weight:400;font-size:11px">'+pct(kgTierra)+'</span></td>'+
       '<td style="white-space:nowrap">'+
         '<button class="btn btn-sm" data-id="'+r.id+'" onclick="abrirModalResultado(this.dataset.id)"><i class="ti ti-edit"></i></button> '+
         '<button class="btn btn-sm btn-danger" data-id="'+r.id+'" onclick="eliminarResultado(this.dataset.id)"><i class="ti ti-trash"></i></button>'+
@@ -3488,21 +3553,24 @@ async function loadResultados(){
 
     cards+='<div class="order-card">'+
       '<div class="order-card-top">'+
-        '<div><div class="order-card-ref">'+(pt?.producto||'—')+(pt?.variedad?' — '+pt.variedad:'')+'</div>'+
-        '<div class="order-card-client">'+(pt?.proveedor||'—')+' · '+fmt(pt?.fecha)+'</div></div>'+
+        '<div><div class="order-card-ref">'+(r.agricultor||'—')+'</div>'+
+        '<div class="order-card-client">'+(r.parcela||'—')+' · '+(r.fecha_confeccion?fmt(r.fecha_confeccion):'—')+'</div></div>'+
       '</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0">'+
+      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0">'+
         '<div style="text-align:center;padding:8px;background:#EAF3DE;border-radius:6px"><div style="font-size:10px;color:#3B6D11;font-weight:600">PRIMERA</div><div style="font-size:16px;font-weight:700;color:#3B6D11">'+kgPrimera.toFixed(1)+'kg</div><div style="font-size:10px;color:#6b6b67">'+pct(kgPrimera)+'</div></div>'+
         '<div style="text-align:center;padding:8px;background:#FAEEDA;border-radius:6px"><div style="font-size:10px;color:#854F0B;font-weight:600">INDUSTRIA</div><div style="font-size:16px;font-weight:700;color:#854F0B">'+r.kg_industria+'kg</div><div style="font-size:10px;color:#6b6b67">'+pct(r.kg_industria)+'</div></div>'+
         '<div style="text-align:center;padding:8px;background:#FCEBEB;border-radius:6px"><div style="font-size:10px;color:#A32D2D;font-weight:600">PODRIDO</div><div style="font-size:16px;font-weight:700;color:#A32D2D">'+r.kg_podrido+'kg</div><div style="font-size:10px;color:#6b6b67">'+pct(r.kg_podrido)+'</div></div>'+
+        '<div style="text-align:center;padding:8px;background:#e8e4dc;border-radius:6px"><div style="font-size:10px;color:#5a5448;font-weight:600">TIERRA</div><div style="font-size:16px;font-weight:700;color:#5a5448">'+kgTierra.toFixed(1)+'kg</div><div style="font-size:10px;color:#6b6b67">'+pct(kgTierra)+'</div></div>'+
       '</div>'+
+      '<div class="order-card-row"><span class="lbl">Lote</span><span>'+(r.lote||'—')+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Cantidad total</span><span>'+(r.cantidad_total?r.cantidad_total+' kg':'—')+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Calibres</span><span style="font-size:11px">'+calibresStr+'</span></div>'+
       (r.observaciones?'<div class="order-card-row"><span class="lbl">Obs.</span><span>'+r.observaciones+'</span></div>':'')+
       '<div class="order-card-actions"><button class="btn btn-sm" data-id="'+r.id+'" onclick="abrirModalResultado(this.dataset.id)"><i class="ti ti-edit"></i>Editar</button><button class="btn btn-sm btn-danger" data-id="'+r.id+'" onclick="eliminarResultado(this.dataset.id)"><i class="ti ti-trash"></i></button></div>'+
     '</div>'
   }
 
-  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Entrada</th><th>Confección</th><th>Producto</th><th>Proveedor</th><th>Lote</th><th>Kg volcados</th><th>Calibres</th><th>Primera</th><th>Industria</th><th>Podrido</th><th>Merma</th><th></th></tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="9" class="empty">Sin resultados</td></tr>')+'</tbody></table>'
+  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Fecha</th><th>Agricultor</th><th>Parcela</th><th>Lote</th><th>Cant. total</th><th>Calibres</th><th>Primera</th><th>Industria</th><th>Podrido</th><th>Tierra</th><th></th></tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="11" class="empty">Sin resultados</td></tr>')+'</tbody></table>'
   const cardsWrap='<div class="mobile-cards">'+(cards||'<div class="empty">Sin resultados</div>')+'</div>'
   document.getElementById('tabla-resultados').innerHTML=tabla+cardsWrap
 }
@@ -3514,6 +3582,334 @@ async function eliminarResultado(id){
   loadResultados()
 }
 
+// ── ROUTER
+// ── RECLAMACIONES ─────────────────────────────────────────────
+let rcFotosSubidas=[] // urls de fotos ya subidas en la sesión actual del modal
+
+async function cargarDatosPedidoReclamacion(pedidoId){
+  if(!pedidoId){document.getElementById('rc-info-pedido').style.display='none';document.getElementById('rc-proveedor-bloque').style.display='none';return}
+  const {data:p}=await db.from('pedidos').select('*,clientes(nombre)').eq('id',pedidoId).single()
+  if(!p)return
+  const {data:prods}=await db.from('pedido_productos').select('*').eq('pedido_id',pedidoId).order('orden')
+  document.getElementById('rc-info-pedido').style.display='block'
+  document.getElementById('rc-info-cliente').textContent=p.clientes?.nombre||'—'
+  document.getElementById('rc-info-origen').textContent=p.proveedor?p.proveedor:'Propio'
+  document.getElementById('rc-info-fecha').textContent=fmt(p.fecha_recogida)
+  document.getElementById('rc-info-lote').textContent=p.lote||'—'
+  document.getElementById('rc-info-palets').textContent=p.palets||'—'
+  const productosStr=(prods||[]).map(pr=>pr.fruta+(pr.producto?' — '+pr.producto:'')+(pr.num_palets?' ('+pr.num_palets+'pal)':'')).join(', ')
+  document.getElementById('rc-info-productos').textContent=productosStr||'—'
+  document.getElementById('rc-proveedor-bloque').style.display=p.proveedor?'block':'none'
+}
+
+function renderFotosReclamacion(){
+  document.getElementById('rc-fotos-container').innerHTML=rcFotosSubidas.map((url,i)=>
+    '<div style="position:relative;width:80px;height:80px">'+
+      '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">'+
+      '<button type="button" onclick="rcFotosSubidas.splice('+i+',1);renderFotosReclamacion()" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;border:2px solid var(--bg2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>'+
+    '</div>'
+  ).join('')
+}
+
+async function subirFotosReclamacion(files){
+  if(!files||!files.length)return
+  toast('Subiendo fotos...')
+  for(const file of files){
+    const ext=file.name.split('.').pop()
+    const path='rec-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext
+    const {data,error}=await db.storage.from('reclamaciones').upload(path,file)
+    if(error){toast('Error subiendo foto: '+error.message,'err');continue}
+    const {data:urlData}=db.storage.from('reclamaciones').getPublicUrl(path)
+    rcFotosSubidas.push(urlData.publicUrl)
+  }
+  renderFotosReclamacion()
+  toast('Fotos subidas ✓')
+  document.getElementById('rc-foto-input').value=''
+}
+
+async function abrirModalReclamacion(reclamacionId=null){
+  document.getElementById('rc-id').value=''
+  document.getElementById('rc-motivo').value=''
+  document.getElementById('rc-obs').value=''
+  document.getElementById('rc-pedido-erp').value=''
+  document.getElementById('rc-cajas-afectadas').value=''
+  document.getElementById('rc-palets-afectados').value=''
+  document.getElementById('rc-importe').value=''
+  document.getElementById('rc-gravedad').value='moderada'
+  document.getElementById('rc-estado').value='abierta'
+  document.getElementById('rc-fecha').value=new Date().toISOString().split('T')[0]
+  document.getElementById('rc-enviada-proveedor').checked=false
+  document.getElementById('rc-info-pedido').style.display='none'
+  document.getElementById('rc-proveedor-bloque').style.display='none'
+  document.getElementById('reclamacion-err').style.display='none'
+  rcFotosSubidas=[]
+  renderFotosReclamacion()
+
+  // Cargar pedidos enviados (propios y de proveedor) de los últimos 60 días
+  const desde=new Date(Date.now()-60*86400000).toISOString().split('T')[0]
+  const {data:pedidos}=await db.from('pedidos').select('id,referencia,fecha_recogida,clientes(nombre),proveedor').eq('estado','Enviado').gte('fecha_recogida',desde).order('fecha_recogida',{ascending:false})
+  const sel=document.getElementById('rc-pedido-id')
+  sel.innerHTML='<option value="">— Seleccionar pedido enviado —</option>'
+  ;(pedidos||[]).forEach(p=>{
+    const label=p.referencia+' · '+fmt(p.fecha_recogida)+' · '+(p.clientes?.nombre||'—')+(p.proveedor?' ('+p.proveedor+')':'')
+    sel.innerHTML+='<option value="'+p.id+'">'+label+'</option>'
+  })
+
+  if(reclamacionId){
+    const {data:rc}=await db.from('reclamaciones').select('*').eq('id',reclamacionId).single()
+    const {data:fotos}=await db.from('reclamaciones_fotos').select('*').eq('reclamacion_id',reclamacionId)
+    if(rc){
+      document.getElementById('rc-id').value=rc.id
+      sel.value=rc.pedido_id
+      await cargarDatosPedidoReclamacion(rc.pedido_id)
+      document.getElementById('rc-fecha').value=rc.fecha||''
+      document.getElementById('rc-motivo').value=rc.motivo||''
+      document.getElementById('rc-obs').value=rc.observaciones||''
+      document.getElementById('rc-gravedad').value=rc.gravedad||'moderada'
+      document.getElementById('rc-estado').value=rc.estado||'abierta'
+      document.getElementById('rc-enviada-proveedor').checked=!!rc.enviada_proveedor
+      document.getElementById('rc-pedido-erp').value=rc.numero_pedido_erp||''
+      document.getElementById('rc-cajas-afectadas').value=rc.cajas_afectadas||''
+      document.getElementById('rc-palets-afectados').value=rc.palets_afectados||''
+      document.getElementById('rc-importe').value=rc.importe||''
+      rcFotosSubidas=(fotos||[]).map(f=>f.url)
+      renderFotosReclamacion()
+    }
+  }
+  openModal('modal-reclamacion')
+}
+
+async function guardarReclamacion(){
+  const id=document.getElementById('rc-id').value
+  const pedidoId=document.getElementById('rc-pedido-id').value
+  const motivo=document.getElementById('rc-motivo').value.trim()
+  const err=document.getElementById('reclamacion-err');err.style.display='none'
+  if(!pedidoId){err.textContent='Selecciona el pedido asociado';err.style.display='block';return}
+  if(!motivo){err.textContent='Indica el motivo de la reclamación';err.style.display='block';return}
+
+  const enviadaProv=document.getElementById('rc-enviada-proveedor').checked
+  const datos={
+    pedido_id:pedidoId,
+    fecha:document.getElementById('rc-fecha').value||null,
+    motivo,
+    gravedad:document.getElementById('rc-gravedad').value,
+    estado:document.getElementById('rc-estado').value,
+    observaciones:document.getElementById('rc-obs').value||null,
+    numero_pedido_erp:document.getElementById('rc-pedido-erp').value||null,
+    cajas_afectadas:parseInt(document.getElementById('rc-cajas-afectadas').value)||null,
+    palets_afectados:parseInt(document.getElementById('rc-palets-afectados').value)||null,
+    importe:parseFloat(document.getElementById('rc-importe').value)||null,
+    enviada_proveedor:enviadaProv,
+    registrado_por:currentPerfil?.nombre
+  }
+  if(enviadaProv){
+    datos.enviada_proveedor_en=new Date().toISOString()
+    datos.enviada_proveedor_por=currentPerfil?.nombre
+  }
+
+  let reclamacionId=id
+  if(id){
+    await db.from('reclamaciones').update(datos).eq('id',id)
+    await db.from('reclamaciones_fotos').delete().eq('reclamacion_id',id)
+    toast('Reclamación actualizada ✓')
+  } else {
+    const {data:nuevo,error}=await db.from('reclamaciones').insert(datos).select().single()
+    if(error){err.textContent='Error: '+error.message;err.style.display='block';return}
+    reclamacionId=nuevo.id
+    toast('Reclamación registrada ✓')
+  }
+
+  if(rcFotosSubidas.length){
+    await db.from('reclamaciones_fotos').insert(rcFotosSubidas.map(url=>({reclamacion_id:reclamacionId,url})))
+  }
+
+  closeModal('modal-reclamacion')
+  loadReclamaciones()
+}
+
+function renderTablaReclamaciones(data){
+  const gravColor={leve:{bg:'#FAEEDA',c:'#854F0B'},moderada:{bg:'#E6F1FB',c:'#185FA5'},grave:{bg:'#FCEBEB',c:'#A32D2D'}}
+  const estColor={abierta:{bg:'#FCEBEB',c:'#A32D2D',label:'Abierta'},en_revision:{bg:'#FAEEDA',c:'#854F0B',label:'En revisión'},cerrada:{bg:'#EAF3DE',c:'#3B6D11',label:'Cerrada'}}
+  let rows='',cards=''
+  data.forEach(r=>{
+    const p=r.pedidos
+    const gc=gravColor[r.gravedad]||gravColor.moderada
+    const ec=estColor[r.estado]||estColor.abierta
+    const proveedorTick=p?.proveedor?(r.enviada_proveedor?'<span class="badge b-pass"><i class="ti ti-check"></i> Enviada a prov.</span>':'<span class="badge b-warn">Sin enviar a prov.</span>'):''
+    const numFotos=r._numFotos||0
+    const afectadoStr=[r.cajas_afectadas?r.cajas_afectadas+' cj':'',r.palets_afectados?r.palets_afectados+' pal':''].filter(Boolean).join(' · ')||'—'
+    const importeStr=r.importe?parseFloat(r.importe).toFixed(2)+' €':'—'
+    const puedeCerrar=r.estado!=='cerrada'
+    const btnCerrar=puedeCerrar?'<button class="btn btn-sm btn-success" data-id="'+r.id+'" onclick="cerrarReclamacion(this.dataset.id)" title="'+(r.importe?'Cerrar reclamación':'Indica el importe antes de cerrar')+'"><i class="ti ti-circle-check"></i></button> ':''
+
+    rows+='<tr>'+
+      '<td>'+fmt(r.fecha)+'</td>'+
+      '<td><strong>'+(p?.referencia||'—')+'</strong></td>'+
+      '<td>'+(r.numero_pedido_erp||'—')+'</td>'+
+      '<td>'+(p?.clientes?.nombre||'—')+'</td>'+
+      '<td>'+(p?.proveedor?'<span class="badge b-ext">'+p.proveedor.split(' ')[0]+'</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
+      '<td style="max-width:180px;white-space:normal">'+r.motivo+'</td>'+
+      '<td style="font-size:11px">'+afectadoStr+'</td>'+
+      '<td style="font-weight:600;color:var(--red)">'+importeStr+'</td>'+
+      '<td><span style="padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600;background:'+gc.bg+';color:'+gc.c+'">'+r.gravedad+'</span></td>'+
+      '<td><span style="padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600;background:'+ec.bg+';color:'+ec.c+'">'+ec.label+'</span></td>'+
+      '<td>'+proveedorTick+'</td>'+
+      '<td>'+(numFotos?'<i class="ti ti-photo"></i> '+numFotos:'—')+'</td>'+
+      '<td style="white-space:nowrap">'+btnCerrar+'<button class="btn btn-sm" data-id="'+r.id+'" onclick="abrirModalReclamacion(this.dataset.id)"><i class="ti ti-edit"></i></button> <button class="btn btn-sm" data-id="'+r.id+'" onclick="generarPDFReclamacion(this.dataset.id)"><i class="ti ti-file-type-pdf"></i></button> <button class="btn btn-sm btn-danger" data-id="'+r.id+'" onclick="eliminarReclamacion(this.dataset.id)"><i class="ti ti-trash"></i></button></td>'+
+    '</tr>'
+
+    cards+='<div class="order-card">'+
+      '<div class="order-card-top">'+
+        '<div><div class="order-card-ref">'+(p?.referencia||'—')+'</div><div class="order-card-client">'+(p?.clientes?.nombre||'—')+'</div></div>'+
+        '<span style="padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600;background:'+ec.bg+';color:'+ec.c+'">'+ec.label+'</span>'+
+      '</div>'+
+      (r.numero_pedido_erp?'<div class="order-card-row"><span class="lbl">Nº pedido</span><span>'+r.numero_pedido_erp+'</span></div>':'')+
+      '<div class="order-card-row"><span class="lbl">Motivo</span><span>'+r.motivo+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Afectado</span><span>'+afectadoStr+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Importe</span><span style="font-weight:600;color:var(--red)">'+importeStr+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Gravedad</span><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:'+gc.bg+';color:'+gc.c+'">'+r.gravedad+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Fecha</span><span>'+fmt(r.fecha)+'</span></div>'+
+      (proveedorTick?'<div class="order-card-row"><span class="lbl">Proveedor</span><span>'+proveedorTick+'</span></div>':'')+
+      (numFotos?'<div class="order-card-row"><span class="lbl">Fotos</span><span>'+numFotos+'</span></div>':'')+
+      '<div class="order-card-actions">'+btnCerrar+'<button class="btn btn-sm" data-id="'+r.id+'" onclick="abrirModalReclamacion(this.dataset.id)"><i class="ti ti-edit"></i>Editar</button><button class="btn btn-sm" data-id="'+r.id+'" onclick="generarPDFReclamacion(this.dataset.id)"><i class="ti ti-file-type-pdf"></i>PDF</button><button class="btn btn-sm btn-danger" data-id="'+r.id+'" onclick="eliminarReclamacion(this.dataset.id)"><i class="ti ti-trash"></i></button></div>'+
+    '</div>'
+  })
+  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Fecha</th><th>Ref. interna</th><th>Nº pedido</th><th>Cliente</th><th>Origen</th><th>Motivo</th><th>Afectado</th><th>Importe</th><th>Gravedad</th><th>Estado</th><th>Proveedor</th><th>Fotos</th><th></th></tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="13" class="empty">Sin reclamaciones</td></tr>')+'</tbody></table>'
+  const cardsWrap='<div class="mobile-cards">'+(cards||'<div class="empty">Sin reclamaciones</div>')+'</div>'
+  return tabla+cardsWrap
+}
+
+async function cerrarReclamacion(id){
+  const {data:rc}=await db.from('reclamaciones').select('importe').eq('id',id).single()
+  if(!rc?.importe){
+    const importe=prompt('Indica el importe reclamado (€) antes de cerrar:')
+    if(importe===null)return
+    const val=parseFloat(importe)
+    if(isNaN(val)||val<=0){toast('Importe no válido','err');return}
+    await db.from('reclamaciones').update({importe:val}).eq('id',id)
+  }
+  if(!confirm('¿Cerrar esta reclamación?'))return
+  await db.from('reclamaciones').update({
+    estado:'cerrada',
+    cerrada_en:new Date().toISOString(),
+    cerrada_por:currentPerfil?.nombre
+  }).eq('id',id)
+  toast('Reclamación cerrada ✓')
+  loadReclamaciones()
+  loadReclamacionesHistorico()
+}
+
+async function cargarConteoFotos(reclamaciones){
+  for(const r of reclamaciones){
+    const {count}=await db.from('reclamaciones_fotos').select('*',{count:'exact',head:true}).eq('reclamacion_id',r.id)
+    r._numFotos=count||0
+  }
+  return reclamaciones
+}
+
+async function loadReclamaciones(){
+  const {data}=await db.from('reclamaciones').select('*,pedidos(referencia,fecha_recogida,proveedor,clientes(nombre))').not('estado','eq','cerrada').order('fecha',{ascending:false})
+  const conFotos=await cargarConteoFotos(data||[])
+  document.getElementById('tabla-reclam-abiertas').innerHTML=renderTablaReclamaciones(conFotos)
+}
+
+async function loadReclamacionesHistorico(){
+  const desde=document.getElementById('reclam-desde')?.value
+  const hasta=document.getElementById('reclam-hasta')?.value
+  const estado=document.getElementById('reclam-estado')?.value
+  let q=db.from('reclamaciones').select('*,pedidos(referencia,fecha_recogida,proveedor,clientes(nombre))').order('fecha',{ascending:false})
+  if(desde)q=q.gte('fecha',desde)
+  if(hasta)q=q.lte('fecha',hasta)
+  if(estado)q=q.eq('estado',estado)
+  const {data}=await q
+  const conFotos=await cargarConteoFotos(data||[])
+  document.getElementById('tabla-reclam-hist').innerHTML=renderTablaReclamaciones(conFotos)
+}
+
+async function eliminarReclamacion(id){
+  if(!confirm('¿Eliminar esta reclamación? No se puede deshacer.'))return
+  await db.from('reclamaciones').delete().eq('id',id)
+  toast('Reclamación eliminada')
+  loadReclamaciones()
+}
+
+async function generarPDFReclamacion(id){
+  const {data:r}=await db.from('reclamaciones').select('*,pedidos(referencia,fecha_recogida,lote,palets,destinatario,proveedor,clientes(nombre))').eq('id',id).single()
+  if(!r){toast('No se encontró la reclamación','err');return}
+  const p=r.pedidos
+  const {data:prods}=await db.from('pedido_productos').select('*').eq('pedido_id',r.pedido_id).order('orden')
+  const {data:fotos}=await db.from('reclamaciones_fotos').select('*').eq('reclamacion_id',id)
+
+  const gravLabel={leve:'Leve',moderada:'Moderada',grave:'Grave'}[r.gravedad]||r.gravedad
+  const gravColor={leve:'#854F0B',moderada:'#185FA5',grave:'#A32D2D'}[r.gravedad]||'#444'
+
+  const productosStr=(prods||[]).map(pr=>pr.fruta+(pr.producto?' — '+pr.producto:'')+(pr.num_palets?' ('+pr.num_palets+' palets)':'')).join('<br>')||'—'
+
+  const fotosHtml=(fotos&&fotos.length)?
+    '<div class="section"><div class="section-title">Fotografías adjuntas</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+
+    fotos.map(f=>'<img src="'+f.url+'" style="width:100%;height:140px;object-fit:cover;border-radius:6px;border:1px solid #e0e0dc">').join('')+
+    '</div></div>':''
+
+  const reclamHtml='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
+    '<style>*{box-sizing:border-box;margin:0;padding:0}'+
+    'body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a18;padding:30px 40px}'+
+    '.header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d7a3a;margin-bottom:24px}'+
+    '.header img{height:90px}'+
+    '.gravedad-badge{padding:10px 24px;border-radius:8px;font-size:15px;font-weight:700;text-align:center;background:'+gravColor+'18;color:'+gravColor+';border:2px solid '+gravColor+'}'+
+    '.section{margin-bottom:20px}'+
+    '.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#2d7a3a;padding:0 0 6px;border-bottom:2px solid #2d7a3a;margin-bottom:12px}'+
+    '.datos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}'+
+    '.dato{padding:8px 12px;border:1px solid #e0e0dc;border-radius:6px}'+
+    '.dato .lbl{font-size:10px;color:#9d9d98;text-transform:uppercase;margin-bottom:3px}'+
+    '.dato .val{font-size:13px;font-weight:600}'+
+    '.motivo-box{background:#FCEBEB;border-left:3px solid #A32D2D;border-radius:0 6px 6px 0;padding:12px 16px;font-size:14px;font-weight:600;color:#A32D2D}'+
+    '.obs-box{background:#FAEEDA;border-left:3px solid #EF9F27;border-radius:0 6px 6px 0;padding:10px 14px;font-size:13px}'+
+    '.importe-box{background:#2d7a3a;color:#fff;border-radius:8px;padding:16px 20px;text-align:center}'+
+    '.footer{margin-top:30px;padding-top:12px;border-top:1px solid #e0e0dc;font-size:10px;color:#9d9d98;display:flex;justify-content:space-between}'+
+    '@media print{body{padding:20px 30px;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>'+
+    '<div class="header"><img src="data:image/png;base64,'+LOGO_B64+'" alt="Naturfarms">'+
+    '<div style="text-align:center"><h1 style="font-size:20px;font-weight:700;color:#2d7a3a">RECLAMACIÓN</h1>'+
+    '<div style="font-size:12px;color:#6b6b67;margin-top:4px">'+fmt(r.fecha)+(r.registrado_por?' · Registrada por '+r.registrado_por:'')+'</div></div>'+
+    '<div class="gravedad-badge">Gravedad: '+gravLabel+'</div></div>'+
+
+    '<div class="section"><div class="section-title">Datos del pedido</div>'+
+    '<div class="datos-grid">'+
+    '<div class="dato"><div class="lbl">Nº de pedido</div><div class="val">'+(r.numero_pedido_erp||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Proveedor</div><div class="val">'+(p?.proveedor||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Fecha de salida</div><div class="val">'+fmt(p?.fecha_recogida)+'</div></div>'+
+    '<div class="dato"><div class="lbl">Lote</div><div class="val">'+(p?.lote||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Palets totales</div><div class="val">'+(p?.palets||'—')+'</div></div>'+
+    '</div>'+
+    '<div class="dato" style="margin-top:10px"><div class="lbl">Productos</div><div class="val" style="font-weight:500">'+productosStr+'</div></div>'+
+    '</div>'+
+
+    '<div class="section"><div class="section-title">Motivo de la reclamación</div>'+
+    '<div class="motivo-box">'+r.motivo+'</div></div>'+
+
+    '<div class="section"><div class="section-title">Cantidad afectada</div>'+
+    '<div class="datos-grid">'+
+    '<div class="dato"><div class="lbl">Cajas afectadas</div><div class="val">'+(r.cajas_afectadas||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Palets afectados</div><div class="val">'+(r.palets_afectados||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Estado</div><div class="val">'+(r.estado==='cerrada'?'Cerrada':r.estado==='en_revision'?'En revisión':'Abierta')+'</div></div>'+
+    '</div></div>'+
+
+    (r.observaciones?'<div class="section"><div class="section-title">Observaciones</div><div class="obs-box">'+r.observaciones+'</div></div>':'')+
+
+    (r.importe?'<div class="section"><div class="importe-box"><div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Importe reclamado</div><div style="font-size:32px;font-weight:700">'+parseFloat(r.importe).toFixed(2)+' €</div></div></div>':'')+
+
+    fotosHtml+
+
+    '<div class="footer"><span>Naturfarms Organic · Hoja de Reclamación</span>'+
+    '<span>Generado el '+new Date().toLocaleString('es-ES')+'</span></div>'+
+    '</body></html>'
+
+  const blob=new Blob([reclamHtml],{type:'text/html;charset=utf-8'})
+  const url=URL.createObjectURL(blob)
+  const w=window.open(url,'_blank')
+  if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
+}
+
 // ── ROUTER ────────────────────────────────────────────────────
 function showPage(id,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
@@ -3522,7 +3918,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,clientes:loadClientes,preparacion:loadPreparacion,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas}
+  const map={dashboard:loadDashboard,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,preparacion:loadPreparacion,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas}
   if(map[id])map[id]()
 }
 </script>
