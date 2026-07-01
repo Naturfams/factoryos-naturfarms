@@ -740,26 +740,44 @@ tr:hover td{background:var(--bg)}
         <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Fecha salida</div><strong id="rc-info-fecha">—</strong></div>
         <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Lote</div><strong id="rc-info-lote">—</strong></div>
         <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Palets totales</div><strong id="rc-info-palets">—</strong></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Cajas totales</div><strong id="rc-info-cajas">—</strong></div>
+        <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Confección</div><strong id="rc-info-confeccion">—</strong></div>
         <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase">Productos</div><strong id="rc-info-productos">—</strong></div>
       </div>
     </div>
 
     <div class="frow">
       <div class="fg"><label>Fecha de la reclamación</label><input type="date" id="rc-fecha"></div>
+    <div class="fg"><label>Nº albarán proveedor</label><input type="text" id="rc-albaran" placeholder="Nº albarán del proveedor"></div>
       <div class="fg"><label>Gravedad</label>
         <select id="rc-gravedad"><option value="leve">Leve</option><option value="moderada" selected>Moderada</option><option value="grave">Grave</option></select>
       </div>
     </div>
     <div class="fg"><label>Número de pedido</label><input type="text" id="rc-pedido-erp" placeholder="Nº de pedido"></div>
-    <div class="fg"><label>Motivo de la reclamación *</label><input type="text" id="rc-motivo" placeholder="Ej: fruta dañada, palet incompleto, etiquetado incorrecto..."></div>
+    <div class="form-sec">Motivos de la reclamación *</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="rc-checklist-motivos">
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Pudrición" style="width:15px;height:15px"> Pudrición</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Moho" style="width:15px;height:15px"> Moho</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Puntos blandos" style="width:15px;height:15px"> Puntos blandos</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Exceso de madurez" style="width:15px;height:15px"> Exceso de madurez</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Piel dañada" style="width:15px;height:15px"> Piel dañada</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Problema de coloración" style="width:15px;height:15px"> Problema de coloración</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Puntos negros" style="width:15px;height:15px"> Puntos negros</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Deshidratación" style="width:15px;height:15px"> Deshidratación</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Daño por plagas" style="width:15px;height:15px"> Daño por plagas</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Calibre/tamaño erróneo" style="width:15px;height:15px"> Calibre/tamaño erróneo</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Suciedad" style="width:15px;height:15px"> Suciedad</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Mojado" style="width:15px;height:15px"> Mojado</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Temperatura incorrecta" style="width:15px;height:15px"> Temperatura incorrecta</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Embalaje defectuoso/dañado" style="width:15px;height:15px"> Embalaje defectuoso/dañado</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Error de etiquetado" style="width:15px;height:15px"> Error de etiquetado</label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px"><input type="checkbox" value="Cajas bajo peso" style="width:15px;height:15px"> Cajas bajo peso</label>
+    </div>
+    <div class="fg"><label>Otros motivos / Descripción adicional</label><input type="text" id="rc-motivo" placeholder="Describe otros motivos o añade más detalle..."></div>
     <div class="fg"><label>Observaciones</label><textarea id="rc-obs" rows="3"></textarea></div>
 
-    <div class="form-sec">Cantidad afectada e importe</div>
-    <div class="frow">
-      <div class="fg"><label>Cajas afectadas</label><input type="number" id="rc-cajas-afectadas" min="0" placeholder="0"></div>
-      <div class="fg"><label>Palets afectados</label><input type="number" id="rc-palets-afectados" min="0" placeholder="0"></div>
-    </div>
-    <div class="fg" style="max-width:240px"><label>Importe reclamado (€)</label><input type="number" id="rc-importe" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="form-sec">Importe</div>
+    <div class="fg" style="max-width:240px"><label>Importe de abono (€)</label><input type="number" id="rc-importe" min="0" step="0.01" placeholder="0.00"></div>
 
     <div id="rc-proveedor-bloque" style="display:none;margin-bottom:14px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
@@ -3597,6 +3615,10 @@ async function cargarDatosPedidoReclamacion(pedidoId){
   document.getElementById('rc-info-fecha').textContent=fmt(p.fecha_recogida)
   document.getElementById('rc-info-lote').textContent=p.lote||'—'
   document.getElementById('rc-info-palets').textContent=p.palets||'—'
+  const totalCajas=(prods||[]).reduce((s,pr)=>s+(pr.num_cajas||0),0)
+  document.getElementById('rc-info-cajas').textContent=totalCajas||'—'
+  const confecciones=[...new Set((prods||[]).map(pr=>pr.confeccion).filter(Boolean))].join(', ')
+  document.getElementById('rc-info-confeccion').textContent=confecciones||'—'
   const productosStr=(prods||[]).map(pr=>pr.fruta+(pr.producto?' — '+pr.producto:'')+(pr.num_palets?' ('+pr.num_palets+'pal)':'')).join(', ')
   document.getElementById('rc-info-productos').textContent=productosStr||'—'
   document.getElementById('rc-proveedor-bloque').style.display=p.proveedor?'block':'none'
@@ -3630,10 +3652,10 @@ async function subirFotosReclamacion(files){
 async function abrirModalReclamacion(reclamacionId=null){
   document.getElementById('rc-id').value=''
   document.getElementById('rc-motivo').value=''
+  document.querySelectorAll('#rc-checklist-motivos input[type=checkbox]').forEach(cb=>cb.checked=false)
   document.getElementById('rc-obs').value=''
   document.getElementById('rc-pedido-erp').value=''
-  document.getElementById('rc-cajas-afectadas').value=''
-  document.getElementById('rc-palets-afectados').value=''
+  document.getElementById('rc-albaran').value=''
   document.getElementById('rc-importe').value=''
   document.getElementById('rc-gravedad').value='moderada'
   document.getElementById('rc-estado').value='abierta'
@@ -3663,14 +3685,18 @@ async function abrirModalReclamacion(reclamacionId=null){
       sel.value=rc.pedido_id
       await cargarDatosPedidoReclamacion(rc.pedido_id)
       document.getElementById('rc-fecha').value=rc.fecha||''
-      document.getElementById('rc-motivo').value=rc.motivo||''
+      // Precargar checkboxes: los motivos están separados por " · "
+      const motivosParts=(rc.motivo||'').split(' · ')
+      const motivosValidos=['Pudrición','Moho','Puntos blandos','Exceso de madurez','Piel dañada','Problema de coloración','Puntos negros','Deshidratación','Daño por plagas','Calibre/tamaño erróneo','Suciedad','Mojado','Temperatura incorrecta','Embalaje defectuoso/dañado','Error de etiquetado','Cajas bajo peso']
+      document.querySelectorAll('#rc-checklist-motivos input[type=checkbox]').forEach(cb=>{cb.checked=motivosParts.includes(cb.value)})
+      const motivoExtra=motivosParts.filter(m=>!motivosValidos.includes(m)).join(' · ')
+      document.getElementById('rc-motivo').value=motivoExtra
       document.getElementById('rc-obs').value=rc.observaciones||''
       document.getElementById('rc-gravedad').value=rc.gravedad||'moderada'
       document.getElementById('rc-estado').value=rc.estado||'abierta'
       document.getElementById('rc-enviada-proveedor').checked=!!rc.enviada_proveedor
       document.getElementById('rc-pedido-erp').value=rc.numero_pedido_erp||''
-      document.getElementById('rc-cajas-afectadas').value=rc.cajas_afectadas||''
-      document.getElementById('rc-palets-afectados').value=rc.palets_afectados||''
+      document.getElementById('rc-albaran').value=rc.albaran_proveedor||''
       document.getElementById('rc-importe').value=rc.importe||''
       rcFotosSubidas=(fotos||[]).map(f=>f.url)
       renderFotosReclamacion()
@@ -3682,22 +3708,23 @@ async function abrirModalReclamacion(reclamacionId=null){
 async function guardarReclamacion(){
   const id=document.getElementById('rc-id').value
   const pedidoId=document.getElementById('rc-pedido-id').value
-  const motivo=document.getElementById('rc-motivo').value.trim()
+  const checkboxes=Array.from(document.querySelectorAll('#rc-checklist-motivos input[type=checkbox]:checked')).map(cb=>cb.value)
+  const motivoExtra=document.getElementById('rc-motivo').value.trim()
+  const motivoCompleto=[...checkboxes,motivoExtra].filter(Boolean).join(' · ')
   const err=document.getElementById('reclamacion-err');err.style.display='none'
   if(!pedidoId){err.textContent='Selecciona el pedido asociado';err.style.display='block';return}
-  if(!motivo){err.textContent='Indica el motivo de la reclamación';err.style.display='block';return}
+  if(!motivoCompleto){err.textContent='Selecciona al menos un motivo de reclamación';err.style.display='block';return}
 
   const enviadaProv=document.getElementById('rc-enviada-proveedor').checked
   const datos={
     pedido_id:pedidoId,
     fecha:document.getElementById('rc-fecha').value||null,
-    motivo,
+    motivo:motivoCompleto,
     gravedad:document.getElementById('rc-gravedad').value,
     estado:document.getElementById('rc-estado').value,
     observaciones:document.getElementById('rc-obs').value||null,
     numero_pedido_erp:document.getElementById('rc-pedido-erp').value||null,
-    cajas_afectadas:parseInt(document.getElementById('rc-cajas-afectadas').value)||null,
-    palets_afectados:parseInt(document.getElementById('rc-palets-afectados').value)||null,
+    albaran_proveedor:document.getElementById('rc-albaran').value||null,
     importe:parseFloat(document.getElementById('rc-importe').value)||null,
     enviada_proveedor:enviadaProv,
     registrado_por:currentPerfil?.nombre
@@ -3737,7 +3764,6 @@ function renderTablaReclamaciones(data){
     const ec=estColor[r.estado]||estColor.abierta
     const proveedorTick=p?.proveedor?(r.enviada_proveedor?'<span class="badge b-pass"><i class="ti ti-check"></i> Enviada a prov.</span>':'<span class="badge b-warn">Sin enviar a prov.</span>'):''
     const numFotos=r._numFotos||0
-    const afectadoStr=[r.cajas_afectadas?r.cajas_afectadas+' cj':'',r.palets_afectados?r.palets_afectados+' pal':''].filter(Boolean).join(' · ')||'—'
     const importeStr=r.importe?parseFloat(r.importe).toFixed(2)+' €':'—'
     const puedeCerrar=r.estado!=='cerrada'
     const btnCerrar=puedeCerrar?'<button class="btn btn-sm btn-success" data-id="'+r.id+'" onclick="cerrarReclamacion(this.dataset.id)" title="'+(r.importe?'Cerrar reclamación':'Indica el importe antes de cerrar')+'"><i class="ti ti-circle-check"></i></button> ':''
@@ -3749,7 +3775,6 @@ function renderTablaReclamaciones(data){
       '<td>'+(p?.clientes?.nombre||'—')+'</td>'+
       '<td>'+(p?.proveedor?'<span class="badge b-ext">'+p.proveedor.split(' ')[0]+'</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
       '<td style="max-width:180px;white-space:normal">'+r.motivo+'</td>'+
-      '<td style="font-size:11px">'+afectadoStr+'</td>'+
       '<td style="font-weight:600;color:var(--red)">'+importeStr+'</td>'+
       '<td><span style="padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600;background:'+gc.bg+';color:'+gc.c+'">'+r.gravedad+'</span></td>'+
       '<td><span style="padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600;background:'+ec.bg+';color:'+ec.c+'">'+ec.label+'</span></td>'+
@@ -3765,8 +3790,7 @@ function renderTablaReclamaciones(data){
       '</div>'+
       (r.numero_pedido_erp?'<div class="order-card-row"><span class="lbl">Nº pedido</span><span>'+r.numero_pedido_erp+'</span></div>':'')+
       '<div class="order-card-row"><span class="lbl">Motivo</span><span>'+r.motivo+'</span></div>'+
-      '<div class="order-card-row"><span class="lbl">Afectado</span><span>'+afectadoStr+'</span></div>'+
-      '<div class="order-card-row"><span class="lbl">Importe</span><span style="font-weight:600;color:var(--red)">'+importeStr+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Abono</span><span style="font-weight:600;color:var(--red)">'+importeStr+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Gravedad</span><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:'+gc.bg+';color:'+gc.c+'">'+r.gravedad+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Fecha</span><span>'+fmt(r.fecha)+'</span></div>'+
       (proveedorTick?'<div class="order-card-row"><span class="lbl">Proveedor</span><span>'+proveedorTick+'</span></div>':'')+
@@ -3774,7 +3798,7 @@ function renderTablaReclamaciones(data){
       '<div class="order-card-actions">'+btnCerrar+'<button class="btn btn-sm" data-id="'+r.id+'" onclick="abrirModalReclamacion(this.dataset.id)"><i class="ti ti-edit"></i>Editar</button><button class="btn btn-sm" data-id="'+r.id+'" onclick="generarPDFReclamacion(this.dataset.id)"><i class="ti ti-file-type-pdf"></i>PDF</button><button class="btn btn-sm btn-danger" data-id="'+r.id+'" onclick="eliminarReclamacion(this.dataset.id)"><i class="ti ti-trash"></i></button></div>'+
     '</div>'
   })
-  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Fecha</th><th>Ref. interna</th><th>Nº pedido</th><th>Cliente</th><th>Origen</th><th>Motivo</th><th>Afectado</th><th>Importe</th><th>Gravedad</th><th>Estado</th><th>Proveedor</th><th>Fotos</th><th></th></tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="13" class="empty">Sin reclamaciones</td></tr>')+'</tbody></table>'
+  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Fecha</th><th>Ref. interna</th><th>Nº pedido</th><th>Cliente</th><th>Origen</th><th>Motivo</th><th>Abono (€)</th><th>Gravedad</th><th>Estado</th><th>Proveedor</th><th>Fotos</th><th></th></tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="12" class="empty">Sin reclamaciones</td></tr>')+'</tbody></table>'
   const cardsWrap='<div class="mobile-cards">'+(cards||'<div class="empty">Sin reclamaciones</div>')+'</div>'
   return tabla+cardsWrap
 }
@@ -3876,16 +3900,21 @@ async function generarPDFReclamacion(id){
     '<div class="section"><div class="section-title">Datos del pedido</div>'+
     '<div class="datos-grid">'+
     '<div class="dato"><div class="lbl">Nº de pedido</div><div class="val">'+(r.numero_pedido_erp||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Nº albarán</div><div class="val">'+(r.albaran_proveedor||'—')+'</div></div>'+
     '<div class="dato"><div class="lbl">Proveedor</div><div class="val">'+(p?.proveedor||'—')+'</div></div>'+
     '<div class="dato"><div class="lbl">Fecha de salida</div><div class="val">'+fmt(p?.fecha_recogida)+'</div></div>'+
     '<div class="dato"><div class="lbl">Lote</div><div class="val">'+(p?.lote||'—')+'</div></div>'+
     '<div class="dato"><div class="lbl">Palets totales</div><div class="val">'+(p?.palets||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Cajas totales</div><div class="val">'+((prods||[]).reduce((s,pr)=>s+(pr.num_cajas||0),0)||'—')+'</div></div>'+
+    '<div class="dato"><div class="lbl">Confección</div><div class="val">'+([...new Set((prods||[]).map(pr=>pr.confeccion).filter(Boolean))].join(', ')||'—')+'</div></div>'+
     '</div>'+
     '<div class="dato" style="margin-top:10px"><div class="lbl">Productos</div><div class="val" style="font-weight:500">'+productosStr+'</div></div>'+
     '</div>'+
 
-    '<div class="section"><div class="section-title">Motivo de la reclamación</div>'+
-    '<div class="motivo-box">'+r.motivo+'</div></div>'+
+    '<div class="section"><div class="section-title">Motivos de la reclamación</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+
+    (r.motivo||'—').split(' · ').filter(Boolean).map(m=>'<span style="padding:4px 12px;border-radius:99px;border:1.5px solid #A32D2D;color:#A32D2D;font-size:12px;font-weight:600">'+m+'</span>').join('')+
+    '</div></div>'+
 
     '<div class="section"><div class="section-title">Cantidad afectada</div>'+
     '<div class="datos-grid">'+
@@ -3896,7 +3925,7 @@ async function generarPDFReclamacion(id){
 
     (r.observaciones?'<div class="section"><div class="section-title">Observaciones</div><div class="obs-box">'+r.observaciones+'</div></div>':'')+
 
-    (r.importe?'<div class="section"><div class="importe-box"><div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Importe reclamado</div><div style="font-size:32px;font-weight:700">'+parseFloat(r.importe).toFixed(2)+' €</div></div></div>':'')+
+    (r.importe?'<div class="section"><div class="importe-box"><div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Importe de abono</div><div style="font-size:32px;font-weight:700">'+parseFloat(r.importe).toFixed(2)+' €</div></div></div>':'')+
 
     fotosHtml+
 
