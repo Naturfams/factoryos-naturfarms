@@ -191,9 +191,11 @@ tr:hover td{background:var(--bg)}
     <div class="nav-item" onclick="showPage('pedidos',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-shopping-cart"></i>Pedidos</div>
     <div class="nav-item" onclick="showPage('ped-proveedores',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-building-store"></i>Ped. proveedores<span class="nav-badge" id="badge-pedprov">0</span></div>
     <div class="nav-item" onclick="showPage('reclamaciones',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-alert-octagon"></i>Reclamaciones</div>
+    <div class="nav-item" onclick="showPage('tarifas',this)" data-roles="admin,comercial"><i class="ti ti-tag"></i>Tarifas</div>
     <div class="nav-item" onclick="showPage('clientes',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-users"></i>Clientes</div>
     <div class="nav-sec">Operaciones</div>
     <div class="nav-item" onclick="showPage('preparacion',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-package"></i>Preparación<span class="nav-badge" id="badge-prep">0</span></div>
+    <div class="nav-item" onclick="showPage('planning',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-calendar-week"></i>Planning</div>
     <div class="nav-item" onclick="showPage('calidad',this)" data-roles="admin,comercial,calidad"><i class="ti ti-clipboard-check"></i>Calidad<span class="nav-badge" id="badge-qc">0</span></div>
     <div class="nav-item" onclick="showPage('partidas',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-truck-delivery"></i>Partidas entrada</div>
     <div class="nav-item" onclick="showPage('envios',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-truck"></i>Envíos<span class="nav-badge" id="badge-envios">0</span></div>
@@ -343,6 +345,55 @@ tr:hover td{background:var(--bg)}
           <button class="btn" onclick="loadReclamacionesHistorico()"><i class="ti ti-search"></i>Buscar</button>
         </div>
         <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-reclam-hist"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+      </div>
+    </div>
+
+    <!-- PLANNING CONFECCIÓN -->
+    <div class="page" id="page-planning">
+      <div class="ph">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="cambiarSemanaPlanning(-1)"><i class="ti ti-chevron-left"></i></button>
+          <h1 class="pt" id="planning-semana-label" style="font-size:16px;min-width:200px;text-align:center"></h1>
+          <button class="btn btn-sm" onclick="cambiarSemanaPlanning(1)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <button class="btn" onclick="imprimirPlanning()"><i class="ti ti-printer"></i>Imprimir</button>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-planning-dia')">Por día</div>
+        <div class="tab" onclick="switchTab(this,'tab-planning-producto')">Por producto</div>
+      </div>
+      <div id="tab-planning-dia">
+        <div id="planning-por-dia"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+      </div>
+      <div id="tab-planning-producto" style="display:none">
+        <div id="planning-por-producto"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+      </div>
+    </div>
+
+    <!-- TARIFAS -->
+    <div class="page" id="page-tarifas">
+      <div class="ph">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="cambiarSemana(-1)"><i class="ti ti-chevron-left"></i></button>
+          <h1 class="pt" id="tarifa-semana-label" style="font-size:16px;min-width:200px;text-align:center"></h1>
+          <button class="btn btn-sm" onclick="cambiarSemana(1)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="imprimirOferta()"><i class="ti ti-printer"></i>Imprimir oferta</button>
+          <button class="btn btn-primary" onclick="addLineaTarifa()"><i class="ti ti-plus"></i>Añadir línea</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--text2)">Márgenes por destino:</span>
+          <span style="font-size:13px"><strong>Perpiñán</strong> <input type="number" id="margen-perpignan" step="0.01" style="width:70px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border2);font-size:13px"> €/kg</span>
+          <span style="font-size:13px"><strong>Alemania</strong> <input type="number" id="margen-alemania" step="0.01" style="width:70px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border2);font-size:13px"> €/kg</span>
+          <button class="btn btn-sm" onclick="guardarMargenes()"><i class="ti ti-check"></i>Guardar márgenes</button>
+        </div>
+        <div style="overflow-x:auto"><div id="tabla-tarifas"></div></div>
+        <div style="margin-top:12px">
+          <button class="btn btn-success" onclick="guardarTarifas()"><i class="ti ti-device-floppy"></i>Guardar tarifa semanal</button>
+        </div>
       </div>
     </div>
 
@@ -514,7 +565,13 @@ tr:hover td{background:var(--bg)}
     <div class="fg"><label>Destinatario *</label><input type="text" id="np-dest"></div>
     <div class="frow">
       <div class="fg"><label>Transportista</label><select id="np-trans"><option value="">— Seleccionar —</option></select></div>
-      <div class="fg"><label>Fecha de recogida</label><input type="date" id="np-fecha"></div>
+      <div class="fg"><label>Fecha de recogida</label><input type="date" id="np-fecha" onchange="checkFechaHistorica()"></div>
+    </div>
+    <div id="np-historico-bloque" style="display:none;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 12px;background:#EAF3DE;border-radius:var(--radius);border:1px solid #639922">
+        <input type="checkbox" id="np-marcar-enviado" style="width:16px;height:16px">
+        <span style="font-size:13px;font-weight:500;color:#3B6D11"><i class="ti ti-history"></i> Pedido histórico — marcar directamente como Enviado</span>
+      </label>
     </div>
     <div class="form-sec">Productos <button type="button" class="btn btn-sm" onclick="addProductoLinea()"><i class="ti ti-plus"></i>Añadir línea</button></div>
     <div id="productos-container"></div>
@@ -990,6 +1047,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-partidas-hist')loadPartidasHistorico()
   if(tabId==='tab-resultados')loadResultados()
   if(tabId==='tab-pedprov-hist')loadPedProvHistorico()
+  if(tabId==='tab-planning-producto')loadPlanning()
   if(tabId==='tab-reclam-hist')loadReclamacionesHistorico()
 }
 
@@ -1033,6 +1091,8 @@ async function initApp(user){
   const hoy=new Date().toISOString().split('T')[0]
   const mesAtras=new Date(Date.now()-30*24*60*60*1000).toISOString().split('T')[0]
   document.getElementById('np-fecha').value=hoy
+  const elHist=document.getElementById('np-historico-bloque');if(elHist)elHist.style.display='none'
+  const elCb=document.getElementById('np-marcar-enviado');if(elCb)elCb.checked=false
   document.getElementById('dash-fecha-picker').value=hoy
   const elPrintFecha=document.getElementById('print-fecha-historico');if(elPrintFecha)elPrintFecha.value=hoy
   ;['hist-desde','prep-hist-desde','inf-desde','iqc-desde','envhist-desde','part-hist-desde','pedprov-desde','reclam-desde'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=mesAtras})
@@ -1446,7 +1506,8 @@ async function guardarPedido(){
         if(match)siguienteNum=parseInt(match[1])+1
       }
       const ref='P-'+String(siguienteNum).padStart(4,'0')
-      const {data:nuevo,error}=await db.from('pedidos').insert({...datos,referencia:ref,estado:'Pendiente'}).select().single()
+      const estadoInicial=(!id&&document.getElementById('np-marcar-enviado')?.checked)?'Enviado':'Pendiente'
+      const {data:nuevo,error}=await db.from('pedidos').insert({...datos,referencia:ref,estado:estadoInicial}).select().single()
       if(error){toast('Error: '+error.message,'err');return}
       pedidoId=nuevo.id
       toast('Pedido '+ref+' creado ✓')
@@ -3939,6 +4000,389 @@ async function generarPDFReclamacion(id){
   if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
 }
 
+// ── PLANNING DE CONFECCIÓN ────────────────────────────────────
+let planningOffset=0 // semanas desde la actual
+
+function getLunesViernes(offset=0){
+  const hoy=new Date()
+  const dow=hoy.getDay()===0?7:hoy.getDay()
+  const lunes=new Date(hoy)
+  lunes.setDate(hoy.getDate()-(dow-1)+(offset*7))
+  const viernes=new Date(lunes)
+  viernes.setDate(lunes.getDate()+5) // sábado incluido
+  return {lunes,viernes}
+}
+
+function cambiarSemanaPlanning(delta){
+  planningOffset+=delta
+  loadPlanning()
+}
+
+async function loadPlanning(){
+  const {lunes,viernes}=getLunesViernes(planningOffset)
+  const desde=lunes.toISOString().split('T')[0]
+  const hasta=viernes.toISOString().split('T')[0]
+  const label='Semana del '+lunes.toLocaleDateString('es-ES',{day:'numeric',month:'long'})+' al '+viernes.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})
+  document.getElementById('planning-semana-label').textContent=label
+
+  const {data:pedidos}=await db.from('pedidos')
+    .select('*,clientes(nombre),transportistas(nombre)')
+    .is('proveedor',null)
+    .gte('fecha_recogida',desde).lte('fecha_recogida',hasta)
+    .not('estado','eq','Anulado')
+    .order('fecha_recogida')
+
+  const ids=(pedidos||[]).map(p=>p.id)
+  let prodMap={}
+  if(ids.length){
+    const {data:prods}=await db.from('pedido_productos').select('*').in('pedido_id',ids).order('orden')
+    ;(prods||[]).forEach(p=>{if(!prodMap[p.pedido_id])prodMap[p.pedido_id]=[];prodMap[p.pedido_id].push(p)})
+  }
+
+  // ── VISTA POR DÍA ──────────────────────────────────────
+  const dias=[]
+  for(let i=0;i<6;i++){
+    const d=new Date(lunes)
+    d.setDate(lunes.getDate()+i)
+    dias.push(d)
+  }
+
+  let htmlDia=''
+  dias.forEach(dia=>{
+    const fechaStr=dia.toISOString().split('T')[0]
+    const pedidosDia=(pedidos||[]).filter(p=>p.fecha_recogida===fechaStr)
+    const diaNombre=dia.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})
+    const totalPalets=pedidosDia.reduce((s,p)=>s+p.palets,0)
+    const esHoy=fechaStr===new Date().toISOString().split('T')[0]
+
+    if(!pedidosDia.length){
+      htmlDia+='<div style="margin-bottom:16px">'+
+        '<div style="padding:10px 16px;border-radius:var(--radius-lg);background:var(--bg2);color:var(--text3);font-size:13px;font-weight:500;text-transform:capitalize">'+diaNombre+'<span style="float:right;font-size:12px">Sin pedidos</span></div>'+
+      '</div>'
+      return
+    }
+
+    let filasLineas=''
+    pedidosDia.forEach(p=>{
+      const prods=prodMap[p.id]||[]
+      prods.forEach(pr=>{
+        filasLineas+='<tr>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border);font-weight:600">'+p.referencia+'</td>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border)">'+(p.clientes?.nombre||'—')+'</td>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border)"><strong>'+pr.fruta+(pr.producto?' — '+pr.producto:'')+'</strong>'+(pr.calibre?'<div style="font-size:11px;color:var(--text2)">Cal. '+pr.calibre+'</div>':'')+'</td>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">'+(pr.num_palets||'—')+'</td>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border)">'+(pr.confeccion||'—')+'</td>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border)">'+(pr.tipo_palet||'—')+'</td>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border);text-align:center">'+(pr.num_cajas||'—')+'</td>'+
+          '<td style="padding:6px 10px;border-bottom:1px solid var(--border)">'+badgeHtml(p.estado)+'</td>'+
+        '</tr>'
+      })
+    })
+
+    htmlDia+='<div style="margin-bottom:20px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:'+(esHoy?'#185FA5':'#2d7a3a')+';color:#fff">'+
+        '<span style="font-size:14px;font-weight:700;text-transform:capitalize">'+diaNombre+'</span>'+
+        '<span style="background:rgba(255,255,255,0.2);padding:3px 12px;border-radius:99px;font-size:13px">'+pedidosDia.length+' pedido'+(pedidosDia.length>1?'s':'')+' · <strong>'+totalPalets+' palets</strong></span>'+
+      '</div>'+
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+        '<thead><tr style="background:var(--bg)">'+
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Ref</th>'+
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Cliente</th>'+
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Producto</th>'+
+          '<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--text2);font-weight:600">Pal</th>'+
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Confección</th>'+
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Tipo palet</th>'+
+          '<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--text2);font-weight:600">Cajas</th>'+
+          '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Estado</th>'+
+        '</tr></thead>'+
+        '<tbody>'+filasLineas+'</tbody>'+
+      '</table></div>'+
+    '</div>'
+  })
+  document.getElementById('planning-por-dia').innerHTML=htmlDia
+
+  // ── VISTA POR PRODUCTO ─────────────────────────────────
+  const resumenProducto={}
+  ;(pedidos||[]).forEach(p=>{
+    const prods=prodMap[p.id]||[]
+    prods.forEach(pr=>{
+      const key=(pr.fruta||'')+'|||'+(pr.producto||'')+'|||'+(pr.calibre||'')
+      if(!resumenProducto[key])resumenProducto[key]={fruta:pr.fruta,producto:pr.producto,calibre:pr.calibre,totalPalets:0,totalCajas:0,confecciones:{},pedidos:[]}
+      resumenProducto[key].totalPalets+=pr.num_palets||0
+      resumenProducto[key].totalCajas+=pr.num_cajas||0
+      if(pr.confeccion)resumenProducto[key].confecciones[pr.confeccion]=(resumenProducto[key].confecciones[pr.confeccion]||0)+(pr.num_cajas||0)
+      resumenProducto[key].pedidos.push({ref:p.referencia,cliente:p.clientes?.nombre,fecha:p.fecha_recogida,num_palets:pr.num_palets,num_cajas:pr.num_cajas,estado:p.estado})
+    })
+  })
+
+  let htmlProd=''
+  if(!Object.keys(resumenProducto).length){
+    htmlProd='<div class="empty">Sin pedidos propios esta semana</div>'
+  } else {
+    Object.values(resumenProducto).sort((a,b)=>(a.fruta+a.producto).localeCompare(b.fruta+b.producto)).forEach(r=>{
+      const confHtml=Object.entries(r.confecciones).map(([c,n])=>'<span style="background:var(--bg);border:1px solid var(--border);padding:3px 10px;border-radius:var(--radius);font-size:12px">'+c+': <strong>'+n+' cj</strong></span>').join('')
+      const pedRows=r.pedidos.map(p=>'<tr><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+fmt(p.fecha)+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+p.ref+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+(p.cliente||'—')+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-size:12px">'+(p.num_palets||'—')+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-size:12px">'+(p.num_cajas||'—')+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+badgeHtml(p.estado)+'</td></tr>').join('')
+
+      htmlProd+='<div style="border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden">'+
+        '<div style="padding:12px 16px;background:#2d7a3a;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+          '<div><div style="font-size:15px;font-weight:700">'+r.fruta+(r.producto?' — '+r.producto:'')+'</div>'+(r.calibre?'<div style="font-size:12px;opacity:.8">Cal. '+r.calibre+'</div>':'')+'</div>'+
+          '<div style="display:flex;gap:16px">'+
+            '<div style="text-align:center"><div style="font-size:11px;opacity:.7">PALETS</div><div style="font-size:22px;font-weight:700">'+r.totalPalets+'</div></div>'+
+            '<div style="text-align:center"><div style="font-size:11px;opacity:.7">CAJAS</div><div style="font-size:22px;font-weight:700">'+r.totalCajas+'</div></div>'+
+          '</div>'+
+        '</div>'+
+        (confHtml?'<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px">'+confHtml+'</div>':'')+
+        '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg)">'+
+          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Fecha</th>'+
+          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Ref</th>'+
+          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Cliente</th>'+
+          '<th style="padding:5px 8px;text-align:center;font-size:11px;color:var(--text2);font-weight:600">Palets</th>'+
+          '<th style="padding:5px 8px;text-align:center;font-size:11px;color:var(--text2);font-weight:600">Cajas</th>'+
+          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Estado</th>'+
+        '</tr></thead><tbody>'+pedRows+'</tbody></table>'+
+      '</div>'
+    })
+  }
+  document.getElementById('planning-por-producto').innerHTML=htmlProd
+}
+
+async function imprimirPlanning(){
+  const {lunes,viernes}=getLunesViernes(planningOffset)
+  const label='Semana del '+lunes.toLocaleDateString('es-ES',{day:'numeric',month:'long'})+' al '+viernes.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})
+  const contenido=document.getElementById('tab-planning-dia').style.display!=='none'
+    ?document.getElementById('planning-por-dia').innerHTML
+    :document.getElementById('planning-por-producto').innerHTML
+
+  const planHtml='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
+    '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a18;padding:16px 20px}'+
+    'table{width:100%;border-collapse:collapse}th{background:#f5f5f4;font-size:10px;color:#6b6b67;font-weight:600;padding:5px 8px;text-align:left}'+
+    'td{padding:5px 8px;border-bottom:1px solid #eee}'+
+    '.badge{padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600}'+
+    '@media print{body{padding:8px 12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:8mm;size:A4 landscape}}</style></head><body>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #2d7a3a;padding-bottom:10px;margin-bottom:16px">'+
+    '<img src="data:image/png;base64,'+LOGO_B64+'" style="height:45px">'+
+    '<div style="text-align:center"><div style="font-size:16px;font-weight:700;color:#2d7a3a">PLANNING DE CONFECCIÓN</div>'+
+    '<div style="font-size:11px;color:#6b6b67;text-transform:capitalize">'+label+'</div></div>'+
+    '<div style="width:80px"></div></div>'+
+    contenido+
+    '<div style="margin-top:12px;padding-top:8px;border-top:1px solid #eee;font-size:9px;color:#9d9d98;display:flex;justify-content:space-between">'+
+    '<span>Naturfarms Organic · Planning de Confección</span><span>Generado el '+new Date().toLocaleString('es-ES')+'</span></div>'+
+    '</body></html>'
+
+  const blob=new Blob([planHtml],{type:'text/html;charset=utf-8'})
+  const url=URL.createObjectURL(blob)
+  const w=window.open(url,'_blank')
+  if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
+}
+
+function checkFechaHistorica(){
+  const fecha=document.getElementById('np-fecha').value
+  const hoy=new Date().toISOString().split('T')[0]
+  const esHistorico=fecha&&fecha<hoy
+  const bloque=document.getElementById('np-historico-bloque')
+  if(bloque)bloque.style.display=esHistorico?'block':'none'
+  if(!esHistorico){const cb=document.getElementById('np-marcar-enviado');if(cb)cb.checked=false}
+}
+
+// ── TARIFAS ───────────────────────────────────────────────────
+let tarifaOffset=0
+let _tarifaLineas=[] // líneas en edición
+let _destinos=[] // [{nombre, margen}]
+let _confeccionesCache=[]
+
+function getLunesTarifa(offset=0){
+  const hoy=new Date()
+  const dow=hoy.getDay()===0?7:hoy.getDay()
+  const lunes=new Date(hoy)
+  lunes.setDate(hoy.getDate()-(dow-1)+(offset*7))
+  lunes.setHours(0,0,0,0)
+  return lunes
+}
+
+function cambiarSemana(delta){
+  tarifaOffset+=delta
+  loadTarifas()
+}
+
+async function loadTarifas(){
+  const lunes=getLunesTarifa(tarifaOffset)
+  const semanaStr=lunes.toISOString().split('T')[0]
+  const viernes=new Date(lunes);viernes.setDate(lunes.getDate()+5)
+  const label='Tarifa semana del '+lunes.toLocaleDateString('es-ES',{day:'numeric',month:'long'})+' al '+viernes.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})
+  document.getElementById('tarifa-semana-label').textContent=label
+
+  // Cargar destinos y márgenes
+  const {data:destinos}=await db.from('tarifas_destinos').select('*').order('nombre')
+  _destinos=destinos||[]
+  const dPerp=_destinos.find(d=>d.nombre==='Perpiñán')
+  const dAlem=_destinos.find(d=>d.nombre==='Alemania')
+  if(dPerp)document.getElementById('margen-perpignan').value=dPerp.margen||0
+  if(dAlem)document.getElementById('margen-alemania').value=dAlem.margen||0
+
+  // Cargar confecciones
+  const {data:confs}=await db.from('stock').select('nombre').eq('categoria','caja').order('nombre')
+  _confeccionesCache=(confs||[]).map(c=>c.nombre)
+
+  // Cargar tarifas de esta semana
+  const {data:tarifas}=await db.from('tarifas').select('*').eq('semana',semanaStr).order('producto').order('calibre').order('confeccion')
+
+  if(tarifas&&tarifas.length){
+    _tarifaLineas=tarifas.map(t=>({...t,_id:t.id}))
+  } else {
+    // Si no hay datos esta semana, copiar de la semana anterior más reciente
+    const {data:anterior}=await db.from('tarifas').select('*').lt('semana',semanaStr).order('semana',{ascending:false}).limit(100)
+    if(anterior&&anterior.length){
+      // Obtener solo la semana más reciente con datos
+      const semanaMasReciente=anterior[0].semana
+      const lineasAnteriores=anterior.filter(t=>t.semana===semanaMasReciente)
+      _tarifaLineas=lineasAnteriores.map(t=>({producto:t.producto,calibre:t.calibre,confeccion:t.confeccion,origen:t.origen,precio_base:t.precio_base}))
+      if(_tarifaLineas.length)toast('Precios copiados de la semana anterior — revisa y guarda')
+    }
+    if(!_tarifaLineas.length)_tarifaLineas=[{producto:'',calibre:'',confeccion:'',origen:'propio',precio_base:''}]
+  }
+  renderTablaTarifas()
+}
+
+function renderTablaTarifas(){
+  const dPerp=_destinos.find(d=>d.nombre==='Perpiñán')
+  const dAlem=_destinos.find(d=>d.nombre==='Alemania')
+  const mPerp=parseFloat(document.getElementById('margen-perpignan')?.value)||dPerp?.margen||0
+  const mAlem=parseFloat(document.getElementById('margen-alemania')?.value)||dAlem?.margen||0
+
+  const confOpts=['<option value="">— Confección —</option>',..._confeccionesCache.map(c=>'<option value="'+c+'">'+c+'</option>')].join('')
+
+  let rows=_tarifaLineas.map((l,i)=>{
+    const precioBase=parseFloat(l.precio_base)||0
+    const precioPerp=precioBase+mPerp
+    const precioAlem=precioBase+mAlem
+    return '<tr>'+
+      '<td><input type="text" id="tl-producto-'+i+'" value="'+(l.producto||'')+'" placeholder="Producto" style="width:120px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="text" id="tl-variedad-'+i+'" value="'+(l.variedad||'')+'" placeholder="Variedad" style="width:110px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="text" id="tl-calibre-'+i+'" value="'+(l.calibre||'')+'" placeholder="Calibre" style="width:75px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="text" id="tl-confeccion-'+i+'" value="'+(l.confeccion||'')+'" placeholder="Confección" list="confeccion-list" style="width:140px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><select id="tl-origen-'+i+'" style="padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"><option value="propio">Propio</option><option value="proveedor">Proveedor</option></select></td>'+
+      '<td><input type="number" id="tl-precio-'+i+'" value="'+(l.precio_base||'')+'" step="0.01" min="0" placeholder="0.00" oninput="actualizarPreciosRow('+i+')" style="width:75px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td style="text-align:center;font-weight:700;color:var(--accent)" id="tl-perp-'+i+'">'+( precioBase>0?precioPerp.toFixed(2)+'€':'—')+'</td>'+
+      '<td style="text-align:center;font-weight:700;color:#185FA5" id="tl-alem-'+i+'">'+( precioBase>0?precioAlem.toFixed(2)+'€':'—')+'</td>'+
+      '<td><button class="btn btn-sm btn-danger" onclick="_tarifaLineas.splice('+i+',1);renderTablaTarifas()"><i class="ti ti-trash"></i></button></td>'+
+    '</tr>'
+  }).join('')
+
+  // Preseleccionar valores guardados después de render
+  document.getElementById('tabla-tarifas').innerHTML=
+    '<datalist id="confeccion-list">'+_confeccionesCache.map(c=>'<option value="'+c+'">').join('')+'</datalist>'+
+    '<table class="tabla-compacta" style="width:100%">'+
+    '<thead><tr><th>Producto</th><th>Variedad</th><th>Calibre</th><th>Confección</th><th>Origen</th><th>€/kg base</th><th style="text-align:center">Perpiñán</th><th style="text-align:center">Alemania</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>'
+
+  // Preseleccionar origen
+  _tarifaLineas.forEach((l,i)=>{
+    const selOrig=document.getElementById('tl-origen-'+i)
+    if(selOrig&&l.origen)selOrig.value=l.origen
+  })
+}
+
+function actualizarPreciosRow(i){
+  const precio=parseFloat(document.getElementById('tl-precio-'+i)?.value)||0
+  const mPerp=parseFloat(document.getElementById('margen-perpignan')?.value)||0
+  const mAlem=parseFloat(document.getElementById('margen-alemania')?.value)||0
+  const elPerp=document.getElementById('tl-perp-'+i)
+  const elAlem=document.getElementById('tl-alem-'+i)
+  if(elPerp)elPerp.textContent=precio>0?(precio+mPerp).toFixed(2)+'€':'—'
+  if(elAlem)elAlem.textContent=precio>0?(precio+mAlem).toFixed(2)+'€':'—'
+}
+
+function addLineaTarifa(){
+  _tarifaLineas.push({producto:'',calibre:'',confeccion:'',origen:'propio',precio_base:''})
+  renderTablaTarifas()
+}
+
+function recogerLineas(){
+  return _tarifaLineas.map((_,i)=>({
+    producto:document.getElementById('tl-producto-'+i)?.value||'',
+    variedad:document.getElementById('tl-variedad-'+i)?.value||'',
+    calibre:document.getElementById('tl-calibre-'+i)?.value||'',
+    confeccion:document.getElementById('tl-confeccion-'+i)?.value||'',
+    origen:document.getElementById('tl-origen-'+i)?.value||'propio',
+    precio_base:parseFloat(document.getElementById('tl-precio-'+i)?.value)||0
+  })).filter(l=>l.producto&&l.precio_base>0)
+}
+
+async function guardarTarifas(){
+  const lunes=getLunesTarifa(tarifaOffset)
+  const semanaStr=lunes.toISOString().split('T')[0]
+  const lineas=recogerLineas()
+  if(!lineas.length){toast('No hay líneas válidas que guardar','err');return}
+
+  // Borrar las de esta semana y reinsertar
+  await db.from('tarifas').delete().eq('semana',semanaStr)
+  const {error}=await db.from('tarifas').insert(lineas.map(l=>({...l,semana:semanaStr,creado_por:currentPerfil?.nombre})))
+  if(error){toast('Error guardando tarifa: '+error.message,'err');return}
+  toast('Tarifa guardada ✓')
+  loadTarifas()
+}
+
+async function guardarMargenes(){
+  const mPerp=parseFloat(document.getElementById('margen-perpignan').value)||0
+  const mAlem=parseFloat(document.getElementById('margen-alemania').value)||0
+  await db.from('tarifas_destinos').update({margen:mPerp}).eq('nombre','Perpiñán')
+  await db.from('tarifas_destinos').update({margen:mAlem}).eq('nombre','Alemania')
+  toast('Márgenes guardados ✓')
+  renderTablaTarifas()
+}
+
+async function imprimirOferta(){
+  const lunes=getLunesTarifa(tarifaOffset)
+  const semanaStr=lunes.toISOString().split('T')[0]
+  const viernes=new Date(lunes);viernes.setDate(lunes.getDate()+5)
+  const label='Semana del '+lunes.toLocaleDateString('es-ES',{day:'numeric',month:'long'})+' al '+viernes.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})
+
+  const {data:tarifas}=await db.from('tarifas').select('*').eq('semana',semanaStr).order('producto').order('calibre').order('confeccion')
+  const {data:destinos}=await db.from('tarifas_destinos').select('*').order('nombre')
+
+  if(!tarifas||!tarifas.length){toast('No hay tarifa para esta semana','err');return}
+
+  const mPerp=(destinos||[]).find(d=>d.nombre==='Perpiñán')?.margen||0
+  const mAlem=(destinos||[]).find(d=>d.nombre==='Alemania')?.margen||0
+
+  // Agrupar por origen
+  const buildRows=(lista)=>lista.map(t=>{
+    const base=parseFloat(t.precio_base)||0
+    return '<tr>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #eee"><strong>'+t.producto+'</strong>'+(t.variedad?'<div style="font-size:11px;color:#6b6b67">'+t.variedad+'</div>':'')+'</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #eee">'+(t.calibre||'—')+'</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #eee">'+(t.confeccion||'—')+'</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#2d7a3a">'+(base+mPerp).toFixed(2)+'€</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#185FA5">'+(base+mAlem).toFixed(2)+'€</td>'+
+    '</tr>'
+  }).join('')
+
+  const ofertaHtml='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
+    '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a18;padding:24px 32px}'+
+    '@media print{body{padding:16px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:8mm}}</style></head><body>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d7a3a;margin-bottom:24px">'+
+    '<img src="data:image/png;base64,'+LOGO_B64+'" style="height:70px" alt="Naturfarms">'+
+    '<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#2d7a3a">OFERTA SEMANAL</div>'+
+    '<div style="font-size:13px;color:#6b6b67;margin-top:4px;text-transform:capitalize">'+label+'</div></div>'+
+    '<div style="width:100px"></div></div>'+
+    '<table style="width:100%;border-collapse:collapse;border:1px solid #e0e0dc">'+
+    '<thead><tr style="background:#2d7a3a">'+
+    '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Producto</th>'+
+    '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Calibre</th>'+
+    '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Confección</th>'+
+    '<th style="padding:8px 10px;text-align:center;font-size:12px;color:#fff;font-weight:600">Perpiñán</th>'+
+    '<th style="padding:8px 10px;text-align:center;font-size:12px;color:#fff;font-weight:600">Alemania</th>'+
+    '</tr></thead><tbody>'+buildRows(tarifas)+'</tbody></table>'+
+    '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e0dc;font-size:10px;color:#9d9d98;display:flex;justify-content:space-between">'+
+    '<span>Naturfarms Organic · Oferta Semanal</span><span>Generado el '+new Date().toLocaleString('es-ES')+'</span></div>'+
+    '</body></html>'
+
+  const blob=new Blob([ofertaHtml],{type:'text/html;charset=utf-8'})
+  const url=URL.createObjectURL(blob)
+  const w=window.open(url,'_blank')
+  if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
+}
+
 // ── ROUTER ────────────────────────────────────────────────────
 function showPage(id,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
@@ -3947,7 +4391,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,preparacion:loadPreparacion,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas}
+  const map={dashboard:loadDashboard,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas}
   if(map[id])map[id]()
 }
 </script>
