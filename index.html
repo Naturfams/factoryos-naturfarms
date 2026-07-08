@@ -138,6 +138,9 @@ tr:hover td{background:var(--bg)}
   .hamburger{display:flex;align-items:center;justify-content:center}
   table.desktop-table{display:none}
   .mobile-cards{display:block}
+  .dash-metrics-grid{grid-template-columns:repeat(2,1fr)!important}
+  .dash-two-col{grid-template-columns:1fr!important}
+  .two-col{grid-template-columns:1fr!important}
   .order-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:10px}
   .order-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px}
   .order-card-ref{font-size:15px;font-weight:700}
@@ -227,7 +230,7 @@ tr:hover td{background:var(--bg)}
       <!-- BLOQUE 1: RESUMEN DEL DÍA -->
       <div style="background:linear-gradient(135deg,#1a5c2a 0%,#2d7a3a 100%);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
         <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Resumen del día</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
           <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:28px;font-weight:700;color:#fff" id="m-total">—</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">Total pedidos</div>
@@ -1233,7 +1236,7 @@ async function loadDashboard(){
     const {data:prods}=await db.from('pedido_productos').select('*').in('pedido_id',ids).order('orden')
     ;(prods||[]).forEach(pr=>{if(!prodMap[pr.pedido_id])prodMap[pr.pedido_id]=[];prodMap[pr.pedido_id].push(pr)})
   }
-  let rows=''
+  let rows='',cards=''
   p.forEach(x=>{
     const prods=prodMap[x.id]||[]
     const ps=prods.map(pr=>{
@@ -1250,9 +1253,22 @@ async function loadDashboard(){
       '<td>'+(x.proveedor?'<span class="badge b-ext">Externo</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
       '<td style="max-width:200px;white-space:normal">'+ps+'</td>'+
       '<td>'+x.palets+'</td><td>'+(x.transportistas?.nombre||'—')+'</td><td>'+badgeHtml(x.estado)+'</td></tr>'
+
+    cards+='<div class="order-card">'+
+      '<div class="order-card-top">'+
+        '<div><div class="order-card-ref">'+x.referencia+'</div>'+
+        '<div class="order-card-client">'+(x.clientes?.nombre||'—')+'</div></div>'+
+        badgeHtml(x.estado)+
+      '</div>'+
+      '<div style="font-size:12px;padding:6px 0;border-top:1px solid var(--border)">'+ps+'</div>'+
+      '<div class="order-card-row"><span class="lbl">Origen</span><span>'+(x.proveedor?'<span class="badge b-ext">Externo</span>':'<span class="badge b-ok">Propio</span>')+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Palets</span><span>'+x.palets+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Transportista</span><span>'+(x.transportistas?.nombre||'—')+'</span></div>'+
+    '</div>'
   })
   document.getElementById('dash-pedidos').innerHTML=p.length?
-    '<table class="tabla-compacta"><thead><tr><th>Ref</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Palets</th><th>Transp.</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody></table>':
+    '<table class="desktop-table tabla-compacta"><thead><tr><th>Ref</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Palets</th><th>Transp.</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="mobile-cards">'+cards+'</div>':
     '<div class="empty">Sin pedidos para este día</div>'
 
   const alertas=(stockData||[]).filter(s=>s.cantidad<s.minimo)
@@ -2569,17 +2585,34 @@ async function crearUsuario(){
   const errEl=document.getElementById('usuario-err');errEl.style.display='none'
   if(!nombre||!email||!pass){toast('Rellena todos los campos','err');return}
   if(pass.length<6){errEl.textContent='Contraseña mínimo 6 caracteres';errEl.style.display='block';return}
-  const {data:d2,error:e2}=await db.auth.signUp({email,password:pass})
+
+  const {data:d2,error:e2}=await db.auth.signUp({
+    email,password:pass,
+    options:{data:{nombre,rol}}
+  })
   if(e2){errEl.textContent='Error: '+e2.message;errEl.style.display='block';return}
+
   const uid=d2.user?.id
-  if(!uid){errEl.textContent='No se pudo obtener el ID';errEl.style.display='block';return}
-  for(let i=0;i<3;i++){
-    await new Promise(r=>setTimeout(r,800))
-    const {error:ep}=await db.from('perfiles').insert({id:uid,nombre,email,rol,activo:true})
-    if(!ep||ep.code==='23505')break
+  if(!uid){errEl.textContent='No se pudo obtener el ID del usuario';errEl.style.display='block';return}
+
+  // Intentar insertar el perfil con reintentos
+  let insertado=false
+  for(let i=0;i<5;i++){
+    await new Promise(r=>setTimeout(r,1000))
+    const {error:ep}=await db.from('perfiles').upsert({id:uid,nombre,email,rol,activo:true},{onConflict:'id'})
+    if(!ep){insertado=true;break}
+    if(ep.code==='23505'){insertado=true;break} // ya existe
   }
-  toast('Usuario '+nombre+' creado ✓');closeModal('modal-usuario')
+
+  if(!insertado){
+    // Insertar igualmente aunque falle auth — el admin puede haberlo creado ya en Supabase
+    await db.from('perfiles').upsert({id:uid,nombre,email,rol,activo:true},{onConflict:'id'})
+  }
+
+  toast('Usuario '+nombre+' creado ✓')
+  closeModal('modal-usuario')
   ;['uu-nombre','uu-email','uu-pass'].forEach(id=>document.getElementById(id).value='')
+  await new Promise(r=>setTimeout(r,1500))
   loadUsuarios()
 }
 
