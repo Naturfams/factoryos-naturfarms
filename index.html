@@ -837,7 +837,12 @@ tr:hover td{background:var(--bg)}
     <div class="fg"><label>Observaciones</label><textarea id="rc-obs" rows="3"></textarea></div>
 
     <div class="form-sec">Importe</div>
-    <div class="fg" style="max-width:240px"><label>Importe de abono (€)</label><input type="number" id="rc-importe" min="0" step="0.01" placeholder="0.00"></div>
+    <div class="frow" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <div class="fg" style="max-width:180px"><label>Importe reclamado (€)</label><input type="number" id="rc-importe-base" min="0" step="0.01" placeholder="0.00" oninput="calcularImporteAbono()"></div>
+      <div class="fg" style="max-width:100px"><label>IVA (%)</label><input type="number" id="rc-iva" min="0" max="100" step="0.1" value="4" oninput="calcularImporteAbono()"></div>
+      <div class="fg" style="max-width:180px"><label>Total abono (€)</label><input type="number" id="rc-importe" min="0" step="0.01" placeholder="0.00" readonly style="background:var(--bg);font-weight:700;color:var(--accent)"></div>
+    </div>
+    <div id="rc-importe-detalle" style="display:none;font-size:12px;color:var(--text2);margin-top:4px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)"></div>
 
     <div id="rc-proveedor-bloque" style="display:none;margin-bottom:14px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
@@ -3751,6 +3756,9 @@ async function abrirModalReclamacion(reclamacionId=null){
   document.getElementById('rc-pedido-erp').value=''
   document.getElementById('rc-albaran').value=''
   document.getElementById('rc-importe').value=''
+  const elBase=document.getElementById('rc-importe-base');if(elBase)elBase.value=''
+  const elIva=document.getElementById('rc-iva');if(elIva)elIva.value='4'
+  const elDet=document.getElementById('rc-importe-detalle');if(elDet)elDet.style.display='none'
   document.getElementById('rc-gravedad').value='moderada'
   document.getElementById('rc-estado').value='abierta'
   document.getElementById('rc-fecha').value=new Date().toISOString().split('T')[0]
@@ -3792,6 +3800,9 @@ async function abrirModalReclamacion(reclamacionId=null){
       document.getElementById('rc-pedido-erp').value=rc.numero_pedido_erp||''
       document.getElementById('rc-albaran').value=rc.albaran_proveedor||''
       document.getElementById('rc-importe').value=rc.importe||''
+      const elIB=document.getElementById('rc-importe-base');if(elIB)elIB.value=rc.importe_base||''
+      const elIV=document.getElementById('rc-iva');if(elIV)elIV.value=rc.iva_porcentaje||4
+      calcularImporteAbono()
       rcFotosSubidas=(fotos||[]).map(f=>f.url)
       renderFotosReclamacion()
     }
@@ -3819,6 +3830,8 @@ async function guardarReclamacion(){
     observaciones:document.getElementById('rc-obs').value||null,
     numero_pedido_erp:document.getElementById('rc-pedido-erp').value||null,
     albaran_proveedor:document.getElementById('rc-albaran').value||null,
+    importe_base:parseFloat(document.getElementById('rc-importe-base')?.value)||null,
+    iva_porcentaje:parseFloat(document.getElementById('rc-iva')?.value)||4,
     importe:parseFloat(document.getElementById('rc-importe').value)||null,
     enviada_proveedor:enviadaProv,
     registrado_por:currentPerfil?.nombre
@@ -4019,7 +4032,12 @@ async function generarPDFReclamacion(id){
 
     (r.observaciones?'<div class="section"><div class="section-title">Observaciones</div><div class="obs-box">'+r.observaciones+'</div></div>':'')+
 
-    (r.importe?'<div class="section"><div class="importe-box"><div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.05em">Importe de abono</div><div style="font-size:32px;font-weight:700">'+parseFloat(r.importe).toFixed(2)+' €</div></div></div>':'')+
+    (r.importe?'<div class="section"><div class="importe-box">'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px">'+
+    '<div style="text-align:center"><div style="font-size:10px;opacity:.7;text-transform:uppercase">Importe reclamado</div><div style="font-size:20px;font-weight:700">'+(r.importe_base?parseFloat(r.importe_base).toFixed(2):parseFloat(r.importe).toFixed(2))+'€</div></div>'+
+    '<div style="text-align:center"><div style="font-size:10px;opacity:.7;text-transform:uppercase">IVA '+(r.iva_porcentaje||4)+'%</div><div style="font-size:20px;font-weight:700">'+(r.importe_base?(parseFloat(r.importe_base)*(r.iva_porcentaje||4)/100).toFixed(2):'0.00')+'€</div></div>'+
+    '<div style="text-align:center;background:rgba(255,255,255,0.15);border-radius:6px;padding:8px"><div style="font-size:10px;opacity:.7;text-transform:uppercase">Total abono</div><div style="font-size:26px;font-weight:700">'+parseFloat(r.importe).toFixed(2)+'€</div></div>'+
+    '</div></div></div>':'')+
 
     fotosHtml+
 
@@ -4414,6 +4432,24 @@ async function imprimirOferta(){
   const url=URL.createObjectURL(blob)
   const w=window.open(url,'_blank')
   if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
+}
+
+function calcularImporteAbono(){
+  const base=parseFloat(document.getElementById('rc-importe-base')?.value)||0
+  const ivaPct=parseFloat(document.getElementById('rc-iva')?.value)||0
+  const iva=base*(ivaPct/100)
+  const total=base+iva
+  const el=document.getElementById('rc-importe')
+  const det=document.getElementById('rc-importe-detalle')
+  if(el)el.value=base>0?total.toFixed(2):''
+  if(det){
+    if(base>0){
+      det.style.display='block'
+      det.innerHTML='Base: <strong>'+base.toFixed(2)+'€</strong> + IVA '+ivaPct+'% (<strong>'+iva.toFixed(2)+'€</strong>) = <strong style="color:var(--accent)">'+total.toFixed(2)+'€</strong>'
+    } else {
+      det.style.display='none'
+    }
+  }
 }
 
 // ── ROUTER ────────────────────────────────────────────────────
