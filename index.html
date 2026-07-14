@@ -1016,6 +1016,29 @@ const SUPABASE_KEY='sb_publishable_HUGEGpC2ycTpfp58w5okkw_f6KP2xc7'
 const {createClient}=supabase
 const db=createClient(SUPABASE_URL,SUPABASE_KEY)
 
+// ── NOTIFICACIONES TELEGRAM ──────────────────────────────────
+// Llama a la Edge Function (el token del bot vive como secreto en Supabase, nunca en el cliente).
+// No bloquea ni interrumpe el flujo si falla: solo se registra en consola.
+async function notificarTelegram(tipo,datos){
+  try{
+    await fetch(SUPABASE_URL+'/functions/v1/send-telegram-notification',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({tipo,...datos})
+    })
+  }catch(e){
+    console.warn('No se pudo enviar notificación Telegram:',e)
+  }
+}
+function lineasParaTelegram(lineas){
+  return (lineas||[]).map(l=>({
+    producto:(l.producto||l.fruta||'—')+(l.producto&&l.fruta?' — '+l.fruta:''),
+    calibre:l.calibre||null,
+    cajas:l.num_cajas||null,
+    precio:l.precio!=null?l.precio:null
+  }))
+}
+
 const PROVEEDORES={
   'Mariposa Azul S.L.':{telefono:'',direccion:''},
   'Agrícola del Sur S.XVI S.L.':{telefono:'',direccion:''},
@@ -1025,6 +1048,7 @@ const ROL_LABEL={admin:'Administrador',calidad:'Resp. Calidad',operario:'Operari
 const ROL_BADGE={admin:'b-admin',calidad:'b-calidad',operario:'b-operario',comercial:'b-comercial'}
 
 let currentUser=null,currentPerfil=null
+let _editandoReferencia=null
 let clientes=[],transportistas=[],idiomasSeleccionados=[]
 let origenActual='propio',lineaCount=0
 let currentQCPedidoId=null,qcCheckStates={}
@@ -1461,6 +1485,7 @@ async function editarPedido(id){
   if(!p)return
   const {data:prods}=await db.from('pedido_productos').select('*').eq('pedido_id',id).order('orden')
   document.getElementById('np-id').value=p.id
+  _editandoReferencia=p.referencia
   document.getElementById('pedido-modal-titulo').childNodes[0].textContent='Editar '+p.referencia+' '
   document.getElementById('btn-guardar-pedido').innerHTML='<i class="ti ti-check"></i>Guardar cambios'
   document.getElementById('np-cliente').value=p.cliente_id||'';autoIdiomas()
@@ -1518,6 +1543,15 @@ async function guardarPedido(){
       if(error){toast('Error: '+error.message,'err');return}
       await db.from('pedido_productos').delete().eq('pedido_id',id)
       toast(cantidadesIguales?'Pedido actualizado ✓':'Pedido actualizado — vuelve a Pendiente por cambio de cantidades ✓')
+      const clienteNombreMod=clientes.find(c=>c.id===cid)?.nombre
+      notificarTelegram('modificado',{
+        referencia:_editandoReferencia||id,
+        cliente:clienteNombreMod,
+        palets,
+        productos:lineasParaTelegram(lineas),
+        detalle:cantidadesIguales?null:'Cambio de cantidades — vuelve a Pendiente',
+        usuario:currentPerfil?.nombre
+      })
     } else {
       // Generar referencia basada en la última existente (más fiable que un count, evita colisiones por concurrencia)
       const {data:ultimo}=await db.from('pedidos').select('referencia').order('creado_en',{ascending:false}).limit(1).single()
@@ -1532,6 +1566,14 @@ async function guardarPedido(){
       if(error){toast('Error: '+error.message,'err');return}
       pedidoId=nuevo.id
       toast('Pedido '+ref+' creado ✓')
+      const clienteNombre=clientes.find(c=>c.id===cid)?.nombre
+      notificarTelegram('creado',{
+        referencia:ref,
+        cliente:clienteNombre,
+        palets,
+        productos:lineasParaTelegram(lineas),
+        usuario:currentPerfil?.nombre
+      })
     }
     await db.from('pedido_productos').insert(lineas.map(l=>({...l,pedido_id:pedidoId})))
 
@@ -2623,10 +2665,19 @@ async function crearUsuario(){
 
 async function anularPedido(id,ref){
   if(!confirm('¿Seguro que quieres anular el pedido '+ref+'? Esta acción no se puede deshacer.'))return
+  const {data:pedidoAnulado}=await db.from('pedidos').select('cliente_id,palets,clientes(nombre)').eq('id',id).single()
+  const {data:prodsAnulado}=await db.from('pedido_productos').select('*').eq('pedido_id',id).order('orden')
   const {error}=await db.from('pedidos').update({estado:'Anulado',anulado_en:new Date().toISOString(),anulado_por:currentPerfil?.nombre}).eq('id',id)
   if(error){toast('Error al anular','err');return}
   await devolverStockPedido(id)
   toast('Pedido '+ref+' anulado y stock repuesto')
+  notificarTelegram('anulado',{
+    referencia:ref,
+    cliente:pedidoAnulado?.clientes?.nombre,
+    palets:pedidoAnulado?.palets,
+    productos:lineasParaTelegram(prodsAnulado),
+    usuario:currentPerfil?.nombre
+  })
   loadPedidosHoy();loadDashboard()
 }
 
