@@ -1035,6 +1035,8 @@ function lineasParaTelegram(lineas){
     producto:(l.producto||l.fruta||'—')+(l.producto&&l.fruta?' — '+l.fruta:''),
     calibre:l.calibre||null,
     cajas:l.num_cajas||null,
+    tipo_caja:l.confeccion||null,
+    tipo_palet:l.tipo_palet||null,
     precio:l.precio!=null?l.precio:null
   }))
 }
@@ -1548,6 +1550,7 @@ async function guardarPedido(){
         referencia:_editandoReferencia||id,
         cliente:clienteNombreMod,
         palets,
+        fecha_salida:fmt(datos.fecha_recogida),
         productos:lineasParaTelegram(lineas),
         detalle:cantidadesIguales?null:'Cambio de cantidades — vuelve a Pendiente',
         usuario:currentPerfil?.nombre
@@ -1571,6 +1574,7 @@ async function guardarPedido(){
         referencia:ref,
         cliente:clienteNombre,
         palets,
+        fecha_salida:fmt(datos.fecha_recogida),
         productos:lineasParaTelegram(lineas),
         usuario:currentPerfil?.nombre
       })
@@ -2665,7 +2669,7 @@ async function crearUsuario(){
 
 async function anularPedido(id,ref){
   if(!confirm('¿Seguro que quieres anular el pedido '+ref+'? Esta acción no se puede deshacer.'))return
-  const {data:pedidoAnulado}=await db.from('pedidos').select('cliente_id,palets,clientes(nombre)').eq('id',id).single()
+  const {data:pedidoAnulado}=await db.from('pedidos').select('cliente_id,palets,fecha_recogida,clientes(nombre)').eq('id',id).single()
   const {data:prodsAnulado}=await db.from('pedido_productos').select('*').eq('pedido_id',id).order('orden')
   const {error}=await db.from('pedidos').update({estado:'Anulado',anulado_en:new Date().toISOString(),anulado_por:currentPerfil?.nombre}).eq('id',id)
   if(error){toast('Error al anular','err');return}
@@ -2675,6 +2679,7 @@ async function anularPedido(id,ref){
     referencia:ref,
     cliente:pedidoAnulado?.clientes?.nombre,
     palets:pedidoAnulado?.palets,
+    fecha_salida:fmt(pedidoAnulado?.fecha_recogida),
     productos:lineasParaTelegram(prodsAnulado),
     usuario:currentPerfil?.nombre
   })
