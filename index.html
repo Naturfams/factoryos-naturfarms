@@ -192,6 +192,7 @@ tr:hover td{background:var(--bg)}
     <div class="nav-item active" onclick="showPage('dashboard',this)" data-roles="admin,calidad,operario,comercial"><i class="ti ti-layout-dashboard"></i>Resumen</div>
     <div class="nav-sec">Ventas</div>
     <div class="nav-item" onclick="showPage('pedidos',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-shopping-cart"></i>Pedidos</div>
+    <div class="nav-item" onclick="showPage('proveedores',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-truck-loading"></i>Proveedores</div>
     <div class="nav-item" onclick="showPage('ped-proveedores',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-building-store"></i>Ped. proveedores<span class="nav-badge" id="badge-pedprov">0</span></div>
     <div class="nav-item" onclick="showPage('reclamaciones',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-alert-octagon"></i>Reclamaciones</div>
     <div class="nav-item" onclick="showPage('tarifas',this)" data-roles="admin,comercial"><i class="ti ti-tag"></i>Tarifas</div>
@@ -401,6 +402,12 @@ tr:hover td{background:var(--bg)}
     </div>
 
     <!-- CLIENTES -->
+    <div class="page" id="page-proveedores">
+      <div class="ph"><h1 class="pt">Proveedores</h1><button class="btn btn-primary" onclick="abrirModalProveedor()"><i class="ti ti-plus"></i>Nuevo proveedor</button></div>
+      <div class="filter-row"><input type="text" id="filtro-proveedor" placeholder="Buscar proveedor..." oninput="loadProveedores()" style="min-width:220px"></div>
+      <div class="card" style="padding:0"><div id="tabla-proveedores"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+    </div>
+
     <div class="page" id="page-clientes">
       <div class="ph"><h1 class="pt">Clientes</h1><button class="btn btn-primary" onclick="abrirModalCliente()"><i class="ti ti-plus"></i>Nuevo cliente</button></div>
       <div class="filter-row"><input type="text" id="filtro-cliente" placeholder="Buscar cliente..." oninput="loadClientes()" style="min-width:220px"></div>
@@ -551,9 +558,17 @@ tr:hover td{background:var(--bg)}
     <div class="form-sec">Origen</div>
     <div class="origen-opts">
       <label class="origen-opt sel" id="opt-propio" onclick="setOrigen('propio')"><i class="ti ti-home"></i>Producción propia</label>
-      <label class="origen-opt" id="opt-ext1" onclick="setOrigen('Mariposa Azul S.L.')"><i class="ti ti-building-store"></i>Mariposa Azul S.L.</label>
-      <label class="origen-opt" id="opt-ext2" onclick="setOrigen('Agrícola del Sur S.XVI S.L.')"><i class="ti ti-building-store"></i>Agrícola del Sur</label>
-      <label class="origen-opt" id="opt-ext3" onclick="setOrigen('Cítricos de Alhaurín S.L.')"><i class="ti ti-building-store"></i>Cítricos de Alhaurín</label>
+      <label class="origen-opt" id="opt-externo" onclick="mostrarSelectorProveedor()"><i class="ti ti-building-store"></i>Proveedor externo</label>
+    </div>
+    <div id="selector-proveedor-externo" style="display:none;margin-bottom:10px">
+      <div class="frow" style="align-items:flex-end;gap:8px">
+        <div class="fg" style="flex:1;margin-bottom:0"><label>Proveedor</label>
+          <select id="np-proveedor-select" onchange="setOrigen(this.value)">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-sm" onclick="abrirModalProveedor(true)" style="margin-bottom:1px"><i class="ti ti-plus"></i>Nuevo proveedor</button>
+      </div>
     </div>
     <div id="aviso-externo" style="display:none;background:var(--blue-bg);color:var(--blue);padding:12px;border-radius:var(--radius);font-size:13px;margin-bottom:12px">
       <strong><i class="ti ti-info-circle"></i> Pedido externo</strong> — irá directamente a Envíos.<br>
@@ -622,6 +637,25 @@ tr:hover td{background:var(--bg)}
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button class="btn" onclick="closeModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCliente()"><i class="ti ti-check"></i>Guardar</button>
+    </div>
+  </div></div>
+
+<div class="modal-bg" id="modal-proveedor">
+  <div class="modal" style="width:480px">
+    <h3 id="proveedor-modal-titulo">Nuevo proveedor <button class="close-btn" onclick="closeModal('modal-proveedor')">×</button></h3>
+    <input type="hidden" id="pv-id">
+    <div class="fg"><label>Nombre *</label><input type="text" id="pv-nombre"></div>
+    <div class="frow">
+      <div class="fg"><label>Contacto</label><input type="text" id="pv-contacto"></div>
+      <div class="fg"><label>Teléfono</label><input type="text" id="pv-telefono"></div>
+    </div>
+    <div class="fg"><label>Email</label><input type="email" id="pv-email"></div>
+    <div class="fg"><label>Dirección</label><input type="text" id="pv-direccion"></div>
+    <div class="fg"><label>Notas</label><textarea id="pv-notas" rows="2"></textarea></div>
+    <div class="err-box" id="proveedor-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('modal-proveedor')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarProveedor()"><i class="ti ti-check"></i>Guardar</button>
     </div>
   </div>
 </div>
@@ -1041,11 +1075,8 @@ function lineasParaTelegram(lineas){
   }))
 }
 
-const PROVEEDORES={
-  'Mariposa Azul S.L.':{telefono:'',direccion:''},
-  'Agrícola del Sur S.XVI S.L.':{telefono:'',direccion:''},
-  'Cítricos de Alhaurín S.L.':{telefono:'',direccion:''}
-}
+let proveedoresList=[]
+let _proveedorDesdePedido=false
 const ROL_LABEL={admin:'Administrador',calidad:'Resp. Calidad',operario:'Operario',comercial:'Comercial'}
 const ROL_BADGE={admin:'b-admin',calidad:'b-calidad',operario:'b-operario',comercial:'b-comercial'}
 
@@ -1116,11 +1147,12 @@ async function initApp(user){
   if(!can('admin,comercial,calidad,operario'))document.getElementById('btn-nuevo-pedido').style.display='none'
   document.getElementById('login-screen').style.display='none'
   document.getElementById('app-screen').style.display='flex'
-  const [{data:c},{data:t}]=await Promise.all([
+  const [{data:c},{data:t},{data:pv}]=await Promise.all([
     db.from('clientes').select('*').order('nombre'),
-    db.from('transportistas').select('*').order('nombre')
+    db.from('transportistas').select('*').order('nombre'),
+    db.from('proveedores').select('*').order('nombre')
   ])
-  clientes=c||[];transportistas=t||[]
+  clientes=c||[];transportistas=t||[];proveedoresList=pv||[]
   poblarSelects()
   const hoy=new Date().toISOString().split('T')[0]
   const mesAtras=new Date(Date.now()-30*24*60*60*1000).toISOString().split('T')[0]
@@ -1142,6 +1174,13 @@ function poblarSelects(){
   const st=document.getElementById('np-trans')
   st.innerHTML='<option value="">— Seleccionar —</option>'
   transportistas.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nombre;st.appendChild(o)})
+  const sp=document.getElementById('np-proveedor-select')
+  if(sp){
+    const prevVal=sp.value
+    sp.innerHTML='<option value="">— Seleccionar —</option>'
+    proveedoresList.forEach(p=>{const o=document.createElement('option');o.value=p.nombre;o.textContent=p.nombre;sp.appendChild(o)})
+    if(prevVal)sp.value=prevVal
+  }
 }
 db.auth.getSession().then(({data:{session}})=>{if(session)initApp(session.user)})
 
@@ -1162,22 +1201,44 @@ function autoIdiomas(){
 }
 
 // ── ORIGEN ────────────────────────────────────────────────────
+function mostrarSelectorProveedor(){
+  document.getElementById('opt-propio').classList.remove('sel')
+  document.getElementById('opt-externo').classList.add('sel')
+  document.getElementById('selector-proveedor-externo').style.display='block'
+  const sel=document.getElementById('np-proveedor-select')
+  if(sel.value)setOrigen(sel.value)
+  else{
+    origenActual=''
+    document.getElementById('aviso-externo').style.display='none'
+    document.getElementById('precio-compra-bloque').style.display='none'
+    document.querySelectorAll('[id^="lprc-wrap-"]').forEach(el=>el.style.display='none')
+  }
+}
 function setOrigen(val){
   origenActual=val
-  const opts=[['opt-propio','propio'],['opt-ext1','Mariposa Azul S.L.'],['opt-ext2','Agrícola del Sur S.XVI S.L.'],['opt-ext3','Cítricos de Alhaurín S.L.']]
-  opts.forEach(([id,v])=>document.getElementById(id).classList.toggle('sel',v===val))
-  const esExt=val!=='propio'
+  const esExt=val && val!=='propio'
+  document.getElementById('opt-propio').classList.toggle('sel',!esExt)
+  document.getElementById('opt-externo').classList.toggle('sel',esExt)
+  document.getElementById('selector-proveedor-externo').style.display=esExt?'block':'none'
   document.getElementById('aviso-externo').style.display=esExt?'block':'none'
   document.getElementById('precio-compra-bloque').style.display=esExt?'block':'none'
   document.querySelectorAll('[id^="lprc-wrap-"]').forEach(el=>el.style.display=esExt?'block':'none')
-  if(!esExt){const elpc=document.getElementById('np-precio-compra');if(elpc)elpc.value='';document.getElementById('proveedor-info').innerHTML='';return}
-  const p=PROVEEDORES[val]||{}
+  if(!esExt){
+    const elpc=document.getElementById('np-precio-compra');if(elpc)elpc.value=''
+    document.getElementById('proveedor-info').innerHTML=''
+    return
+  }
+  const sel=document.getElementById('np-proveedor-select')
+  if(sel){
+    let opt=[...sel.options].find(o=>o.value===val)
+    if(!opt){opt=document.createElement('option');opt.value=val;opt.textContent=val+' (no está en Proveedores)';sel.appendChild(opt)}
+    sel.value=val
+  }
+  const p=proveedoresList.find(x=>x.nombre===val)||{}
   document.getElementById('proveedor-info').innerHTML=
     '<div><div style="font-size:11px;opacity:.7">PROVEEDOR</div><strong>'+val+'</strong></div>'+
-    '<div style="flex:1"><div style="font-size:11px;opacity:.7">TELÉFONO</div>'+
-    '<input value="'+(p.telefono||'')+'" placeholder="Añadir" oninput="PROVEEDORES[\''+val+'\'].telefono=this.value" style="background:rgba(255,255,255,.5);border:1px solid rgba(24,95,165,.3);border-radius:6px;padding:4px 8px;font-size:13px;color:var(--blue)"></div>'+
-    '<div style="flex:2"><div style="font-size:11px;opacity:.7">DIRECCIÓN</div>'+
-    '<input value="'+(p.direccion||'')+'" placeholder="Añadir dirección" oninput="PROVEEDORES[\''+val+'\'].direccion=this.value" style="background:rgba(255,255,255,.5);border:1px solid rgba(24,95,165,.3);border-radius:6px;padding:4px 8px;font-size:13px;width:100%;color:var(--blue)"></div>'
+    '<div style="flex:1"><div style="font-size:11px;opacity:.7">TELÉFONO</div><div style="font-size:13px;color:var(--blue)">'+(p.telefono||'—')+'</div></div>'+
+    '<div style="flex:2"><div style="font-size:11px;opacity:.7">DIRECCIÓN</div><div style="font-size:13px;color:var(--blue)">'+(p.direccion||'—')+'</div></div>'
 }
 
 // ── PRODUCTOS ─────────────────────────────────────────────────
@@ -1472,6 +1533,7 @@ function abrirModalNuevoPedido(){
   document.getElementById('btn-guardar-pedido').innerHTML='<i class="ti ti-check"></i>Crear pedido'
   ;['np-cliente','np-tipopalet','np-trans'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})
   ;['np-lote','np-dest','np-obs','np-idiomas'].forEach(id=>document.getElementById(id).value='')
+  const spReset=document.getElementById('np-proveedor-select');if(spReset)spReset.value=''
   document.getElementById('np-palets').value='1'
   document.getElementById('np-fecha').value=new Date().toISOString().split('T')[0]
   document.getElementById('productos-container').innerHTML=''
@@ -1640,6 +1702,64 @@ async function guardarCliente(){
   closeModal('modal-cliente')
   const {data:c}=await db.from('clientes').select('*').order('nombre')
   clientes=c||[];poblarSelects();loadClientes()
+}
+
+// ── PROVEEDORES ──────────────────────────────────────────────
+async function loadProveedores(){
+  const buscar=(document.getElementById('filtro-proveedor')?.value||'').toLowerCase()
+  const {data}=await db.from('proveedores').select('*').order('nombre')
+  const lista=(data||[]).filter(p=>!buscar||p.nombre.toLowerCase().includes(buscar))
+  let rows=''
+  lista.forEach(p=>{
+    rows+='<tr><td><strong>'+p.nombre+'</strong></td><td>'+(p.contacto||'—')+'</td>'+
+      '<td>'+(p.telefono||'—')+'</td><td>'+(p.email||'—')+'</td><td>'+(p.direccion||'—')+'</td>'+
+      '<td><button class="btn btn-sm" onclick="editarProveedor(\''+p.id+'\')"><i class="ti ti-edit"></i></button></td></tr>'
+  })
+  if(!lista.length)rows='<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px">Sin proveedores todavía</td></tr>'
+  document.getElementById('tabla-proveedores').innerHTML='<table><thead><tr><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+}
+function abrirModalProveedor(desdePedido){
+  _proveedorDesdePedido=!!desdePedido
+  document.getElementById('pv-id').value=''
+  document.getElementById('proveedor-modal-titulo').childNodes[0].textContent='Nuevo proveedor '
+  ;['pv-nombre','pv-contacto','pv-telefono','pv-email','pv-direccion','pv-notas'].forEach(id=>document.getElementById(id).value='')
+  document.getElementById('proveedor-err').style.display='none'
+  openModal('modal-proveedor')
+}
+async function editarProveedor(id){
+  _proveedorDesdePedido=false
+  const {data:p}=await db.from('proveedores').select('*').eq('id',id).single()
+  if(!p)return
+  document.getElementById('pv-id').value=p.id
+  document.getElementById('proveedor-modal-titulo').childNodes[0].textContent='Editar — '+p.nombre+' '
+  document.getElementById('pv-nombre').value=p.nombre||''
+  document.getElementById('pv-contacto').value=p.contacto||''
+  document.getElementById('pv-telefono').value=p.telefono||''
+  document.getElementById('pv-email').value=p.email||''
+  document.getElementById('pv-direccion').value=p.direccion||''
+  document.getElementById('pv-notas').value=p.notas||''
+  document.getElementById('proveedor-err').style.display='none'
+  openModal('modal-proveedor')
+}
+async function guardarProveedor(){
+  const id=document.getElementById('pv-id').value
+  const nombre=document.getElementById('pv-nombre').value.trim()
+  const err=document.getElementById('proveedor-err');err.style.display='none'
+  if(!nombre){err.textContent='El nombre es obligatorio';err.style.display='block';return}
+  const datos={nombre,contacto:document.getElementById('pv-contacto').value||null,telefono:document.getElementById('pv-telefono').value||null,email:document.getElementById('pv-email').value||null,direccion:document.getElementById('pv-direccion').value||null,notas:document.getElementById('pv-notas').value||null}
+  const {error}=id?await db.from('proveedores').update(datos).eq('id',id):await db.from('proveedores').insert(datos)
+  if(error){err.textContent='Error: '+error.message;err.style.display='block';return}
+  toast(id?'Proveedor actualizado ✓':'Proveedor creado ✓')
+  closeModal('modal-proveedor')
+  const {data:pv}=await db.from('proveedores').select('*').order('nombre')
+  proveedoresList=pv||[]
+  if(_proveedorDesdePedido){
+    poblarSelects()
+    setOrigen(nombre)
+    _proveedorDesdePedido=false
+  }else{
+    poblarSelects();loadProveedores()
+  }
 }
 
 // ── PREPARACIÓN ───────────────────────────────────────────────
@@ -4516,7 +4636,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas}
+  const map={dashboard:loadDashboard,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas}
   if(map[id])map[id]()
 }
 </script>
