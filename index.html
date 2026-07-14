@@ -712,6 +712,9 @@ tr:hover td{background:var(--bg)}
         <span>Total: <strong id="peso-total">—</strong> kg</span>
       </div>
     </div>
+    <div class="form-sec" style="margin-top:14px">Fotos <button type="button" class="btn btn-sm" onclick="document.getElementById('qc-foto-input').click()"><i class="ti ti-camera"></i>Añadir foto</button></div>
+    <input type="file" id="qc-foto-input" accept="image/*" multiple style="display:none" onchange="subirFotosQC(this.files)">
+    <div id="qc-fotos-container" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px"></div>
     <div style="margin-top:14px">
       <label style="font-size:12px;color:var(--text2);font-weight:500">Observaciones</label>
       <textarea id="qc-obs" rows="3" style="width:100%;margin-top:4px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;resize:none"></textarea>
@@ -1085,6 +1088,7 @@ let _editandoReferencia=null
 let clientes=[],transportistas=[],idiomasSeleccionados=[]
 let origenActual='propio',lineaCount=0
 let currentQCPedidoId=null,qcCheckStates={}
+let qcFotosSubidas=[] // urls de fotos ya subidas en la sesión actual del modal QC
 let dashFecha=new Date().toISOString().split('T')[0]
 
 // ── HELPERS ───────────────────────────────────────────────────
@@ -1613,6 +1617,7 @@ async function guardarPedido(){
         cliente:clienteNombreMod,
         palets,
         fecha_salida:fmt(datos.fecha_recogida),
+        proveedor:datos.proveedor||null,
         productos:lineasParaTelegram(lineas),
         detalle:cantidadesIguales?null:'Cambio de cantidades — vuelve a Pendiente',
         usuario:currentPerfil?.nombre
@@ -1637,6 +1642,7 @@ async function guardarPedido(){
         cliente:clienteNombre,
         palets,
         fecha_salida:fmt(datos.fecha_recogida),
+        proveedor:datos.proveedor||null,
         productos:lineasParaTelegram(lineas),
         usuario:currentPerfil?.nombre
       })
@@ -2131,7 +2137,32 @@ async function openQC(pedidoId){
     document.getElementById('chk-'+sec).innerHTML=html
   })
   window._editandoControlId=null
+  qcFotosSubidas=[]
+  document.getElementById('qc-fotos-container').innerHTML=''
   updateQCBar();openModal('modal-qc')
+}
+function renderFotosQC(){
+  document.getElementById('qc-fotos-container').innerHTML=qcFotosSubidas.map((url,i)=>
+    '<div style="position:relative;width:80px;height:80px">'+
+      '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">'+
+      '<button type="button" onclick="qcFotosSubidas.splice('+i+',1);renderFotosQC()" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;border:2px solid var(--bg2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>'+
+    '</div>'
+  ).join('')
+}
+async function subirFotosQC(files){
+  if(!files||!files.length)return
+  toast('Subiendo fotos...')
+  for(const file of files){
+    const ext=file.name.split('.').pop()
+    const path='qc-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext
+    const {data,error}=await db.storage.from('calidad').upload(path,file)
+    if(error){toast('Error subiendo foto: '+error.message,'err');continue}
+    const {data:urlData}=db.storage.from('calidad').getPublicUrl(path)
+    qcFotosSubidas.push(urlData.publicUrl)
+  }
+  renderFotosQC()
+  toast('Fotos subidas ✓')
+  document.getElementById('qc-foto-input').value=''
 }
 function calcularPesos(){
   const pesos=[]
@@ -2182,6 +2213,9 @@ async function submitQC(resultado){
   const {data:ctrl,error}=await db.from('controles_calidad').insert({pedido_id:currentQCPedidoId,inspector:currentPerfil.nombre,resultado,observaciones:obsCompleto}).select().single()
   if(error){toast('Error guardando QC','err');return}
   await db.from('qc_checklist').insert(items.map(it=>({...it,control_id:ctrl.id})))
+  if(qcFotosSubidas.length){
+    await db.from('controles_calidad_fotos').insert(qcFotosSubidas.map(url=>({control_id:ctrl.id,url})))
+  }
   toast('Control de calidad guardado ✓');closeModal('modal-qc');loadCalidad()
 }
 
@@ -2190,6 +2224,7 @@ async function editarControlQC(controlId){
   const {data:ctrl}=await db.from('controles_calidad').select('*').eq('id',controlId).single()
   if(!ctrl){toast('Control no encontrado','err');return}
   const {data:checks}=await db.from('qc_checklist').select('*').eq('control_id',controlId)
+  const {data:fotosExistentes}=await db.from('controles_calidad_fotos').select('*').eq('control_id',controlId)
 
   // Abrir el modal QC para el pedido asociado
   await openQC(ctrl.pedido_id)
@@ -2202,6 +2237,10 @@ async function editarControlQC(controlId){
   // Precargar observaciones (quitar la parte de pesadas)
   const obsLimpia=(ctrl.observaciones||'').split('\nPeso cajas')[0]
   document.getElementById('qc-obs').value=obsLimpia
+
+  // Precargar fotos existentes
+  qcFotosSubidas=(fotosExistentes||[]).map(f=>f.url)
+  renderFotosQC()
 
   // Precargar resultado
   qcCheckStates={}
@@ -2237,6 +2276,10 @@ async function submitQCEditado(resultado){
   if(error){toast('Error guardando QC','err');return}
   await db.from('qc_checklist').delete().eq('control_id',controlId)
   await db.from('qc_checklist').insert(items.map(it=>({...it,control_id:controlId})))
+  await db.from('controles_calidad_fotos').delete().eq('control_id',controlId)
+  if(qcFotosSubidas.length){
+    await db.from('controles_calidad_fotos').insert(qcFotosSubidas.map(url=>({control_id:controlId,url})))
+  }
 
   window._editandoControlId=null
   toast('Control de calidad actualizado ✓');closeModal('modal-qc');loadCalidad();loadInformes();loadInformesQC()
@@ -2789,7 +2832,7 @@ async function crearUsuario(){
 
 async function anularPedido(id,ref){
   if(!confirm('¿Seguro que quieres anular el pedido '+ref+'? Esta acción no se puede deshacer.'))return
-  const {data:pedidoAnulado}=await db.from('pedidos').select('cliente_id,palets,fecha_recogida,clientes(nombre)').eq('id',id).single()
+  const {data:pedidoAnulado}=await db.from('pedidos').select('cliente_id,palets,fecha_recogida,proveedor,clientes(nombre)').eq('id',id).single()
   const {data:prodsAnulado}=await db.from('pedido_productos').select('*').eq('pedido_id',id).order('orden')
   const {error}=await db.from('pedidos').update({estado:'Anulado',anulado_en:new Date().toISOString(),anulado_por:currentPerfil?.nombre}).eq('id',id)
   if(error){toast('Error al anular','err');return}
@@ -2800,6 +2843,7 @@ async function anularPedido(id,ref){
     cliente:pedidoAnulado?.clientes?.nombre,
     palets:pedidoAnulado?.palets,
     fecha_salida:fmt(pedidoAnulado?.fecha_recogida),
+    proveedor:pedidoAnulado?.proveedor||null,
     productos:lineasParaTelegram(prodsAnulado),
     usuario:currentPerfil?.nombre
   })
@@ -2830,6 +2874,7 @@ async function generarPDF(controlId){
 
   const {data:checks}=await db.from('qc_checklist').select('*').eq('control_id',controlId)
   const {data:prods}=await db.from('pedido_productos').select('*').eq('pedido_id',ctrl.pedido_id).order('orden')
+  const {data:fotosQC}=await db.from('controles_calidad_fotos').select('*').eq('control_id',controlId)
 
   const p=ctrl.pedidos||{}
   const aprobado=ctrl.resultado==='aprobado'
@@ -2864,6 +2909,12 @@ async function generarPDF(controlId){
   const pesadasMatch=ctrl.observaciones?.match(/Peso cajas[^:]*: ([^|]+)/)
   const mediaMatch=ctrl.observaciones?.match(/Media: ([\d.]+) kg/)
   const obsLimpia=ctrl.observaciones?.replace(/\nPeso cajas.*$/s,'').trim()
+
+  const fotosQCHtml=(fotosQC&&fotosQC.length)?
+    '<div class="section"><div class="section-title">Fotografías</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+
+    fotosQC.map(f=>'<img src="'+f.url+'" style="width:100%;height:140px;object-fit:cover;border-radius:6px;border:1px solid #e0e0dc">').join('')+
+    '</div></div>':''
 
   const pdfHtml=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
   <style>
@@ -2958,6 +3009,8 @@ async function generarPDF(controlId){
     <div class="section-title">Observaciones</div>
     <div class="obs-box">${obsLimpia}</div>
   </div>`:''}
+
+  ${fotosQCHtml}
 
   ${ctrl.subsanado?`<div class="section">
     <div class="section-title">Incidencia subsanada</div>
