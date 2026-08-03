@@ -190,6 +190,7 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="nav-sec">Principal</div>
     <div class="nav-item active" onclick="showPage('dashboard',this)" data-roles="admin,calidad,operario,comercial"><i class="ti ti-layout-dashboard"></i>Resumen</div>
+    <div class="nav-item" onclick="showPage('cuadro-mandos',this)" data-roles="admin"><i class="ti ti-chart-dots-3"></i>Cuadro de mandos</div>
     <div class="nav-sec">Ventas</div>
     <div class="nav-item" onclick="showPage('pedidos',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-shopping-cart"></i>Pedidos</div>
     <div class="nav-item" onclick="showPage('proveedores',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-truck-loading"></i>Proveedores</div>
@@ -231,7 +232,7 @@ tr:hover td{background:var(--bg)}
       <!-- BLOQUE 1: RESUMEN DEL DÍA -->
       <div style="background:linear-gradient(135deg,#1a5c2a 0%,#2d7a3a 100%);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
         <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Resumen del día</div>
-        <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
           <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:28px;font-weight:700;color:#fff" id="m-total">—</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">Total pedidos</div>
@@ -243,6 +244,10 @@ tr:hover td{background:var(--bg)}
           <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:28px;font-weight:700;color:#fff" id="m-ext">—</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">Externos</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:28px;font-weight:700;color:#fff" id="m-provpend">—</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">Pdte. proveedor</div>
           </div>
           <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:28px;font-weight:700;color:#fff" id="m-env">—</div>
@@ -271,10 +276,83 @@ tr:hover td{background:var(--bg)}
         </div>
       </div>
 
+      <!-- BLOQUE 3B: PEDIDOS A PROVEEDORES -->
+      <div class="card" style="padding:0;overflow-x:auto;margin-bottom:16px">
+        <div style="padding:14px 16px 8px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">
+          <i class="ti ti-building-store" style="color:var(--accent)"></i>Pedidos a proveedores (día seleccionado)
+        </div>
+        <div id="dash-pedprov"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+      </div>
+
       <!-- BLOQUE 4: ÚLTIMOS CONTROLES QC -->
       <div class="card">
         <div class="card-title"><i class="ti ti-clipboard-check"></i>Últimos controles de calidad</div>
         <div id="dash-qc-recientes"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+      </div>
+    </div>
+
+    <!-- CUADRO DE MANDOS -->
+    <div class="page" id="page-cuadro-mandos">
+      <div class="ph">
+        <h1 class="pt">Cuadro de mandos</h1>
+        <button class="btn btn-sm" onclick="loadCuadroMandos()"><i class="ti ti-refresh"></i>Actualizar</button>
+      </div>
+
+      <!-- KPIs GLOBALES (histórico completo) -->
+      <div style="background:linear-gradient(135deg,#1a5c2a 0%,#2d7a3a 100%);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Visión global — histórico completo</div>
+        <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px" id="cm-kpis-global">
+          <div class="loading" style="color:rgba(255,255,255,0.7)"><i class="ti ti-loader ti-spin"></i></div>
+        </div>
+      </div>
+
+      <!-- VENTAS -->
+      <div class="nav-sec" style="padding-left:0;padding-top:0">Ventas</div>
+      <div class="two-col" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-shopping-cart"></i>Pedidos por estado (histórico)</div>
+          <div id="cm-pedidos-estado"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-users"></i>Top clientes (por nº pedidos)</div>
+          <div id="cm-top-clientes"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+      </div>
+      <div class="two-col" style="margin-bottom:16px" id="cm-ventas-sensible">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-alert-octagon"></i>Reclamaciones</div>
+          <div id="cm-reclamaciones"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-tag"></i>Tarifas</div>
+          <div id="cm-tarifas"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+      </div>
+
+      <!-- OPERACIONES -->
+      <div class="nav-sec" style="padding-left:0">Operaciones</div>
+      <div class="two-col" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-clipboard-check"></i>Calidad — controles</div>
+          <div id="cm-calidad"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-truck-delivery"></i>Partidas de entrada</div>
+          <div id="cm-partidas"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+      </div>
+
+      <!-- ALMACÉN Y RESULTADOS -->
+      <div class="nav-sec" style="padding-left:0">Almacén y resultados de partida</div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-box"></i>Stock</div>
+          <div id="cm-stock"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><i class="ti ti-chart-pie"></i>Resultados de partida — mermas</div>
+          <div id="cm-resultados"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
       </div>
     </div>
 
@@ -1324,6 +1402,7 @@ async function loadDashboard(){
   document.getElementById('m-total').textContent=p.length
   document.getElementById('m-prep').textContent=p.filter(x=>x.estado==='En preparación').length
   document.getElementById('m-ext').textContent=p.filter(x=>x.proveedor).length
+  document.getElementById('m-provpend').textContent=p.filter(x=>x.proveedor&&!x.pedido_proveedor&&x.estado!=='Anulado').length
   document.getElementById('m-env').textContent=p.filter(x=>x.estado==='Enviado').length
 
   const ids=p.map(x=>x.id)
@@ -1373,6 +1452,30 @@ async function loadDashboard(){
     alertas.map(s=>'<tr><td>'+s.nombre+'</td><td>'+s.cantidad+' '+s.unidad+'</td><td><span class="badge '+(s.cantidad===0?'b-low':'b-warn')+'">'+(s.cantidad===0?'Crítico':'Bajo')+'</span></td></tr>').join('')+
     '</tbody></table>':'<div class="empty">✓ Sin alertas de stock</div>'
 
+  const externos=p.filter(x=>x.proveedor)
+  let rowsProv='',cardsProv=''
+  externos.forEach(x=>{
+    const enviado=x.pedido_proveedor
+    const accion=enviado?'—':'<button class="btn btn-sm" onclick="marcarPedidoProveedor(\''+x.id+'\')"><i class="ti ti-send"></i>Marcar enviado</button>'
+    const estadoEnvio=enviado?'<span class="badge b-ok"><i class="ti ti-check"></i> Enviado</span>':'<span class="badge b-warn">Pendiente</span>'
+    rowsProv+='<tr><td>'+x.referencia+'</td><td>'+x.proveedor+'</td><td>'+(x.clientes?.nombre||'—')+'</td><td>'+x.palets+'</td><td>'+badgeHtml(x.estado)+'</td><td>'+estadoEnvio+'</td><td>'+accion+'</td></tr>'
+    cardsProv+='<div class="order-card">'+
+      '<div class="order-card-top">'+
+        '<div><div class="order-card-ref">'+x.referencia+'</div>'+
+        '<div class="order-card-client">'+x.proveedor+'</div></div>'+
+        badgeHtml(x.estado)+
+      '</div>'+
+      '<div class="order-card-row"><span class="lbl">Cliente</span><span>'+(x.clientes?.nombre||'—')+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Palets</span><span>'+x.palets+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Pedido a proveedor</span><span>'+estadoEnvio+'</span></div>'+
+      (enviado?'':'<div style="margin-top:8px">'+accion+'</div>')+
+    '</div>'
+  })
+  document.getElementById('dash-pedprov').innerHTML=externos.length?
+    '<table class="desktop-table tabla-compacta"><thead><tr><th>Ref</th><th>Proveedor</th><th>Cliente</th><th>Palets</th><th>Estado</th><th>Pedido a proveedor</th><th></th></tr></thead><tbody>'+rowsProv+'</tbody></table>'+
+    '<div class="mobile-cards">'+cardsProv+'</div>':
+    '<div class="empty">Sin pedidos de proveedores este día</div>'
+
   loadGraficaPalets()
 
   const {data:ultCtrl}=await db.from('controles_calidad').select('*,pedidos(referencia,fruta,clientes(nombre))').gte('creado_en',fecha+'T00:00:00').lte('creado_en',fecha+'T23:59:59').order('creado_en',{ascending:false}).limit(5)
@@ -1409,6 +1512,154 @@ async function loadGraficaPalets(){
   }
   const el=document.getElementById('dash-grafica')
   if(el)el.innerHTML='<div style="display:flex;align-items:flex-end;gap:4px;height:160px;padding:8px 8px 0">'+bars+'</div><div style="text-align:center;font-size:11px;color:var(--text3);margin-top:6px">Palets enviados por día</div>'
+}
+
+// ── CUADRO DE MANDOS ──────────────────────────────────────────
+async function loadCuadroMandos(){
+  if(!can('admin')){
+    document.getElementById('page-cuadro-mandos').innerHTML='<div class="empty" style="padding:60px"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:10px"></i>Acceso restringido a administradores</div>'
+    return
+  }
+  const senBlock=document.getElementById('cm-ventas-sensible')
+  const vePermiso=can('admin,comercial,calidad')
+  if(senBlock)senBlock.style.display=vePermiso?'':'none'
+
+  const [
+    {data:pedidos},
+    {count:clientesCount},
+    {data:reclamaciones},
+    {data:tarifasUlt},
+    {data:controles},
+    {data:partidas},
+    {data:stockData},
+    {data:resultados}
+  ]=await Promise.all([
+    db.from('pedidos').select('estado,palets,proveedor,cliente_id,clientes(nombre)'),
+    db.from('clientes').select('*',{count:'exact',head:true}),
+    vePermiso?db.from('reclamaciones').select('estado,importe,gravedad'):Promise.resolve({data:[]}),
+    vePermiso?db.from('tarifas').select('semana').order('semana',{ascending:false}).limit(1):Promise.resolve({data:[]}),
+    db.from('controles_calidad').select('resultado'),
+    db.from('partidas_entrada').select('resultado'),
+    db.from('stock').select('cantidad,minimo,categoria'),
+    db.from('resultados_partida').select('cantidad_total,kg_industria,kg_podrido,kg_volcados')
+  ])
+
+  const p=pedidos||[]
+  const totalPedidos=p.length
+  const paletsEnviados=p.filter(x=>x.estado==='Enviado').reduce((s,x)=>s+(x.palets||0),0)
+  const ctrl=controles||[]
+  const pctQC=ctrl.length?Math.round(ctrl.filter(c=>c.resultado==='aprobado').length/ctrl.length*100):null
+  const reclAbiertas=(reclamaciones||[]).filter(r=>r.estado!=='cerrada').length
+
+  document.getElementById('cm-kpis-global').innerHTML=
+    kpiBox(totalPedidos,'Pedidos (histórico)')+
+    kpiBox(paletsEnviados,'Palets enviados')+
+    kpiBox(clientesCount||0,'Clientes')+
+    kpiBox(pctQC===null?'—':pctQC+'%','Aprobación QC')+
+    kpiBox(vePermiso?reclAbiertas:'—','Reclam. abiertas')
+
+  // Pedidos por estado
+  const estados=['Pendiente','En preparación','Listo','Enviado','Anulado']
+  const countsEstado=estados.map(e=>p.filter(x=>x.estado===e).length)
+  const maxE=Math.max(...countsEstado,1)
+  document.getElementById('cm-pedidos-estado').innerHTML=totalPedidos?
+    estados.map((e,i)=>barRow(e,countsEstado[i],maxE,badgeColorFor(e))).join(''):
+    '<div class="empty">Sin pedidos registrados</div>'
+
+  // Top clientes
+  const porCliente={}
+  p.forEach(x=>{const n=x.clientes?.nombre||'Sin cliente';porCliente[n]=(porCliente[n]||0)+1})
+  const top=Object.entries(porCliente).sort((a,b)=>b[1]-a[1]).slice(0,5)
+  const maxC=Math.max(...top.map(t=>t[1]),1)
+  document.getElementById('cm-top-clientes').innerHTML=top.length?
+    top.map(([n,c])=>barRow(n,c,maxC,'var(--blue)')).join(''):
+    '<div class="empty">Sin datos</div>'
+
+  // Reclamaciones + Tarifas (solo con permiso)
+  if(vePermiso){
+    const rc=reclamaciones||[]
+    const abiertas=rc.filter(r=>r.estado==='abierta').length
+    const revision=rc.filter(r=>r.estado==='en_revision').length
+    const cerradas=rc.filter(r=>r.estado==='cerrada').length
+    const graves=rc.filter(r=>r.gravedad==='grave').length
+    const importeTotal=rc.reduce((s,r)=>s+(r.importe||0),0)
+    document.getElementById('cm-reclamaciones').innerHTML=rc.length?
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">'+
+      miniStat(abiertas,'Abiertas','var(--red-text)')+miniStat(revision,'En revisión','var(--orange-text)')+
+      miniStat(cerradas,'Cerradas','var(--green-text)')+miniStat(graves,'Graves','var(--red-text)')+
+      '</div><div style="font-size:12px;color:var(--text2)">Importe acumulado: <strong style="color:var(--text)">'+importeTotal.toFixed(2)+'€</strong></div>':
+      '<div class="empty">Sin reclamaciones registradas</div>'
+
+    const ult=(tarifasUlt||[])[0]
+    document.getElementById('cm-tarifas').innerHTML=ult?
+      '<div style="font-size:13px;color:var(--text2)">Última semana con tarifa cargada</div><div style="font-size:20px;font-weight:700;margin-top:4px">'+fmt(ult.semana)+'</div>':
+      '<div class="empty">Sin tarifas registradas</div>'
+  }
+
+  // Calidad
+  const aprob=ctrl.filter(c=>c.resultado==='aprobado').length
+  const rech=ctrl.filter(c=>c.resultado==='rechazado').length
+  document.getElementById('cm-calidad').innerHTML=ctrl.length?
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">'+
+    miniStat(ctrl.length,'Total','var(--text)')+miniStat(aprob,'Aprobados','var(--green-text)')+miniStat(rech,'Rechazados','var(--red-text)')+
+    '</div>'+progressBar(pctQC,'var(--accent)'):
+    '<div class="empty">Sin controles registrados</div>'
+
+  // Partidas de entrada
+  const pt=partidas||[]
+  const ptAprob=pt.filter(x=>x.resultado==='aprobado').length
+  const ptRech=pt.filter(x=>x.resultado==='rechazado').length
+  document.getElementById('cm-partidas').innerHTML=pt.length?
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+
+    miniStat(pt.length,'Total','var(--text)')+miniStat(ptAprob,'Aprobadas','var(--green-text)')+miniStat(ptRech,'Rechazadas','var(--red-text)')+
+    '</div>':'<div class="empty">Sin partidas registradas</div>'
+
+  // Stock
+  const st=stockData||[]
+  const bajo=st.filter(s=>s.cantidad<s.minimo&&s.cantidad>0).length
+  const critico=st.filter(s=>s.cantidad===0).length
+  document.getElementById('cm-stock').innerHTML=st.length?
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">'+
+    miniStat(st.length,'Materiales','var(--text)')+miniStat(bajo,'Stock bajo','var(--orange-text)')+miniStat(critico,'Crítico','var(--red-text)')+
+    '</div>':'<div class="empty">Sin materiales registrados</div>'
+
+  // Resultados de partida (mermas)
+  const rp=resultados||[]
+  const totalKg=rp.reduce((s,r)=>s+(r.cantidad_total||0),0)
+  const kgInd=rp.reduce((s,r)=>s+(r.kg_industria||0),0)
+  const kgPod=rp.reduce((s,r)=>s+(r.kg_podrido||0),0)
+  const kgVol=rp.reduce((s,r)=>s+(r.kg_volcados||0),0)
+  const pctMerma=totalKg?Math.round((kgInd+kgPod+kgVol)/totalKg*100):0
+  document.getElementById('cm-resultados').innerHTML=rp.length?
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Total kg confeccionados: <strong style="color:var(--text)">'+totalKg.toLocaleString('es-ES')+' kg</strong></div>'+
+    barRow('Industria',kgInd,totalKg||1,'var(--orange)')+
+    barRow('Podrido',kgPod,totalKg||1,'var(--red)')+
+    barRow('Tierra/desechos',kgVol,totalKg||1,'var(--text3)')+
+    '<div style="font-size:11px;color:var(--text3);margin-top:8px">Merma total: '+pctMerma+'%</div>':
+    '<div class="empty">Sin resultados registrados</div>'
+}
+
+function kpiBox(v,l){
+  return '<div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">'+
+    '<div style="font-size:24px;font-weight:700;color:#fff">'+v+'</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">'+l+'</div></div>'
+}
+function miniStat(v,l,color){
+  return '<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:'+color+'">'+v+'</div><div style="font-size:11px;color:var(--text2)">'+l+'</div></div>'
+}
+function barRow(label,value,max,color){
+  const pct=Math.max(0,Math.min(100,Math.round((value/max)*100)))
+  const valLabel=(typeof value==='number')?(value%1===0?value:value.toFixed(1)):value
+  return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+label+'</span><strong>'+valLabel+'</strong></div>'+
+    '<div style="background:var(--bg3);border-radius:99px;height:8px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:99px"></div></div></div>'
+}
+function progressBar(pct,color){
+  if(pct===null)return ''
+  return '<div style="background:var(--bg3);border-radius:99px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+color+'"></div></div>'
+}
+function badgeColorFor(estado){
+  const m={Pendiente:'var(--text3)','En preparación':'var(--blue)',Listo:'var(--orange)',Enviado:'var(--green)',Anulado:'var(--red)'}
+  return m[estado]||'var(--text3)'
 }
 
 // ── PEDIDOS ───────────────────────────────────────────────────
@@ -2153,12 +2404,17 @@ async function subirFotosQC(files){
   if(!files||!files.length)return
   toast('Subiendo fotos...')
   for(const file of files){
-    const ext=file.name.split('.').pop()
-    const path='qc-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext
-    const {data,error}=await db.storage.from('calidad').upload(path,file)
-    if(error){toast('Error subiendo foto: '+error.message,'err');continue}
-    const {data:urlData}=db.storage.from('calidad').getPublicUrl(path)
-    qcFotosSubidas.push(urlData.publicUrl)
+    try{
+      const ext=file.name.split('.').pop()
+      const path='qc-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext
+      const {data,error}=await db.storage.from('calidad').upload(path,file)
+      if(error){toast('Error subiendo foto: '+error.message,'err');console.error('Error subida foto QC:',error);continue}
+      const {data:urlData}=db.storage.from('calidad').getPublicUrl(path)
+      qcFotosSubidas.push(urlData.publicUrl)
+    }catch(e){
+      toast('Error inesperado subiendo foto: '+(e.message||e),'err')
+      console.error('Excepción subiendo foto QC:',e)
+    }
   }
   renderFotosQC()
   toast('Fotos subidas ✓')
@@ -4689,7 +4945,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas}
+  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas}
   if(map[id])map[id]()
 }
 </script>
