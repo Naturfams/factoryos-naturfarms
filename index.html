@@ -460,21 +460,52 @@ tr:hover td{background:var(--bg)}
           <h1 class="pt" id="tarifa-semana-label" style="font-size:16px;min-width:200px;text-align:center"></h1>
           <button class="btn btn-sm" onclick="cambiarSemana(1)"><i class="ti ti-chevron-right"></i></button>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn" onclick="imprimirOferta()"><i class="ti ti-printer"></i>Imprimir oferta</button>
-          <button class="btn btn-primary" onclick="addLineaTarifa()"><i class="ti ti-plus"></i>Añadir línea</button>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-tarifa-venta')">Precios de venta</div>
+        <div class="tab" onclick="switchTab(this,'tab-tarifa-compra')">Precios de compra (proveedores)</div>
+      </div>
+
+      <div id="tab-tarifa-venta">
+        <div class="ph" style="margin-top:0">
+          <div></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="imprimirOferta()"><i class="ti ti-printer"></i>Imprimir oferta</button>
+            <button class="btn btn-primary" onclick="addLineaTarifa()"><i class="ti ti-plus"></i>Añadir línea</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--text2)">Márgenes por destino:</span>
+            <span style="font-size:13px"><strong>Perpiñán</strong> <input type="number" id="margen-perpignan" step="0.01" style="width:70px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border2);font-size:13px"> €/kg</span>
+            <span style="font-size:13px"><strong>Alemania</strong> <input type="number" id="margen-alemania" step="0.01" style="width:70px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border2);font-size:13px"> €/kg</span>
+            <button class="btn btn-sm" onclick="guardarMargenes()"><i class="ti ti-check"></i>Guardar márgenes</button>
+          </div>
+          <div style="overflow-x:auto"><div id="tabla-tarifas"></div></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-success" onclick="guardarTarifas()"><i class="ti ti-device-floppy"></i>Guardar tarifa semanal</button>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap">
-          <span style="font-size:13px;color:var(--text2)">Márgenes por destino:</span>
-          <span style="font-size:13px"><strong>Perpiñán</strong> <input type="number" id="margen-perpignan" step="0.01" style="width:70px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border2);font-size:13px"> €/kg</span>
-          <span style="font-size:13px"><strong>Alemania</strong> <input type="number" id="margen-alemania" step="0.01" style="width:70px;padding:4px 8px;border-radius:var(--radius);border:1px solid var(--border2);font-size:13px"> €/kg</span>
-          <button class="btn btn-sm" onclick="guardarMargenes()"><i class="ti ti-check"></i>Guardar márgenes</button>
+
+      <div id="tab-tarifa-compra" style="display:none">
+        <div class="ph" style="margin-top:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--text2)">Proveedor:</span>
+            <select id="tc-proveedor-select" onchange="loadTarifasCompra()" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;min-width:200px"></select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="imprimirInformeCompras()"><i class="ti ti-printer"></i>Imprimir informe compras</button>
+            <button class="btn btn-primary" onclick="addLineaTarifaCompra()"><i class="ti ti-plus"></i>Añadir línea</button>
+          </div>
         </div>
-        <div style="overflow-x:auto"><div id="tabla-tarifas"></div></div>
-        <div style="margin-top:12px">
-          <button class="btn btn-success" onclick="guardarTarifas()"><i class="ti ti-device-floppy"></i>Guardar tarifa semanal</button>
+        <div class="card">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Precios de compra semanales por proveedor. El informe impreso incluye todos los proveedores con precios cargados esta semana.</div>
+          <div style="overflow-x:auto"><div id="tabla-tarifas-compra"></div></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-success" onclick="guardarTarifasCompra()"><i class="ti ti-device-floppy"></i>Guardar precios de compra</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1196,6 +1227,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-pedprov-hist')loadPedProvHistorico()
   if(tabId==='tab-planning-producto')loadPlanning()
   if(tabId==='tab-reclam-hist')loadReclamacionesHistorico()
+  if(tabId==='tab-tarifa-compra')loadTarifasCompra()
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -4725,6 +4757,15 @@ let tarifaOffset=0
 let _tarifaLineas=[] // líneas en edición
 let _destinos=[] // [{nombre, margen}]
 let _confeccionesCache=[]
+let _tarifaCompraLineas=[] // líneas de precios de compra en edición
+
+function getISOWeek(date){
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()))
+  const dayNum=d.getUTCDay()||7
+  d.setUTCDate(d.getUTCDate()+4-dayNum)
+  const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1))
+  return Math.ceil((((d-yearStart)/86400000)+1)/7)
+}
 
 function getLunesTarifa(offset=0){
   const hoy=new Date()
@@ -4771,10 +4812,10 @@ async function loadTarifas(){
       // Obtener solo la semana más reciente con datos
       const semanaMasReciente=anterior[0].semana
       const lineasAnteriores=anterior.filter(t=>t.semana===semanaMasReciente)
-      _tarifaLineas=lineasAnteriores.map(t=>({producto:t.producto,calibre:t.calibre,confeccion:t.confeccion,origen:t.origen,precio_base:t.precio_base}))
+      _tarifaLineas=lineasAnteriores.map(t=>({producto:t.producto,variedad:t.variedad,calibre:t.calibre,confeccion:t.confeccion,origen:t.origen,precio_base:t.precio_base,cajas_europalet:t.cajas_europalet,cajas_palet_grande:t.cajas_palet_grande}))
       if(_tarifaLineas.length)toast('Precios copiados de la semana anterior — revisa y guarda')
     }
-    if(!_tarifaLineas.length)_tarifaLineas=[{producto:'',calibre:'',confeccion:'',origen:'propio',precio_base:''}]
+    if(!_tarifaLineas.length)_tarifaLineas=[{producto:'',variedad:'',calibre:'',confeccion:'',origen:'propio',precio_base:'',cajas_europalet:'',cajas_palet_grande:''}]
   }
   renderTablaTarifas()
 }
@@ -4796,6 +4837,8 @@ function renderTablaTarifas(){
       '<td><input type="text" id="tl-variedad-'+i+'" value="'+(l.variedad||'')+'" placeholder="Variedad" style="width:110px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
       '<td><input type="text" id="tl-calibre-'+i+'" value="'+(l.calibre||'')+'" placeholder="Calibre" style="width:75px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
       '<td><input type="text" id="tl-confeccion-'+i+'" value="'+(l.confeccion||'')+'" placeholder="Confección" list="confeccion-list" style="width:140px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="number" id="tl-cajaseuro-'+i+'" value="'+(l.cajas_europalet||'')+'" step="1" min="0" placeholder="Cajas" style="width:65px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="number" id="tl-cajasgrande-'+i+'" value="'+(l.cajas_palet_grande||'')+'" step="1" min="0" placeholder="Cajas" style="width:65px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
       '<td><select id="tl-origen-'+i+'" style="padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"><option value="propio">Propio</option><option value="proveedor">Proveedor</option></select></td>'+
       '<td><input type="number" id="tl-precio-'+i+'" value="'+(l.precio_base||'')+'" step="0.01" min="0" placeholder="0.00" oninput="actualizarPreciosRow('+i+')" style="width:75px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
       '<td style="text-align:center;font-weight:700;color:var(--accent)" id="tl-perp-'+i+'">'+( precioBase>0?precioPerp.toFixed(2)+'€':'—')+'</td>'+
@@ -4808,7 +4851,7 @@ function renderTablaTarifas(){
   document.getElementById('tabla-tarifas').innerHTML=
     '<datalist id="confeccion-list">'+_confeccionesCache.map(c=>'<option value="'+c+'">').join('')+'</datalist>'+
     '<table class="tabla-compacta" style="width:100%">'+
-    '<thead><tr><th>Producto</th><th>Variedad</th><th>Calibre</th><th>Confección</th><th>Origen</th><th>€/kg base</th><th style="text-align:center">Perpiñán</th><th style="text-align:center">Alemania</th><th></th></tr></thead>'+
+    '<thead><tr><th>Producto</th><th>Variedad</th><th>Calibre</th><th>Confección</th><th>Cajas/<br>europalet</th><th>Cajas/<br>palet grande</th><th>Origen</th><th>€/kg base</th><th style="text-align:center">Perpiñán</th><th style="text-align:center">Alemania</th><th></th></tr></thead>'+
     '<tbody>'+rows+'</tbody></table>'
 
   // Preseleccionar origen
@@ -4829,7 +4872,7 @@ function actualizarPreciosRow(i){
 }
 
 function addLineaTarifa(){
-  _tarifaLineas.push({producto:'',calibre:'',confeccion:'',origen:'propio',precio_base:''})
+  _tarifaLineas.push({producto:'',variedad:'',calibre:'',confeccion:'',origen:'propio',precio_base:'',cajas_europalet:'',cajas_palet_grande:''})
   renderTablaTarifas()
 }
 
@@ -4839,6 +4882,8 @@ function recogerLineas(){
     variedad:document.getElementById('tl-variedad-'+i)?.value||'',
     calibre:document.getElementById('tl-calibre-'+i)?.value||'',
     confeccion:document.getElementById('tl-confeccion-'+i)?.value||'',
+    cajas_europalet:parseInt(document.getElementById('tl-cajaseuro-'+i)?.value)||null,
+    cajas_palet_grande:parseInt(document.getElementById('tl-cajasgrande-'+i)?.value)||null,
     origen:document.getElementById('tl-origen-'+i)?.value||'propio',
     precio_base:parseFloat(document.getElementById('tl-precio-'+i)?.value)||0
   })).filter(l=>l.producto&&l.precio_base>0)
@@ -4867,11 +4912,166 @@ async function guardarMargenes(){
   renderTablaTarifas()
 }
 
+// ── PRECIOS DE COMPRA POR PROVEEDOR ──────────────────────────
+function poblarSelectProveedorCompra(){
+  const sel=document.getElementById('tc-proveedor-select')
+  if(!sel)return
+  const prevVal=sel.value
+  sel.innerHTML=(proveedoresList||[]).map(p=>'<option value="'+p.nombre+'">'+p.nombre+'</option>').join('')
+  if(prevVal&&[...sel.options].some(o=>o.value===prevVal))sel.value=prevVal
+}
+
+async function loadTarifasCompra(){
+  poblarSelectProveedorCompra()
+  const sel=document.getElementById('tc-proveedor-select')
+  const proveedor=sel?.value
+  if(!proveedor){
+    document.getElementById('tabla-tarifas-compra').innerHTML='<div class="empty">Da de alta un proveedor primero en el apartado "Ped. proveedores → Proveedores"</div>'
+    return
+  }
+  const lunes=getLunesTarifa(tarifaOffset)
+  const semanaStr=lunes.toISOString().split('T')[0]
+
+  if(!_confeccionesCache.length){
+    const {data:confs}=await db.from('stock').select('nombre').eq('categoria','caja').order('nombre')
+    _confeccionesCache=(confs||[]).map(c=>c.nombre)
+  }
+
+  const {data:compras}=await db.from('tarifas_compra').select('*').eq('semana',semanaStr).eq('proveedor',proveedor).order('producto').order('calibre')
+
+  if(compras&&compras.length){
+    _tarifaCompraLineas=compras.map(t=>({...t}))
+  } else {
+    const {data:anterior}=await db.from('tarifas_compra').select('*').eq('proveedor',proveedor).lt('semana',semanaStr).order('semana',{ascending:false}).limit(100)
+    if(anterior&&anterior.length){
+      const semanaMasReciente=anterior[0].semana
+      _tarifaCompraLineas=anterior.filter(t=>t.semana===semanaMasReciente).map(t=>({producto:t.producto,variedad:t.variedad,calibre:t.calibre,confeccion:t.confeccion,precio_compra:t.precio_compra}))
+      if(_tarifaCompraLineas.length)toast('Precios copiados de la semana anterior — revisa y guarda')
+    }
+    if(!_tarifaCompraLineas.length)_tarifaCompraLineas=[{producto:'',variedad:'',calibre:'',confeccion:'',precio_compra:''}]
+  }
+  renderTablaTarifasCompra()
+}
+
+function renderTablaTarifasCompra(){
+  const rows=_tarifaCompraLineas.map((l,i)=>{
+    return '<tr>'+
+      '<td><input type="text" id="tc-producto-'+i+'" value="'+(l.producto||'')+'" placeholder="Producto" style="width:130px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="text" id="tc-variedad-'+i+'" value="'+(l.variedad||'')+'" placeholder="Variedad" style="width:110px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="text" id="tc-calibre-'+i+'" value="'+(l.calibre||'')+'" placeholder="Calibre" style="width:75px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="text" id="tc-confeccion-'+i+'" value="'+(l.confeccion||'')+'" placeholder="Confección" list="confeccion-list-compra" style="width:140px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><input type="number" id="tc-precio-'+i+'" value="'+(l.precio_compra||'')+'" step="0.01" min="0" placeholder="0.00" style="width:85px;padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)"></td>'+
+      '<td><button class="btn btn-sm btn-danger" onclick="_tarifaCompraLineas.splice('+i+',1);renderTablaTarifasCompra()"><i class="ti ti-trash"></i></button></td>'+
+    '</tr>'
+  }).join('')
+
+  document.getElementById('tabla-tarifas-compra').innerHTML=
+    '<datalist id="confeccion-list-compra">'+_confeccionesCache.map(c=>'<option value="'+c+'">').join('')+'</datalist>'+
+    '<table class="tabla-compacta" style="width:100%">'+
+    '<thead><tr><th>Producto</th><th>Variedad</th><th>Calibre</th><th>Confección</th><th>€/kg compra</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>'
+}
+
+function addLineaTarifaCompra(){
+  _tarifaCompraLineas.push({producto:'',variedad:'',calibre:'',confeccion:'',precio_compra:''})
+  renderTablaTarifasCompra()
+}
+
+function recogerLineasCompra(){
+  return _tarifaCompraLineas.map((_,i)=>({
+    producto:document.getElementById('tc-producto-'+i)?.value||'',
+    variedad:document.getElementById('tc-variedad-'+i)?.value||'',
+    calibre:document.getElementById('tc-calibre-'+i)?.value||'',
+    confeccion:document.getElementById('tc-confeccion-'+i)?.value||'',
+    precio_compra:parseFloat(document.getElementById('tc-precio-'+i)?.value)||0
+  })).filter(l=>l.producto&&l.precio_compra>0)
+}
+
+async function guardarTarifasCompra(){
+  const proveedor=document.getElementById('tc-proveedor-select')?.value
+  if(!proveedor){toast('Selecciona un proveedor','err');return}
+  const lunes=getLunesTarifa(tarifaOffset)
+  const semanaStr=lunes.toISOString().split('T')[0]
+  const lineas=recogerLineasCompra()
+  if(!lineas.length){toast('No hay líneas válidas que guardar','err');return}
+
+  await db.from('tarifas_compra').delete().eq('semana',semanaStr).eq('proveedor',proveedor)
+  const {error}=await db.from('tarifas_compra').insert(lineas.map(l=>({...l,semana:semanaStr,proveedor,creado_por:currentPerfil?.nombre})))
+  if(error){toast('Error guardando: '+error.message,'err');return}
+  toast('Precios de compra guardados ✓')
+  loadTarifasCompra()
+}
+
+async function imprimirInformeCompras(){
+  const lunes=getLunesTarifa(tarifaOffset)
+  const semanaStr=lunes.toISOString().split('T')[0]
+  const viernes=new Date(lunes);viernes.setDate(lunes.getDate()+5)
+  const label='Semana del '+lunes.toLocaleDateString('es-ES',{day:'numeric',month:'long'})+' al '+viernes.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})
+
+  const {data:compras}=await db.from('tarifas_compra').select('*').eq('semana',semanaStr).order('proveedor').order('producto').order('calibre')
+  if(!compras||!compras.length){toast('No hay precios de compra guardados para esta semana','err');return}
+
+  // Agrupar por proveedor y, dentro, por producto (juntando filas del mismo producto)
+  const porProveedor={}
+  compras.forEach(c=>{(porProveedor[c.proveedor]=porProveedor[c.proveedor]||[]).push(c)})
+
+  const buildTablaProveedor=(items)=>{
+    const porProducto={}
+    items.forEach(t=>{(porProducto[t.producto]=porProducto[t.producto]||[]).push(t)})
+    let rows=''
+    Object.entries(porProducto).forEach(([producto,lineas])=>{
+      lineas.forEach((t,idx)=>{
+        rows+='<tr>'
+        if(idx===0){
+          rows+='<td rowspan="'+lineas.length+'" style="padding:7px 10px;border-bottom:1px solid #eee;border-right:1px solid #eee;vertical-align:top;font-weight:700;background:#f7f8f4">'+producto+'</td>'
+        }
+        rows+='<td style="padding:7px 10px;border-bottom:1px solid #eee">'+(t.variedad||'—')+'</td>'+
+          '<td style="padding:7px 10px;border-bottom:1px solid #eee">'+(t.calibre||'—')+'</td>'+
+          '<td style="padding:7px 10px;border-bottom:1px solid #eee">'+(t.confeccion||'—')+'</td>'+
+          '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#2d7a3a">'+(parseFloat(t.precio_compra)||0).toFixed(2)+'€</td>'
+        rows+='</tr>'
+      })
+    })
+    return '<table style="width:100%;border-collapse:collapse;border:1px solid #e0e0dc;margin-bottom:22px">'+
+      '<thead><tr style="background:#3a3a36">'+
+      '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Producto</th>'+
+      '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Variedad</th>'+
+      '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Calibre</th>'+
+      '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Confección</th>'+
+      '<th style="padding:8px 10px;text-align:center;font-size:12px;color:#fff;font-weight:600">€/kg compra</th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table>'
+  }
+
+  let secciones=''
+  Object.entries(porProveedor).forEach(([proveedor,items])=>{
+    secciones+='<div style="font-size:15px;font-weight:700;color:#1a1a18;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #2d7a3a">'+proveedor+'</div>'+buildTablaProveedor(items)
+  })
+
+  const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
+    '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a18;padding:24px 32px}'+
+    '@media print{body{padding:16px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:8mm}}</style></head><body>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d7a3a;margin-bottom:24px">'+
+    '<img src="data:image/png;base64,'+LOGO_B64+'" style="height:70px" alt="Naturfarms">'+
+    '<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#2d7a3a">PRECIOS DE COMPRA — PROVEEDORES</div>'+
+    '<div style="font-size:13px;color:#6b6b67;margin-top:4px;text-transform:capitalize">'+label+'</div></div>'+
+    '<div style="width:100px"></div></div>'+
+    secciones+
+    '<div style="margin-top:8px;padding-top:12px;border-top:1px solid #e0e0dc;font-size:10px;color:#9d9d98;display:flex;justify-content:space-between">'+
+    '<span>Naturfarms Organic · Precios de compra</span><span>Generado el '+new Date().toLocaleString('es-ES')+'</span></div>'+
+    '</body></html>'
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'})
+  const url=URL.createObjectURL(blob)
+  const w=window.open(url,'_blank')
+  if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
+}
+
 async function imprimirOferta(){
   const lunes=getLunesTarifa(tarifaOffset)
   const semanaStr=lunes.toISOString().split('T')[0]
   const viernes=new Date(lunes);viernes.setDate(lunes.getDate()+5)
   const label='Semana del '+lunes.toLocaleDateString('es-ES',{day:'numeric',month:'long'})+' al '+viernes.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})
+  const numSemana=getISOWeek(lunes)
 
   const {data:tarifas}=await db.from('tarifas').select('*').eq('semana',semanaStr).order('producto').order('calibre').order('confeccion')
   const {data:destinos}=await db.from('tarifas_destinos').select('*').order('nombre')
@@ -4881,35 +5081,71 @@ async function imprimirOferta(){
   const mPerp=(destinos||[]).find(d=>d.nombre==='Perpiñán')?.margen||0
   const mAlem=(destinos||[]).find(d=>d.nombre==='Alemania')?.margen||0
 
-  // Agrupar por origen
-  const buildRows=(lista)=>lista.map(t=>{
-    const base=parseFloat(t.precio_base)||0
-    return '<tr>'+
-      '<td style="padding:7px 10px;border-bottom:1px solid #eee"><strong>'+t.producto+'</strong>'+(t.variedad?'<div style="font-size:11px;color:#6b6b67">'+t.variedad+'</div>':'')+'</td>'+
-      '<td style="padding:7px 10px;border-bottom:1px solid #eee">'+(t.calibre||'—')+'</td>'+
-      '<td style="padding:7px 10px;border-bottom:1px solid #eee">'+(t.confeccion||'—')+'</td>'+
-      '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#2d7a3a">'+(base+mPerp).toFixed(2)+'€</td>'+
-      '<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:#185FA5">'+(base+mAlem).toFixed(2)+'€</td>'+
-    '</tr>'
-  }).join('')
+  // Agrupar por producto (juntando variedad/calibre/confección bajo el mismo producto)
+  const porProducto={}
+  ;(tarifas||[]).forEach(t=>{(porProducto[t.producto]=porProducto[t.producto]||[]).push(t)})
+
+  let buildRowsHtml=''
+  let gIdx=0
+  Object.entries(porProducto).forEach(([producto,lineas])=>{
+    const zebra=gIdx%2===1
+    const bgProducto=zebra?'#eef1e9':'#f7f8f4'
+    const bgRow=zebra?'#fafbf8':'#ffffff'
+    lineas.forEach((t,idx)=>{
+      const base=parseFloat(t.precio_base)||0
+      const isLast=idx===lineas.length-1
+      buildRowsHtml+='<tr style="background:'+bgRow+(isLast?';border-bottom:1.5px solid #d6d6d0':'')+'">'
+      if(idx===0){
+        buildRowsHtml+='<td rowspan="'+lineas.length+'" style="padding:8px 9px;font-weight:700;color:#1a1a18;background:'+bgProducto+';border-right:1px solid #e2e2dc;vertical-align:middle;font-size:12px;line-height:1.3">'+producto+'</td>'
+      }
+      buildRowsHtml+='<td style="padding:7px 9px;color:#4a4a45;font-size:12px">'+(t.variedad||'—')+'</td>'+
+        '<td style="padding:7px 9px;color:#4a4a45;font-size:12px">'+(t.calibre||'—')+'</td>'+
+        '<td style="padding:7px 9px;color:#4a4a45;font-size:12px">'+(t.confeccion||'—')+'</td>'+
+        '<td style="padding:7px 9px;text-align:center;color:#4a4a45;font-size:12px">'+(t.cajas_europalet||'—')+'</td>'+
+        '<td style="padding:7px 9px;text-align:center;color:#4a4a45;font-size:12px">'+(t.cajas_palet_grande||'—')+'</td>'+
+        '<td style="padding:7px 9px;text-align:center;font-weight:700;color:#2d7a3a;font-size:12.5px">'+(base+mPerp).toFixed(2)+' €</td>'+
+        '<td style="padding:7px 9px;text-align:center;font-weight:700;color:#185FA5;font-size:12.5px">'+(base+mAlem).toFixed(2)+' €</td>'
+      buildRowsHtml+='</tr>'
+    })
+    gIdx++
+  })
 
   const ofertaHtml='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
-    '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a18;padding:24px 32px}'+
-    '@media print{body{padding:16px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:8mm}}</style></head><body>'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d7a3a;margin-bottom:24px">'+
-    '<img src="data:image/png;base64,'+LOGO_B64+'" style="height:70px" alt="Naturfarms">'+
-    '<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#2d7a3a">OFERTA SEMANAL</div>'+
-    '<div style="font-size:13px;color:#6b6b67;margin-top:4px;text-transform:capitalize">'+label+'</div></div>'+
-    '<div style="width:100px"></div></div>'+
-    '<table style="width:100%;border-collapse:collapse;border:1px solid #e0e0dc">'+
+    '<style>'+
+    '*{box-sizing:border-box;margin:0;padding:0}'+
+    'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:12.5px;color:#2b2b27;padding:30px 40px}'+
+    '@media print{body{padding:14px 22px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:8mm}}'+
+    'table{width:100%;border-collapse:collapse}'+
+    'thead th{padding:9px 9px;text-align:left;font-size:10.5px;color:#fff;font-weight:600;text-transform:uppercase;letter-spacing:.04em}'+
+    '</style></head><body>'+
+
+    // Cabecera formal
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:2px solid #2d7a3a;margin-bottom:4px">'+
+      '<div style="flex:0 0 auto"><img src="data:image/png;base64,'+LOGO_B64+'" style="height:150px" alt="Naturfarms"></div>'+
+      '<div style="flex:1;text-align:center;padding:0 12px">'+
+        '<div style="font-size:24px;font-weight:700;color:#2d7a3a;letter-spacing:.04em;text-transform:uppercase">Oferta semanal</div>'+
+      '</div>'+
+      '<div style="flex:0 0 auto;text-align:right;min-width:150px">'+
+        '<div style="font-size:11px;color:#8a8a84;text-transform:uppercase;letter-spacing:.08em">Semana '+numSemana+'</div>'+
+        '<div style="font-size:13px;font-weight:600;color:#2d7a3a;margin-top:3px;text-transform:capitalize">'+label+'</div>'+
+      '</div>'+
+    '</div>'+
+
+    '<table style="border:1px solid #e0e0dc;margin-top:16px">'+
+    '<colgroup><col style="width:13%"><col style="width:15%"><col style="width:9%"><col style="width:18%"><col style="width:11%"><col style="width:11%"><col style="width:11.5%"><col style="width:11.5%"></colgroup>'+
     '<thead><tr style="background:#2d7a3a">'+
-    '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Producto</th>'+
-    '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Calibre</th>'+
-    '<th style="padding:8px 10px;text-align:left;font-size:12px;color:#fff;font-weight:600">Confección</th>'+
-    '<th style="padding:8px 10px;text-align:center;font-size:12px;color:#fff;font-weight:600">Perpiñán</th>'+
-    '<th style="padding:8px 10px;text-align:center;font-size:12px;color:#fff;font-weight:600">Alemania</th>'+
-    '</tr></thead><tbody>'+buildRows(tarifas)+'</tbody></table>'+
-    '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e0dc;font-size:10px;color:#9d9d98;display:flex;justify-content:space-between">'+
+    '<th>Producto</th>'+
+    '<th>Variedad</th>'+
+    '<th>Calibre</th>'+
+    '<th>Confección</th>'+
+    '<th style="text-align:center">Cajas/<br>europalet</th>'+
+    '<th style="text-align:center">Cajas/<br>palet grande</th>'+
+    '<th style="text-align:center">Perpiñán</th>'+
+    '<th style="text-align:center">Alemania</th>'+
+    '</tr></thead><tbody>'+buildRowsHtml+'</tbody></table>'+
+
+    '<div style="margin-top:14px;font-size:10.5px;color:#8a8a84;font-style:italic">Precios en €/kg, sin IVA incluido. Precios netos, sin comisiones. Oferta sujeta a disponibilidad de producto.</div>'+
+    '<div style="margin-top:18px;padding-top:10px;border-top:1px solid #e0e0dc;font-size:9.5px;color:#9d9d98;display:flex;justify-content:space-between">'+
     '<span>Naturfarms Organic · Oferta Semanal</span><span>Generado el '+new Date().toLocaleString('es-ES')+'</span></div>'+
     '</body></html>'
 
