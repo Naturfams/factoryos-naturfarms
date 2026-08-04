@@ -519,8 +519,21 @@ tr:hover td{background:var(--bg)}
 
     <div class="page" id="page-clientes">
       <div class="ph"><h1 class="pt">Clientes</h1><button class="btn btn-primary" onclick="abrirModalCliente()"><i class="ti ti-plus"></i>Nuevo cliente</button></div>
-      <div class="filter-row"><input type="text" id="filtro-cliente" placeholder="Buscar cliente..." oninput="loadClientes()" style="min-width:220px"></div>
-      <div class="card" style="padding:0"><div id="tabla-clientes"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-cli-seguimiento')">Seguimiento</div>
+        <div class="tab" onclick="switchTab(this,'tab-cli-listado')">Listado de clientes</div>
+      </div>
+
+      <div id="tab-cli-seguimiento">
+        <div class="filter-row"><input type="text" id="filtro-cli-seguimiento" placeholder="Buscar cliente..." oninput="loadClientesSeguimiento()" style="min-width:220px"></div>
+        <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-cli-seguimiento"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+      </div>
+
+      <div id="tab-cli-listado" style="display:none">
+        <div class="filter-row"><input type="text" id="filtro-cliente" placeholder="Buscar cliente..." oninput="loadClientes()" style="min-width:220px"></div>
+        <div class="card" style="padding:0"><div id="tabla-clientes"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+      </div>
     </div>
 
     <!-- PREPARACIÓN -->
@@ -748,6 +761,55 @@ tr:hover td{background:var(--bg)}
       <button class="btn btn-primary" onclick="guardarCliente()"><i class="ti ti-check"></i>Guardar</button>
     </div>
   </div></div>
+
+<div class="modal-bg" id="modal-ficha-cliente">
+  <div class="modal" style="width:840px;max-width:95vw">
+    <h3 id="ficha-cliente-titulo">Ficha de cliente <button class="close-btn" onclick="closeModal('modal-ficha-cliente')">×</button></h3>
+
+    <div id="ficha-cliente-datos" style="font-size:13px;color:var(--text2);margin-bottom:14px"></div>
+
+    <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px" id="ficha-cliente-kpis">
+      <div class="loading"><i class="ti ti-loader ti-spin"></i></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchFichaTab(this,'tab-ficha-pedidos')">Histórico de pedidos</div>
+      <div class="tab" onclick="switchFichaTab(this,'tab-ficha-seguimiento')">Seguimiento comercial</div>
+    </div>
+
+    <div id="tab-ficha-pedidos">
+      <div class="card" style="padding:0;overflow-x:auto;max-height:340px;overflow-y:auto">
+        <div id="ficha-tabla-pedidos"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+      </div>
+    </div>
+
+    <div id="tab-ficha-seguimiento" style="display:none">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-message-circle-plus"></i>Registrar contacto</div>
+        <input type="hidden" id="fs-cliente-id">
+        <div class="frow">
+          <div class="fg"><label>Fecha</label><input type="date" id="fs-fecha"></div>
+          <div class="fg"><label>Tipo de contacto</label>
+            <select id="fs-tipo">
+              <option value="llamada">Llamada</option>
+              <option value="email">Email</option>
+              <option value="visita">Visita</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label>Observaciones</label><textarea id="fs-observaciones" rows="2" placeholder="Qué se ha hablado, próximos pasos, etc."></textarea></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px">
+          <button class="btn btn-primary btn-sm" onclick="guardarContactoCliente()"><i class="ti ti-plus"></i>Añadir contacto</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto;max-height:300px;overflow-y:auto;margin-top:12px">
+        <div id="ficha-tabla-seguimiento"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal-bg" id="modal-proveedor">
   <div class="modal" style="width:480px">
@@ -1228,6 +1290,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-planning-producto')loadPlanning()
   if(tabId==='tab-reclam-hist')loadReclamacionesHistorico()
   if(tabId==='tab-tarifa-compra')loadTarifasCompra()
+  if(tabId==='tab-cli-listado')loadClientes()
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -1946,16 +2009,61 @@ async function guardarPedido(){
 }
 
 // ── CLIENTES ──────────────────────────────────────────────────
+async function loadClientesSeguimiento(){
+  const buscar=(document.getElementById('filtro-cli-seguimiento')?.value||'').toLowerCase()
+  const [{data:clientesData},{data:segData}]=await Promise.all([
+    db.from('clientes').select('*').order('nombre'),
+    db.from('clientes_seguimiento').select('*').order('fecha',{ascending:false}).order('creado_en',{ascending:false})
+  ])
+  const lista=(clientesData||[]).filter(c=>!buscar||c.nombre.toLowerCase().includes(buscar))
+
+  // Último contacto por cliente (segData ya viene ordenado del más reciente al más antiguo)
+  const ultimoPorCliente={}
+  ;(segData||[]).forEach(s=>{if(!ultimoPorCliente[s.cliente_id])ultimoPorCliente[s.cliente_id]=s})
+
+  const tipoIcon={llamada:'ti-phone',email:'ti-mail',visita:'ti-map-pin',whatsapp:'ti-brand-whatsapp',otro:'ti-note'}
+
+  const conContacto=[]
+  const sinContacto=[]
+  lista.forEach(c=>{
+    const u=ultimoPorCliente[c.id]
+    if(u)conContacto.push({cliente:c,seg:u});else sinContacto.push(c)
+  })
+  conContacto.sort((a,b)=>{
+    if(a.seg.fecha!==b.seg.fecha)return a.seg.fecha>b.seg.fecha?-1:1
+    return (b.seg.creado_en||'').localeCompare(a.seg.creado_en||'')
+  })
+
+  let rows=conContacto.map(({cliente:c,seg:s})=>
+    '<tr><td><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+c.nombre+'</strong></td>'+
+    '<td style="white-space:nowrap">'+fmt(s.fecha)+'</td>'+
+    '<td style="white-space:nowrap"><i class="ti '+(tipoIcon[s.tipo]||'ti-note')+'"></i> '+(s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1))+'</td>'+
+    '<td>'+(s.observaciones?(s.observaciones.length>90?s.observaciones.slice(0,90)+'…':s.observaciones):'—')+'</td>'+
+    '<td><button class="btn btn-sm" onclick="verFichaCliente(\''+c.id+'\')"><i class="ti ti-address-book"></i> Ver ficha</button></td></tr>'
+  ).join('')
+
+  rows+=sinContacto.map(c=>
+    '<tr style="opacity:.65"><td><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+c.nombre+'</strong></td>'+
+    '<td colspan="3" style="color:var(--text3)">Sin contactos registrados</td>'+
+    '<td><button class="btn btn-sm" onclick="verFichaCliente(\''+c.id+'\')"><i class="ti ti-address-book"></i> Ver ficha</button></td></tr>'
+  ).join('')
+
+  document.getElementById('tabla-cli-seguimiento').innerHTML=lista.length?
+    '<table><thead><tr><th>Cliente</th><th>Último contacto</th><th>Tipo</th><th>Observación</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':
+    '<div class="empty">No hay clientes</div>'
+}
+
 async function loadClientes(){
   const buscar=(document.getElementById('filtro-cliente')?.value||'').toLowerCase()
   const {data}=await db.from('clientes').select('*').order('nombre')
   const lista=(data||[]).filter(c=>!buscar||c.nombre.toLowerCase().includes(buscar))
   let rows=''
   lista.forEach(c=>{
-    rows+='<tr><td><strong>'+c.nombre+'</strong></td><td>'+(c.pais||'—')+'</td>'+
+    rows+='<tr><td><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+c.nombre+'</strong></td><td>'+(c.pais||'—')+'</td>'+
       '<td>'+(c.idiomas||[]).map(i=>'<span class="tag">'+i+'</span>').join('')+'</td>'+
       '<td>'+(c.contacto||'—')+'</td><td>'+(c.telefono||'—')+'</td><td>'+(c.email||'—')+'</td>'+
-      '<td><button class="btn btn-sm" onclick="editarCliente(\''+c.id+'\')"><i class="ti ti-edit"></i></button></td></tr>'
+      '<td style="white-space:nowrap"><button class="btn btn-sm" onclick="verFichaCliente(\''+c.id+'\')" title="Ficha comercial"><i class="ti ti-address-book"></i></button> '+
+      '<button class="btn btn-sm" onclick="editarCliente(\''+c.id+'\')" title="Editar"><i class="ti ti-edit"></i></button></td></tr>'
   })
   document.getElementById('tabla-clientes').innerHTML='<table><thead><tr><th>Empresa</th><th>País</th><th>Idiomas</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
 }
@@ -1991,6 +2099,94 @@ async function guardarCliente(){
   closeModal('modal-cliente')
   const {data:c}=await db.from('clientes').select('*').order('nombre')
   clientes=c||[];poblarSelects();loadClientes()
+}
+
+// ── FICHA COMERCIAL DE CLIENTE ───────────────────────────────
+function switchFichaTab(el,tabId){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+  el.classList.add('active')
+  el.closest('.modal').querySelectorAll('[id^="tab-ficha-"]').forEach(t=>t.style.display='none')
+  document.getElementById(tabId).style.display='block'
+}
+
+async function verFichaCliente(id){
+  const {data:c}=await db.from('clientes').select('*').eq('id',id).single()
+  if(!c){toast('No se pudo cargar el cliente','err');return}
+
+  document.getElementById('ficha-cliente-titulo').childNodes[0].textContent=c.nombre+' '
+  document.getElementById('ficha-cliente-datos').innerHTML=
+    [c.pais,c.contacto,c.telefono,c.email].filter(Boolean).join(' · ')||'Sin datos de contacto'
+
+  document.getElementById('fs-cliente-id').value=id
+  document.getElementById('fs-fecha').value=new Date().toISOString().split('T')[0]
+  document.getElementById('fs-tipo').value='llamada'
+  document.getElementById('fs-observaciones').value=''
+
+  // Reset a la primera pestaña
+  const modal=document.getElementById('modal-ficha-cliente')
+  modal.querySelectorAll('.tabs .tab').forEach((t,i)=>t.classList.toggle('active',i===0))
+  modal.querySelectorAll('[id^="tab-ficha-"]').forEach((t,i)=>t.style.display=i===0?'block':'none')
+
+  openModal('modal-ficha-cliente')
+
+  document.getElementById('ficha-cliente-kpis').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
+  document.getElementById('ficha-tabla-pedidos').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
+  document.getElementById('ficha-tabla-seguimiento').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
+
+  const {data:pedidos}=await db.from('pedidos').select('*').eq('cliente_id',id).order('fecha_recogida',{ascending:false})
+  const lista=pedidos||[]
+
+  // KPIs
+  const totalPedidos=lista.length
+  const totalPalets=lista.reduce((s,p)=>s+(p.palets||0),0)
+  const ultimoPedido=lista[0]
+  const primerPedido=lista[lista.length-1]
+  document.getElementById('ficha-cliente-kpis').innerHTML=
+    '<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:700">'+totalPedidos+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Pedidos totales</div></div>'+
+    '<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:700">'+totalPalets+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Palets totales</div></div>'+
+    '<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:16px;font-weight:700">'+(ultimoPedido?fmt(ultimoPedido.fecha_recogida):'—')+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Último pedido</div></div>'+
+    '<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:16px;font-weight:700">'+(primerPedido?fmt(primerPedido.fecha_recogida):'—')+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Cliente desde</div></div>'
+
+  // Histórico de pedidos (últimos 25)
+  const ultimos=lista.slice(0,25)
+  document.getElementById('ficha-tabla-pedidos').innerHTML=ultimos.length?
+    '<table class="tabla-compacta"><thead><tr><th>Fecha</th><th>Referencia</th><th>Fruta</th><th>Palets</th><th>Estado</th></tr></thead><tbody>'+
+    ultimos.map(p=>'<tr><td>'+fmt(p.fecha_recogida)+'</td><td>'+(p.referencia||'—')+'</td><td>'+(p.fruta||'—')+'</td><td>'+(p.palets||0)+'</td><td>'+badgeHtml(p.estado)+'</td></tr>').join('')+
+    '</tbody></table>':'<div class="empty">Este cliente aún no tiene pedidos registrados</div>'
+
+  loadFichaSeguimiento(id)
+}
+
+async function loadFichaSeguimiento(clienteId){
+  const {data,error}=await db.from('clientes_seguimiento').select('*').eq('cliente_id',clienteId).order('fecha',{ascending:false}).order('creado_en',{ascending:false})
+  if(error){
+    document.getElementById('ficha-tabla-seguimiento').innerHTML='<div class="empty">No se pudo cargar el seguimiento. ¿Existe la tabla clientes_seguimiento?</div>'
+    return
+  }
+  const lista=data||[]
+  const tipoIcon={llamada:'ti-phone',email:'ti-mail',visita:'ti-map-pin',whatsapp:'ti-brand-whatsapp',otro:'ti-note'}
+  document.getElementById('ficha-tabla-seguimiento').innerHTML=lista.length?
+    '<table class="tabla-compacta"><thead><tr><th>Fecha</th><th>Tipo</th><th>Observaciones</th><th>Registrado por</th></tr></thead><tbody>'+
+    lista.map(s=>'<tr><td style="white-space:nowrap">'+fmt(s.fecha)+'</td>'+
+      '<td style="white-space:nowrap"><i class="ti '+(tipoIcon[s.tipo]||'ti-note')+'"></i> '+(s.tipo.charAt(0).toUpperCase()+s.tipo.slice(1))+'</td>'+
+      '<td>'+(s.observaciones||'—')+'</td><td>'+(s.creado_por||'—')+'</td></tr>').join('')+
+    '</tbody></table>':'<div class="empty">Sin contactos registrados todavía</div>'
+}
+
+async function guardarContactoCliente(){
+  const clienteId=document.getElementById('fs-cliente-id').value
+  const fecha=document.getElementById('fs-fecha').value
+  const tipo=document.getElementById('fs-tipo').value
+  const observaciones=document.getElementById('fs-observaciones').value.trim()
+  if(!clienteId||!fecha){toast('Falta la fecha del contacto','err');return}
+  const {error}=await db.from('clientes_seguimiento').insert({
+    cliente_id:clienteId,fecha,tipo,observaciones:observaciones||null,creado_por:currentPerfil?.nombre||null
+  })
+  if(error){toast('Error guardando: '+error.message,'err');return}
+  toast('Contacto registrado ✓')
+  document.getElementById('fs-observaciones').value=''
+  loadFichaSeguimiento(clienteId)
+  if(document.getElementById('tabla-cli-seguimiento'))loadClientesSeguimiento()
 }
 
 // ── PROVEEDORES ──────────────────────────────────────────────
@@ -5181,7 +5377,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientes,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas}
+  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientesSeguimiento,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas}
   if(map[id])map[id]()
 }
 </script>
