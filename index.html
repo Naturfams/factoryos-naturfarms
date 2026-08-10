@@ -246,8 +246,8 @@ tr:hover td{background:var(--bg)}
             <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">Externos</div>
           </div>
           <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:28px;font-weight:700;color:#fff" id="m-provpend">—</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">Pdte. proveedor</div>
+            <div style="font-size:28px;font-weight:700;color:#fff" id="m-palets">—</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:4px">Palets totales</div>
           </div>
           <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:28px;font-weight:700;color:#fff" id="m-env">—</div>
@@ -1491,7 +1491,7 @@ async function loadDashboard(){
   document.getElementById('m-total').textContent=p.length
   document.getElementById('m-prep').textContent=p.filter(x=>x.estado==='En preparación').length
   document.getElementById('m-ext').textContent=p.filter(x=>x.proveedor).length
-  document.getElementById('m-provpend').textContent=p.filter(x=>x.proveedor&&!x.pedido_proveedor&&x.estado!=='Anulado').length
+  document.getElementById('m-palets').textContent=p.filter(x=>x.estado!=='Anulado').reduce((s,x)=>s+(x.palets||0),0)
   document.getElementById('m-env').textContent=p.filter(x=>x.estado==='Enviado').length
 
   const ids=p.map(x=>x.id)
@@ -5345,25 +5345,25 @@ async function imprimirOferta(){
   const ofertaHtml='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
     '<style>'+
     '*{box-sizing:border-box;margin:0;padding:0}'+
-    'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:10.5px;color:#2b2b27;padding:14px 20px}'+
-    '@media print{body{padding:6px 10mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:6mm}}'+
+    'body{font-family:"Helvetica Neue",Arial,sans-serif;font-size:11px;color:#2b2b27;padding:16px 24px}'+
+    '@media print{body{padding:8px 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4 landscape;margin:8mm}}'+
     'table{width:100%;border-collapse:collapse}'+
-    'thead th{padding:5px 7px;text-align:left;font-size:9px;color:#fff;font-weight:600;text-transform:uppercase;letter-spacing:.03em}'+
+    'thead th{padding:6px 8px;text-align:left;font-size:9.5px;color:#fff;font-weight:600;text-transform:uppercase;letter-spacing:.03em}'+
     '</style></head><body>'+
 
-    // Cabecera formal (compacta)
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:2px solid #2d7a3a;margin-bottom:4px">'+
-      '<div style="flex:0 0 auto"><img src="data:image/png;base64,'+LOGO_B64+'" style="height:85px" alt="Naturfarms"></div>'+
+    // Cabecera formal
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:2px solid #2d7a3a;margin-bottom:6px">'+
+      '<div style="flex:0 0 auto"><img src="data:image/png;base64,'+LOGO_B64+'" style="height:130px" alt="Naturfarms"></div>'+
       '<div style="flex:1;text-align:center;padding:0 10px">'+
-        '<div style="font-size:16px;font-weight:700;color:#2d7a3a;letter-spacing:.03em;text-transform:uppercase">Oferta semanal</div>'+
+        '<div style="font-size:19px;font-weight:700;color:#2d7a3a;letter-spacing:.03em;text-transform:uppercase">Oferta semanal</div>'+
       '</div>'+
-      '<div style="flex:0 0 auto;text-align:right;min-width:130px">'+
-        '<div style="font-size:9px;color:#8a8a84;text-transform:uppercase;letter-spacing:.06em">Semana '+numSemana+'</div>'+
-        '<div style="font-size:11px;font-weight:600;color:#2d7a3a;margin-top:2px;text-transform:capitalize">'+label+'</div>'+
+      '<div style="flex:0 0 auto;text-align:right;min-width:150px">'+
+        '<div style="font-size:10px;color:#8a8a84;text-transform:uppercase;letter-spacing:.06em">Semana '+numSemana+'</div>'+
+        '<div style="font-size:12px;font-weight:600;color:#2d7a3a;margin-top:2px;text-transform:capitalize">'+label+'</div>'+
       '</div>'+
     '</div>'+
 
-    '<table style="border:1px solid #e0e0dc;margin-top:8px">'+
+    '<table style="border:1px solid #e0e0dc;margin-top:10px">'+
     '<colgroup><col style="width:13%"><col style="width:15%"><col style="width:9%"><col style="width:18%"><col style="width:11%"><col style="width:11%"><col style="width:11.5%"><col style="width:11.5%"></colgroup>'+
     '<thead><tr style="background:#2d7a3a">'+
     '<th>Producto</th>'+
@@ -5376,7 +5376,10 @@ async function imprimirOferta(){
     '<th style="text-align:center">Alemania</th>'+
     '</tr></thead><tbody>'+buildRowsHtml+'</tbody></table>'+
 
-    '<div style="margin-top:8px;font-size:8.5px;color:#8a8a84;font-style:italic">Precios en €/kg, sin IVA incluido. Precios netos, sin comisiones. Oferta sujeta a disponibilidad de producto.</div>'+
+    '<div style="margin-top:10px;font-size:9px;color:#8a8a84;font-style:italic">Precios en €/kg, sin IVA incluido. Precios netos, sin comisiones. Oferta sujeta a disponibilidad de producto.</div>'+
+    '<div style="margin-top:4px;font-size:9px;color:#b02a2a;font-weight:600">No se admiten reclamaciones transcurridas 24 horas desde la llegada de la mercancía.</div>'+
+    '<div style="margin-top:10px;text-align:center;font-size:10px;color:#2b2b27">¿Dudas o consultas? Contacta con nosotros: '+
+    '<strong>Álvaro Lara</strong> · +34 671 77 33 42 &nbsp;|&nbsp; <strong>Irene Velencoso</strong> · +34 664 16 79 05</div>'+
     '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e0e0dc;font-size:8px;color:#9d9d98;display:flex;justify-content:space-between">'+
     '<span>Naturfarms Organic · Oferta Semanal</span><span>Generado el '+new Date().toLocaleString('es-ES')+'</span></div>'+
     '</body></html>'
