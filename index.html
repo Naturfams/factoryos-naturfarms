@@ -199,6 +199,7 @@ tr:hover td{background:var(--bg)}
     <div class="nav-item" onclick="showPage('reclamaciones',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-alert-octagon"></i>Reclamaciones</div>
     <div class="nav-item" onclick="showPage('tarifas',this)" data-roles="admin,comercial"><i class="ti ti-tag"></i>Tarifas</div>
     <div class="nav-item" onclick="showPage('clientes',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-users"></i>Clientes</div>
+    <div class="nav-item" onclick="showPage('equipo-comercial',this)" data-roles="admin"><i class="ti ti-briefcase"></i>Equipo comercial</div>
     <div class="nav-sec">Operaciones</div>
     <div class="nav-item" onclick="showPage('preparacion',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-package"></i>Preparación<span class="nav-badge" id="badge-prep">0</span></div>
     <div class="nav-item" onclick="showPage('planning',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-calendar-week"></i>Planning</div>
@@ -530,6 +531,34 @@ tr:hover td{background:var(--bg)}
       <div id="tab-cli-listado" style="display:none">
         <div class="filter-row"><input type="text" id="filtro-cliente" placeholder="Buscar cliente..." oninput="loadClientes()" style="min-width:220px"></div>
         <div class="card" style="padding:0"><div id="tabla-clientes"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+      </div>
+    </div>
+
+    <!-- EQUIPO COMERCIAL (solo admin) -->
+    <div class="page" id="page-equipo-comercial">
+      <div class="ph"><h1 class="pt">Equipo comercial</h1></div>
+
+      <div id="ec-comerciales-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px">
+        <div class="loading"><i class="ti ti-loader ti-spin"></i></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+        <span style="font-size:13px;color:var(--text2)">Añadir al equipo comercial:</span>
+        <select id="ec-add-select" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;min-width:200px"></select>
+        <button class="btn btn-sm" onclick="agregarAEquipoComercial()"><i class="ti ti-user-plus"></i>Añadir</button>
+      </div>
+
+      <div class="ph" style="margin-top:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--text2)">Comercial:</span>
+          <select id="ec-filtro-comercial" onchange="renderTablaAsignacion()" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;min-width:180px">
+            <option value="">Todos los comerciales</option>
+          </select>
+          <input type="text" id="ec-filtro-cliente" placeholder="Buscar cliente..." oninput="renderTablaAsignacion()" style="min-width:200px;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px">
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <div id="tabla-asignacion-comercial"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
       </div>
     </div>
 
@@ -2190,6 +2219,174 @@ async function guardarCliente(){
   closeModal('modal-cliente')
   const {data:c}=await db.from('clientes').select('*').order('nombre')
   clientes=c||[];poblarSelects();loadClientes()
+}
+
+// ── EQUIPO COMERCIAL (solo admin) ────────────────────────────
+let _ecComercialesData=[]
+let _ecTodosPerfiles=[]
+let _ecClientesData=[]
+let _ecPedidosData=[]
+let _ecSeguimientoData=[]
+
+async function loadEquipoComercial(){
+  if(!can('admin')){
+    const pg=document.getElementById('page-equipo-comercial')
+    if(pg)pg.innerHTML='<div class="empty" style="padding:60px"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:10px"></i>Acceso restringido a administradores</div>'
+    return
+  }
+  const [{data:comercialesData},{data:todosPerfiles},{data:clientesData},{data:pedidosData},{data:segData}]=await Promise.all([
+    db.from('perfiles').select('*').or('rol.eq.comercial,es_comercial.eq.true').order('nombre'),
+    db.from('perfiles').select('*').order('nombre'),
+    db.from('clientes').select('*').order('nombre'),
+    db.from('pedidos').select('cliente_id,palets,estado,fecha_recogida'),
+    db.from('clientes_seguimiento').select('cliente_id,fecha').order('fecha',{ascending:false})
+  ])
+  _ecComercialesData=comercialesData||[]
+  _ecTodosPerfiles=todosPerfiles||[]
+  _ecClientesData=clientesData||[]
+  _ecPedidosData=pedidosData||[]
+  _ecSeguimientoData=segData||[]
+
+  poblarFiltroComercial()
+  poblarSelectorAgregarComercial()
+  renderComercialesCards()
+  renderTablaAsignacion()
+}
+
+function poblarFiltroComercial(){
+  const sel=document.getElementById('ec-filtro-comercial')
+  if(!sel)return
+  const prev=sel.value
+  sel.innerHTML='<option value="">Todos los comerciales</option>'+
+    _ecComercialesData.map(c=>'<option value="'+c.id+'">'+c.nombre+'</option>').join('')+
+    '<option value="sin">Sin asignar</option>'
+  if(prev)sel.value=prev
+}
+
+function poblarSelectorAgregarComercial(){
+  const sel=document.getElementById('ec-add-select')
+  if(!sel)return
+  const yaComercial=new Set(_ecComercialesData.map(c=>c.id))
+  const candidatos=_ecTodosPerfiles.filter(p=>p.activo!==false&&!yaComercial.has(p.id))
+  sel.innerHTML=candidatos.length?
+    candidatos.map(p=>'<option value="'+p.id+'">'+p.nombre+' ('+(ROL_LABEL[p.rol]||p.rol)+')</option>').join(''):
+    '<option value="">— No hay más usuarios disponibles —</option>'
+}
+
+async function agregarAEquipoComercial(){
+  const id=document.getElementById('ec-add-select')?.value
+  if(!id){toast('Selecciona un usuario primero','err');return}
+  const {error}=await db.from('perfiles').update({es_comercial:true}).eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Añadido al equipo comercial ✓')
+  loadEquipoComercial()
+}
+
+async function quitarDeEquipoComercial(id){
+  const {error}=await db.from('perfiles').update({es_comercial:false}).eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Eliminado del equipo comercial')
+  loadEquipoComercial()
+}
+
+function renderComercialesCards(){
+  const inicioMes=new Date();inicioMes.setDate(1)
+  const inicioMesStr=inicioMes.toISOString().split('T')[0]
+  const cont=document.getElementById('ec-comerciales-cards')
+  if(!cont)return
+
+  if(!_ecComercialesData.length){
+    cont.innerHTML='<div class="empty">No hay usuarios con rol "Comercial" todavía. Puedes crearlos en Usuarios.</div>'
+    return
+  }
+
+  let html=''
+  _ecComercialesData.forEach(com=>{
+    const misClientes=_ecClientesData.filter(c=>c.comercial_id===com.id)
+    const idsClientes=new Set(misClientes.map(c=>c.id))
+    const pedidosMes=_ecPedidosData.filter(p=>idsClientes.has(p.cliente_id)&&p.fecha_recogida>=inicioMesStr&&p.estado!=='Anulado')
+    const paletsMes=pedidosMes.reduce((s,p)=>s+(p.palets||0),0)
+    const contactos=_ecSeguimientoData.filter(s=>idsClientes.has(s.cliente_id))
+    const ultimoContacto=contactos.length?contactos[0].fecha:null // ya viene ordenado desc por fecha
+
+    html+='<div class="card" style="position:relative">'+
+      (com.rol!=='comercial'?'<button class="btn btn-sm btn-danger" style="position:absolute;top:10px;right:10px;padding:2px 6px" title="Quitar del equipo comercial" onclick="event.stopPropagation();quitarDeEquipoComercial(\''+com.id+'\')"><i class="ti ti-x"></i></button>':'')+
+      '<div style="cursor:pointer" onclick="filtrarPorComercial(\''+com.id+'\')">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
+      '<div style="width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">'+com.nombre.charAt(0).toUpperCase()+'</div>'+
+      '<div><div style="font-weight:700;font-size:14px">'+com.nombre+(com.rol!=='comercial'?' <span class="badge b-warn" style="font-size:9px">'+ROL_LABEL[com.rol]+'</span>':'')+'</div><div style="font-size:11px;color:var(--text2)">'+misClientes.length+' cliente(s)</div></div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;text-align:center;padding-top:10px;border-top:1px solid var(--border)">'+
+      miniStat(pedidosMes.length,'Pedidos mes','var(--text)')+
+      miniStat(paletsMes,'Palets mes','var(--text)')+
+      '</div>'+
+      '<div style="margin-top:8px;font-size:11px;color:var(--text3)">Último contacto: '+(ultimoContacto?fmt(ultimoContacto):'—')+'</div>'+
+      '</div></div>'
+  })
+
+  const sinAsignar=_ecClientesData.filter(c=>!c.comercial_id)
+  html+='<div class="card" style="cursor:pointer;border-style:dashed" onclick="filtrarPorComercial(\'sin\')">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
+    '<div style="width:38px;height:38px;border-radius:50%;background:var(--text3);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-user-question"></i></div>'+
+    '<div><div style="font-weight:700;font-size:14px">Sin asignar</div><div style="font-size:11px;color:var(--text2)">'+sinAsignar.length+' cliente(s)</div></div>'+
+    '</div>'+
+    '<div style="font-size:12px;color:var(--text3)">Clientes que todavía no tienen comercial asignado</div>'+
+    '</div>'
+
+  cont.innerHTML=html
+}
+
+function buildOpcionesComercial(selectedId){
+  let opts='<option value=""'+(!selectedId?' selected':'')+'>Sin asignar</option>'
+  _ecComercialesData.forEach(com=>{
+    opts+='<option value="'+com.id+'"'+(selectedId===com.id?' selected':'')+'>'+com.nombre+'</option>'
+  })
+  return opts
+}
+
+function renderTablaAsignacion(){
+  const cont=document.getElementById('tabla-asignacion-comercial')
+  if(!cont)return
+  const filtroComercial=document.getElementById('ec-filtro-comercial')?.value||''
+  const buscar=(document.getElementById('ec-filtro-cliente')?.value||'').toLowerCase()
+
+  let lista=_ecClientesData.filter(c=>!buscar||c.nombre.toLowerCase().includes(buscar))
+  if(filtroComercial==='sin')lista=lista.filter(c=>!c.comercial_id)
+  else if(filtroComercial)lista=lista.filter(c=>c.comercial_id===filtroComercial)
+
+  const rows=lista.map(c=>{
+    const pedidosCliente=_ecPedidosData.filter(p=>p.cliente_id===c.id&&p.estado!=='Anulado')
+    const ultimoPedido=pedidosCliente.length?pedidosCliente.map(p=>p.fecha_recogida).sort().slice(-1)[0]:null
+    const contactosCliente=_ecSeguimientoData.filter(s=>s.cliente_id===c.id)
+    const ultimoContacto=contactosCliente.length?contactosCliente[0].fecha:null
+    return '<tr><td><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+c.nombre+'</strong></td>'+
+      '<td>'+(c.pais||'—')+'</td>'+
+      '<td><select onchange="asignarComercial(\''+c.id+'\',this.value)" style="padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">'+buildOpcionesComercial(c.comercial_id)+'</select></td>'+
+      '<td>'+pedidosCliente.length+'</td>'+
+      '<td>'+(ultimoPedido?fmt(ultimoPedido):'—')+'</td>'+
+      '<td>'+(ultimoContacto?fmt(ultimoContacto):'—')+'</td></tr>'
+  }).join('')
+
+  cont.innerHTML=lista.length?
+    '<table><thead><tr><th>Cliente</th><th>País</th><th>Comercial</th><th>Pedidos</th><th>Último pedido</th><th>Último contacto</th></tr></thead><tbody>'+rows+'</tbody></table>':
+    '<div class="empty">No hay clientes que coincidan con el filtro</div>'
+}
+
+function filtrarPorComercial(id){
+  const sel=document.getElementById('ec-filtro-comercial')
+  if(sel)sel.value=id
+  renderTablaAsignacion()
+  document.getElementById('tabla-asignacion-comercial').scrollIntoView({behavior:'smooth',block:'start'})
+}
+
+async function asignarComercial(clienteId,comercialId){
+  const {error}=await db.from('clientes').update({comercial_id:comercialId||null}).eq('id',clienteId)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Comercial asignado ✓')
+  const c=_ecClientesData.find(x=>x.id===clienteId)
+  if(c)c.comercial_id=comercialId||null
+  renderComercialesCards()
+  renderTablaAsignacion()
 }
 
 // ── FICHA COMERCIAL DE CLIENTE ───────────────────────────────
@@ -5816,7 +6013,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientesSeguimiento,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
+  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientesSeguimiento,'equipo-comercial':loadEquipoComercial,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
   if(map[id])map[id]()
 }
 </script>
