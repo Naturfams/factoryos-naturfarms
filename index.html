@@ -199,7 +199,7 @@ tr:hover td{background:var(--bg)}
     <div class="nav-item" onclick="showPage('reclamaciones',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-alert-octagon"></i>Reclamaciones</div>
     <div class="nav-item" onclick="showPage('tarifas',this)" data-roles="admin,comercial"><i class="ti ti-tag"></i>Tarifas</div>
     <div class="nav-item" onclick="showPage('clientes',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-users"></i>Clientes</div>
-    <div class="nav-item" onclick="showPage('equipo-comercial',this)" data-roles="admin"><i class="ti ti-briefcase"></i>Equipo comercial</div>
+    <div class="nav-item" onclick="showPage('equipo-comercial',this)" data-roles="admin,comercial"><i class="ti ti-briefcase"></i>Equipo comercial</div>
     <div class="nav-sec">Operaciones</div>
     <div class="nav-item" onclick="showPage('preparacion',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-package"></i>Preparación<span class="nav-badge" id="badge-prep">0</span></div>
     <div class="nav-item" onclick="showPage('planning',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-calendar-week"></i>Planning</div>
@@ -542,7 +542,7 @@ tr:hover td{background:var(--bg)}
         <div class="loading"><i class="ti ti-loader ti-spin"></i></div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      <div id="ec-add-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px">
         <span style="font-size:13px;color:var(--text2)">Añadir al equipo comercial:</span>
         <select id="ec-add-select" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;min-width:200px"></select>
         <button class="btn btn-sm" onclick="agregarAEquipoComercial()"><i class="ti ti-user-plus"></i>Añadir</button>
@@ -2229,11 +2229,14 @@ let _ecPedidosData=[]
 let _ecSeguimientoData=[]
 
 async function loadEquipoComercial(){
-  if(!can('admin')){
+  if(!can('admin,comercial')){
     const pg=document.getElementById('page-equipo-comercial')
-    if(pg)pg.innerHTML='<div class="empty" style="padding:60px"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:10px"></i>Acceso restringido a administradores</div>'
+    if(pg)pg.innerHTML='<div class="empty" style="padding:60px"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:10px"></i>Acceso restringido</div>'
     return
   }
+  const elAddRow=document.getElementById('ec-add-row')
+  if(elAddRow)elAddRow.style.display=can('admin')?'flex':'none'
+
   const [{data:comercialesData},{data:todosPerfiles},{data:clientesData},{data:pedidosData},{data:segData}]=await Promise.all([
     db.from('perfiles').select('*').or('rol.eq.comercial,es_comercial.eq.true').order('nombre'),
     db.from('perfiles').select('*').order('nombre'),
@@ -2274,6 +2277,7 @@ function poblarSelectorAgregarComercial(){
 }
 
 async function agregarAEquipoComercial(){
+  if(!can('admin')){toast('Solo un administrador puede gestionar el equipo comercial','err');return}
   const id=document.getElementById('ec-add-select')?.value
   if(!id){toast('Selecciona un usuario primero','err');return}
   const {error}=await db.from('perfiles').update({es_comercial:true}).eq('id',id)
@@ -2283,6 +2287,7 @@ async function agregarAEquipoComercial(){
 }
 
 async function quitarDeEquipoComercial(id){
+  if(!can('admin')){toast('Solo un administrador puede gestionar el equipo comercial','err');return}
   const {error}=await db.from('perfiles').update({es_comercial:false}).eq('id',id)
   if(error){toast('Error: '+error.message,'err');return}
   toast('Eliminado del equipo comercial')
@@ -2310,7 +2315,7 @@ function renderComercialesCards(){
     const ultimoContacto=contactos.length?contactos[0].fecha:null // ya viene ordenado desc por fecha
 
     html+='<div class="card" style="position:relative">'+
-      (com.rol!=='comercial'?'<button class="btn btn-sm btn-danger" style="position:absolute;top:10px;right:10px;padding:2px 6px" title="Quitar del equipo comercial" onclick="event.stopPropagation();quitarDeEquipoComercial(\''+com.id+'\')"><i class="ti ti-x"></i></button>':'')+
+      (com.rol!=='comercial'&&can('admin')?'<button class="btn btn-sm btn-danger" style="position:absolute;top:10px;right:10px;padding:2px 6px" title="Quitar del equipo comercial" onclick="event.stopPropagation();quitarDeEquipoComercial(\''+com.id+'\')"><i class="ti ti-x"></i></button>':'')+
       '<div style="cursor:pointer" onclick="filtrarPorComercial(\''+com.id+'\')">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
       '<div style="width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">'+com.nombre.charAt(0).toUpperCase()+'</div>'+
@@ -2354,14 +2359,19 @@ function renderTablaAsignacion(){
   if(filtroComercial==='sin')lista=lista.filter(c=>!c.comercial_id)
   else if(filtroComercial)lista=lista.filter(c=>c.comercial_id===filtroComercial)
 
+  const esAdmin=can('admin')
   const rows=lista.map(c=>{
     const pedidosCliente=_ecPedidosData.filter(p=>p.cliente_id===c.id&&p.estado!=='Anulado')
     const ultimoPedido=pedidosCliente.length?pedidosCliente.map(p=>p.fecha_recogida).sort().slice(-1)[0]:null
     const contactosCliente=_ecSeguimientoData.filter(s=>s.cliente_id===c.id)
     const ultimoContacto=contactosCliente.length?contactosCliente[0].fecha:null
+    const comercialAsignado=_ecComercialesData.find(x=>x.id===c.comercial_id)
+    const celdaComercial=esAdmin?
+      '<select onchange="asignarComercial(\''+c.id+'\',this.value)" style="padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">'+buildOpcionesComercial(c.comercial_id)+'</select>':
+      (comercialAsignado?comercialAsignado.nombre:'<span style="color:var(--text3)">Sin asignar</span>')
     return '<tr><td><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+c.nombre+'</strong></td>'+
       '<td>'+(c.pais||'—')+'</td>'+
-      '<td><select onchange="asignarComercial(\''+c.id+'\',this.value)" style="padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">'+buildOpcionesComercial(c.comercial_id)+'</select></td>'+
+      '<td>'+celdaComercial+'</td>'+
       '<td>'+pedidosCliente.length+'</td>'+
       '<td>'+(ultimoPedido?fmt(ultimoPedido):'—')+'</td>'+
       '<td>'+(ultimoContacto?fmt(ultimoContacto):'—')+'</td></tr>'
@@ -2380,6 +2390,7 @@ function filtrarPorComercial(id){
 }
 
 async function asignarComercial(clienteId,comercialId){
+  if(!can('admin')){toast('Solo un administrador puede reasignar clientes','err');return}
   const {error}=await db.from('clientes').update({comercial_id:comercialId||null}).eq('id',clienteId)
   if(error){toast('Error: '+error.message,'err');return}
   toast('Comercial asignado ✓')
