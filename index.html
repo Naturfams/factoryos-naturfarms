@@ -208,6 +208,7 @@ tr:hover td{background:var(--bg)}
     <div class="nav-item" onclick="showPage('envios',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-truck"></i>Envíos<span class="nav-badge" id="badge-envios">0</span></div>
     <div class="nav-sec">Almacén</div>
     <div class="nav-item" onclick="showPage('stock',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-box"></i>Stock</div>
+    <div class="nav-item" onclick="showPage('productos',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-apple"></i>Productos</div>
     <div class="nav-sec">Informes</div>
     <div class="nav-item" onclick="showPage('informes-qc',this)" data-roles="admin,comercial,calidad,operario"><i class="ti ti-report-analytics"></i>Informes QC</div>
     <div class="nav-sec">Equipo</div>
@@ -657,6 +658,21 @@ tr:hover td{background:var(--bg)}
     <div class="page" id="page-stock">
       <div class="ph"><h1 class="pt">Stock</h1><button class="btn btn-primary" onclick="abrirNuevoStock()"><i class="ti ti-plus"></i>Añadir</button></div>
       <div class="card" style="padding:0"><div id="tabla-stock"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div class="page" id="page-productos">
+      <div class="ph"><h1 class="pt">Productos</h1></div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title"><i class="ti ti-plus"></i>Nuevo producto</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="prod-nombre-nuevo" placeholder="Nombre del producto (Ej: Berenjena Bio)" style="flex:1;min-width:220px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px" onkeydown="if(event.key==='Enter')guardarProductoNuevo()">
+          <button class="btn btn-primary" onclick="guardarProductoNuevo()"><i class="ti ti-plus"></i>Añadir</button>
+        </div>
+        <div class="err-box" id="prod-nuevo-err"></div>
+      </div>
+      <div class="filter-row"><input type="text" id="filtro-producto" placeholder="Buscar producto..." oninput="renderTablaProductos()" style="min-width:220px"></div>
+      <div class="card" style="padding:0"><div id="tabla-productos"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
     </div>
 
     <!-- PARTIDAS DE ENTRADA -->
@@ -1631,7 +1647,7 @@ function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet=
     div.innerHTML=
     '<div class="producto-linea-fila" style="grid-template-columns:2fr 1.5fr 90px 70px">'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Producto *</label><select id="lf-'+id+'"><option value="">—</option>'+
-    ['Nectarina Blanca','Nectarina Amarilla','Paraguayo Blanco','Melocotón Blanco','Melocotón Amarillo','Naranjas','Melocotones','Naranjas Zumo','Naranjas Bio','Naranjas Sin tratar','Pomelos Bio','Albaricoque Bio','Caqui Bio','Sandías Negra','Sandías s/pep. Ray.','Sandías s/pep. Negra','Batatas Bio','Naranjas Demeter','Batatas','Limón Bio','Clementinas Bio','Patatas','Aguacate Bio','Ciruelas Bio','Paraguayo Bio','Brevas','Clementinas Demeter','Pomelo Demeter','Caqui','Granadas','Mandarina','Esparragos','Esparragos Bio','Mandarina Bio','Cebolla','Melocotón A. Bio','Melocotón B. Bio','Nectarina A. Bio','Batata Bio B','Pitaya BIO','Sandia Mini','Nectarina B. Bio','Pitaya','Ciruela Bio','Calabaza Bio','Platerina Bio','Manzana Bio','Limón','Jengibre Bio','Naranja Amarga Bio','Nabo','Melon','Puerro Bio','Mango Bio','Zanahoria Bio','Berenjena Bio','Pimiento CW Rojo Bio'].map(f=>'<option'+(f===fruta?' selected':'')+'>'+f+'</option>').join('')+
+    (_productosCache.includes(fruta)||!fruta?_productosCache:[fruta,..._productosCache]).map(f=>'<option value="'+f+'"'+(f===fruta?' selected':'')+'>'+f+(f===fruta&&!_productosCache.includes(fruta)?' (desactivado)':'')+'</option>').join('')+
     '</select></div>'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Variedad</label><input type="text" id="lp-'+id+'" value="'+producto+'" placeholder="Ej: Navelina"></div>'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Calibre</label><input type="text" id="lca2-'+id+'" value="'+calibre+'" placeholder="60-65" style="padding:6px 8px;font-size:13px"></div>'+
@@ -1787,6 +1803,7 @@ async function loadDashboard(){
   actualizarBadgeEnvios()
   actualizarBadgePrep()
   cargarConfecciones()
+  cargarProductosCache()
 }
 
 async function loadGraficaPalets(){
@@ -5188,6 +5205,72 @@ async function cargarConfecciones(){
   _confecciones=(data||[]).map(s=>s.nombre)
 }
 
+// ── PRODUCTOS (catálogo maestro) ─────────────────────────────
+let _productosCache=[] // solo nombres activos, para el desplegable de pedidos
+let _productosData=[] // filas completas, para la página de gestión
+
+async function cargarProductosCache(){
+  const {data}=await db.from('productos').select('nombre').eq('activo',true).order('nombre')
+  _productosCache=(data||[]).map(p=>p.nombre)
+}
+
+async function loadProductos(){
+  const cont=document.getElementById('tabla-productos')
+  const {data,error}=await db.from('productos').select('*').order('nombre')
+  if(error){cont.innerHTML='<div class="empty">No se pudo cargar. ¿Existe la tabla "productos"?</div>';return}
+  _productosData=data||[]
+  renderTablaProductos()
+}
+
+function renderTablaProductos(){
+  const cont=document.getElementById('tabla-productos')
+  if(!cont)return
+  const buscar=(document.getElementById('filtro-producto')?.value||'').toLowerCase()
+  const lista=_productosData.filter(p=>!buscar||p.nombre.toLowerCase().includes(buscar))
+  cont.innerHTML=lista.length?
+    '<table><thead><tr><th>Producto</th><th>Estado</th><th></th></tr></thead><tbody>'+
+    lista.map(p=>'<tr><td>'+p.nombre+'</td>'+
+      '<td>'+(p.activo?'<span class="badge b-ok">Activo</span>':'<span class="badge b-low">Desactivado</span>')+'</td>'+
+      '<td style="white-space:nowrap">'+
+      '<button class="btn btn-sm" onclick="toggleProductoActivo(\''+p.id+'\','+(!p.activo)+')">'+(p.activo?'<i class="ti ti-eye-off"></i> Desactivar':'<i class="ti ti-eye"></i> Reactivar')+'</button> '+
+      '<button class="btn btn-sm btn-danger" onclick="eliminarProducto(\''+p.id+'\',\''+p.nombre.replace(/'/g,"\\'")+'\')"><i class="ti ti-trash"></i></button>'+
+      '</td></tr>').join('')+
+    '</tbody></table>':'<div class="empty">No hay productos que coincidan</div>'
+}
+
+async function guardarProductoNuevo(){
+  const input=document.getElementById('prod-nombre-nuevo')
+  const nombre=input.value.trim()
+  const errEl=document.getElementById('prod-nuevo-err');errEl.style.display='none'
+  if(!nombre){errEl.textContent='Escribe el nombre del producto';errEl.style.display='block';return}
+  const yaExiste=_productosData.some(p=>p.nombre.toLowerCase()===nombre.toLowerCase())
+  if(yaExiste){errEl.textContent='Ese producto ya existe en el catálogo';errEl.style.display='block';return}
+
+  const {error}=await db.from('productos').insert({nombre})
+  if(error){errEl.textContent='Error: '+error.message;errEl.style.display='block';return}
+  toast('Producto "'+nombre+'" añadido ✓')
+  input.value=''
+  await cargarProductosCache()
+  loadProductos()
+}
+
+async function toggleProductoActivo(id,activo){
+  const {error}=await db.from('productos').update({activo}).eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast(activo?'Producto reactivado ✓':'Producto desactivado')
+  await cargarProductosCache()
+  loadProductos()
+}
+
+async function eliminarProducto(id,nombre){
+  if(!confirm('¿Eliminar "'+nombre+'" del catálogo de productos? No se puede deshacer.'))return
+  const {error}=await db.from('productos').delete().eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Producto eliminado')
+  await cargarProductosCache()
+  loadProductos()
+}
+
 // ── RESULTADOS DE PARTIDA ─────────────────────────────────────
 let resCalibreCount=0
 
@@ -6384,7 +6467,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadFeriaFruitAttraction,'equipo-comercial':loadEquipoComercial,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
+  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadFeriaFruitAttraction,'equipo-comercial':loadEquipoComercial,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,productos:loadProductos,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
   if(map[id])map[id]()
 }
 </script>
