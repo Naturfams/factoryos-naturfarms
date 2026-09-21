@@ -519,11 +519,24 @@ tr:hover td{background:var(--bg)}
       <div class="ph"><h1 class="pt">Clientes</h1><button class="btn btn-primary" onclick="abrirModalCliente()"><i class="ti ti-plus"></i>Nuevo cliente</button></div>
 
       <div class="tabs">
-        <div class="tab active" onclick="switchTab(this,'tab-cli-seguimiento')">Seguimiento</div>
+        <div class="tab active" onclick="switchTab(this,'tab-cli-feria')">Feria FruitAttraction</div>
+        <div class="tab" onclick="switchTab(this,'tab-cli-seguimiento')">Seguimiento</div>
         <div class="tab" onclick="switchTab(this,'tab-cli-listado')">Listado de clientes</div>
       </div>
 
-      <div id="tab-cli-seguimiento">
+      <div id="tab-cli-feria">
+        <div class="ph" style="margin-top:0">
+          <div class="tabs" style="margin-bottom:0" id="feria-dias-tabs"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="abrirRegistroVisitas()"><i class="ti ti-list-details"></i>Registro de visitas</button>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalCitaFeria()"><i class="ti ti-calendar-plus"></i>Nueva reunión</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Feria FruitAttraction · 6, 7 y 8 de octubre · 09:00 a 18:00h. Agenda de reuniones por comercial.</div>
+        <div id="feria-agenda" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+      </div>
+
+      <div id="tab-cli-seguimiento" style="display:none">
         <div class="filter-row"><input type="text" id="filtro-cli-seguimiento" placeholder="Buscar cliente..." oninput="loadClientesSeguimiento()" style="min-width:220px"></div>
         <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-cli-seguimiento"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
       </div>
@@ -908,6 +921,76 @@ tr:hover td{background:var(--bg)}
         <div id="ficha-tabla-seguimiento"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-cita-feria">
+  <div class="modal" style="width:460px">
+    <h3 id="cita-feria-titulo">Nueva reunión — Feria FruitAttraction <button class="close-btn" onclick="closeModal('modal-cita-feria')">×</button></h3>
+    <input type="hidden" id="cf-id">
+    <div class="frow">
+      <div class="fg"><label>Día</label><select id="cf-dia"></select></div>
+      <div class="fg"><label>Comercial</label><select id="cf-comercial"></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Hora inicio</label><input type="time" id="cf-hora-inicio" min="09:00" max="18:00" value="09:00"></div>
+      <div class="fg"><label>Hora fin</label><input type="time" id="cf-hora-fin" min="09:00" max="18:00" value="09:30"></div>
+    </div>
+    <div class="fg"><label>Cliente / empresa</label>
+      <select id="cf-cliente-select" onchange="toggleClienteOtroFeria()">
+        <option value="">— Selecciona un cliente —</option>
+        <option value="__otro__">Otro / cliente nuevo...</option>
+      </select>
+    </div>
+    <div class="fg" id="cf-cliente-otro-wrap" style="display:none">
+      <label>Nombre del cliente o empresa</label>
+      <input type="text" id="cf-cliente-otro" placeholder="Escribe el nombre">
+    </div>
+    <div class="fg"><label>Notas (stand, tema a tratar...)</label><textarea id="cf-notas" rows="2" placeholder="Ej. Stand 5B, interesados en cítricos bio"></textarea></div>
+    <div class="err-box" id="cita-feria-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('modal-cita-feria')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCitaFeria()"><i class="ti ti-check"></i>Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-seguimiento-feria">
+  <div class="modal" style="width:520px">
+    <h3 id="seguimiento-feria-titulo">Seguimiento de reunión <button class="close-btn" onclick="closeModal('modal-seguimiento-feria')">×</button></h3>
+    <input type="hidden" id="sf-cita-id">
+    <div id="sf-resumen-cita" style="font-size:12px;color:var(--text2);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)"></div>
+
+    <div class="fg"><label>Tipo de cliente</label>
+      <select id="sf-tipo-cliente">
+        <option value="">— Selecciona —</option>
+        <option value="nuevo">Cliente nuevo</option>
+        <option value="actual">Cliente actual</option>
+      </select>
+    </div>
+    <div class="fg"><label>Puntos clave tratados</label><textarea id="sf-puntos-clave" rows="3" placeholder="Resumen de la reunión, acuerdos, próximos pasos..."></textarea></div>
+    <div class="fg"><label>Intereses del cliente</label><textarea id="sf-intereses" rows="2" placeholder="Productos o categorías en las que mostró interés"></textarea></div>
+
+    <div class="fg">
+      <label>Tarjeta de visita</label>
+      <div id="sf-tarjeta-preview" style="margin-bottom:8px"></div>
+      <input type="file" id="sf-tarjeta-input" accept="image/*" capture="environment" style="display:none" onchange="subirTarjetaFeria(this.files)">
+      <button type="button" class="btn btn-sm" onclick="document.getElementById('sf-tarjeta-input').click()"><i class="ti ti-camera"></i>Escanear / subir tarjeta</button>
+    </div>
+
+    <div class="err-box" id="seguimiento-feria-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('modal-seguimiento-feria')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarSeguimientoFeria()"><i class="ti ti-check"></i>Guardar seguimiento</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-registro-visitas">
+  <div class="modal" style="width:920px;max-width:95vw">
+    <h3>Registro de visitas — Feria FruitAttraction <button class="close-btn" onclick="closeModal('modal-registro-visitas')">×</button></h3>
+    <div class="filter-row" style="margin-bottom:10px"><input type="text" id="rv-buscar" placeholder="Buscar cliente..." oninput="renderRegistroVisitas()" style="min-width:220px"></div>
+    <div style="overflow-x:auto;max-height:65vh;overflow-y:auto"><div id="rv-tabla"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
   </div>
 </div>
 
@@ -1409,6 +1492,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-reclam-hist')loadReclamacionesHistorico()
   if(tabId==='tab-tarifa-compra')loadTarifasCompra()
   if(tabId==='tab-cli-listado')loadClientes()
+  if(tabId==='tab-cli-feria')loadFeriaFruitAttraction()
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -2219,6 +2303,282 @@ async function guardarCliente(){
   closeModal('modal-cliente')
   const {data:c}=await db.from('clientes').select('*').order('nombre')
   clientes=c||[];poblarSelects();loadClientes()
+}
+
+// ── FERIA FRUITATTRACTION ─────────────────────────────────────
+const FERIA_DIAS=['2026-10-06','2026-10-07','2026-10-08']
+let _feriaDiaActual=FERIA_DIAS[0]
+let _feriaComerciales=[]
+let _feriaCitas=[]
+
+function feriaDiaLabel(d){
+  const dt=new Date(d+'T00:00:00')
+  return dt.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})
+}
+
+async function loadFeriaFruitAttraction(){
+  const contTabs=document.getElementById('feria-dias-tabs')
+  if(contTabs&&!contTabs.dataset.built){
+    contTabs.innerHTML=FERIA_DIAS.map((d,i)=>'<div class="tab'+(i===0?' active':'')+'" onclick="cambiarDiaFeria(this,\''+d+'\')">Día '+(i+1)+' · '+feriaDiaLabel(d)+'</div>').join('')
+    contTabs.dataset.built='1'
+  }
+  if(!_feriaComerciales.length){
+    const {data}=await db.from('perfiles').select('*').or('rol.eq.comercial,es_comercial.eq.true').order('nombre')
+    _feriaComerciales=data||[]
+  }
+  renderFeriaAgenda()
+}
+
+function cambiarDiaFeria(el,dia){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+  el.classList.add('active')
+  _feriaDiaActual=dia
+  renderFeriaAgenda()
+}
+
+async function renderFeriaAgenda(){
+  const cont=document.getElementById('feria-agenda')
+  if(!cont)return
+  cont.innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
+
+  if(!_feriaComerciales.length){
+    cont.innerHTML='<div class="empty">No hay comerciales dados de alta. Añádelos en "Equipo comercial".</div>'
+    return
+  }
+
+  const {data,error}=await db.from('feria_citas').select('*').eq('dia',_feriaDiaActual).order('hora_inicio')
+  if(error){
+    cont.innerHTML='<div class="empty">No se pudo cargar la agenda. ¿Existe la tabla "feria_citas"?</div>'
+    return
+  }
+  _feriaCitas=data||[]
+
+  cont.innerHTML=_feriaComerciales.map(com=>{
+    const citas=_feriaCitas.filter(c=>c.comercial_id===com.id)
+    return '<div class="card" style="padding:0">'+
+      '<div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">'+
+      '<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">'+com.nombre.charAt(0).toUpperCase()+'</div>'+
+      '<strong style="font-size:13px">'+com.nombre+'</strong>'+
+      '<span style="margin-left:auto;font-size:11px;color:var(--text2)">'+citas.length+' reunión(es)</span>'+
+      '</div>'+
+      '<div style="padding:10px 14px;max-height:480px;overflow-y:auto">'+
+      (citas.length?citas.map(c=>renderCitaFeriaCard(c)).join(''):'<div class="empty" style="padding:20px 0">Sin reuniones</div>')+
+      '</div></div>'
+  }).join('')
+}
+
+function renderCitaFeriaCard(c){
+  const tieneSeguimiento=!!c.seguimiento_en
+  return '<div style="border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:start;gap:6px">'+
+    '<div style="min-width:0">'+
+    '<div style="font-size:12px;font-weight:700;color:var(--accent)">'+c.hora_inicio.slice(0,5)+' – '+c.hora_fin.slice(0,5)+'</div>'+
+    '<div style="font-size:13px;margin-top:2px;font-weight:600">'+c.cliente_nombre+'</div>'+
+    (c.notas?'<div style="font-size:11px;color:var(--text2);margin-top:2px">'+c.notas+'</div>':'')+
+    (c.tipo_cliente?'<span class="badge '+(c.tipo_cliente==='nuevo'?'b-ok':'b-warn')+'" style="margin-top:4px;display:inline-block">'+(c.tipo_cliente==='nuevo'?'Cliente nuevo':'Cliente actual')+'</span>':'')+
+    (c.tarjeta_url?' <a href="'+c.tarjeta_url+'" target="_blank" title="Ver tarjeta"><i class="ti ti-id-badge-2" style="color:var(--accent)"></i></a>':'')+
+    '</div>'+
+    '<div style="display:flex;gap:4px;flex-shrink:0">'+
+    '<button class="btn btn-sm '+(tieneSeguimiento?'btn-success':'')+'" style="padding:2px 6px" title="Seguimiento de la reunión" onclick="abrirModalSeguimientoFeria(\''+c.id+'\')"><i class="ti ti-clipboard-text"></i></button>'+
+    '<button class="btn btn-sm" style="padding:2px 6px" onclick="editarCitaFeria(\''+c.id+'\')"><i class="ti ti-edit"></i></button>'+
+    '<button class="btn btn-sm btn-danger" style="padding:2px 6px" onclick="eliminarCitaFeria(\''+c.id+'\')"><i class="ti ti-trash"></i></button>'+
+    '</div></div></div>'
+}
+
+function toggleClienteOtroFeria(){
+  const val=document.getElementById('cf-cliente-select').value
+  document.getElementById('cf-cliente-otro-wrap').style.display=(val==='__otro__')?'block':'none'
+}
+
+function abrirModalCitaFeria(){
+  document.getElementById('cf-id').value=''
+  document.getElementById('cita-feria-err').style.display='none'
+  const selDia=document.getElementById('cf-dia')
+  selDia.innerHTML=FERIA_DIAS.map((d,i)=>'<option value="'+d+'"'+(d===_feriaDiaActual?' selected':'')+'>Día '+(i+1)+' · '+feriaDiaLabel(d)+'</option>').join('')
+  const selCom=document.getElementById('cf-comercial')
+  selCom.innerHTML=_feriaComerciales.length?
+    _feriaComerciales.map(c=>'<option value="'+c.id+'">'+c.nombre+'</option>').join(''):
+    '<option value="">— Sin comerciales dados de alta —</option>'
+  document.getElementById('cf-hora-inicio').value='09:00'
+  document.getElementById('cf-hora-fin').value='09:30'
+  const selCli=document.getElementById('cf-cliente-select')
+  selCli.innerHTML='<option value="">— Selecciona un cliente —</option>'+
+    (clientes||[]).map(c=>'<option value="'+c.id+'">'+c.nombre+'</option>').join('')+
+    '<option value="__otro__">Otro / cliente nuevo...</option>'
+  document.getElementById('cf-cliente-otro-wrap').style.display='none'
+  document.getElementById('cf-cliente-otro').value=''
+  document.getElementById('cf-notas').value=''
+  document.getElementById('cita-feria-titulo').childNodes[0].textContent='Nueva reunión — Feria FruitAttraction '
+  openModal('modal-cita-feria')
+}
+
+function editarCitaFeria(id){
+  const c=_feriaCitas.find(x=>x.id===id)||_rvCitasTodas.find(x=>x.id===id)
+  if(!c)return
+  abrirModalCitaFeria()
+  document.getElementById('cf-id').value=c.id
+  document.getElementById('cf-dia').value=c.dia
+  document.getElementById('cf-comercial').value=c.comercial_id
+  document.getElementById('cf-hora-inicio').value=c.hora_inicio.slice(0,5)
+  document.getElementById('cf-hora-fin').value=c.hora_fin.slice(0,5)
+  const selCli=document.getElementById('cf-cliente-select')
+  const existeEnLista=c.cliente_id&&[...selCli.options].some(o=>o.value===c.cliente_id)
+  if(existeEnLista){
+    selCli.value=c.cliente_id
+    document.getElementById('cf-cliente-otro-wrap').style.display='none'
+  } else {
+    selCli.value='__otro__'
+    document.getElementById('cf-cliente-otro-wrap').style.display='block'
+    document.getElementById('cf-cliente-otro').value=c.cliente_nombre
+  }
+  document.getElementById('cf-notas').value=c.notas||''
+  document.getElementById('cita-feria-titulo').childNodes[0].textContent='Editar reunión — Feria FruitAttraction '
+}
+
+async function guardarCitaFeria(){
+  const id=document.getElementById('cf-id').value
+  const dia=document.getElementById('cf-dia').value
+  const comercial_id=document.getElementById('cf-comercial').value
+  const hora_inicio=document.getElementById('cf-hora-inicio').value
+  const hora_fin=document.getElementById('cf-hora-fin').value
+  const selCli=document.getElementById('cf-cliente-select')
+  const cliValor=selCli.value
+  let cliente_id=null,cliente_nombre=''
+  if(cliValor==='__otro__'){
+    cliente_nombre=document.getElementById('cf-cliente-otro').value.trim()
+  } else if(cliValor){
+    cliente_id=cliValor
+    cliente_nombre=(selCli.options[selCli.selectedIndex]||{}).textContent||''
+  }
+  const notas=document.getElementById('cf-notas').value.trim()
+  const errEl=document.getElementById('cita-feria-err');errEl.style.display='none'
+
+  if(!comercial_id){errEl.textContent='Selecciona un comercial';errEl.style.display='block';return}
+  if(!cliValor){errEl.textContent='Selecciona un cliente o "Otro / cliente nuevo..."';errEl.style.display='block';return}
+  if(!cliente_nombre){errEl.textContent='Indica el nombre del cliente o empresa';errEl.style.display='block';return}
+  if(!hora_inicio||!hora_fin||hora_fin<=hora_inicio){errEl.textContent='La hora de fin debe ser posterior a la de inicio';errEl.style.display='block';return}
+  if(hora_inicio<'09:00'||hora_fin>'18:00'){errEl.textContent='El horario de la feria es de 9:00 a 18:00h';errEl.style.display='block';return}
+
+  const solapa=_feriaCitas.some(c=>c.id!==id&&c.comercial_id===comercial_id&&c.dia===dia&&hora_inicio<c.hora_fin.slice(0,5)&&hora_fin>c.hora_inicio.slice(0,5))
+
+  const payload={dia,comercial_id,hora_inicio,hora_fin,cliente_nombre,cliente_id,notas:notas||null,creado_por:currentPerfil?.nombre}
+
+  let error
+  if(id){
+    ;({error}=await db.from('feria_citas').update(payload).eq('id',id))
+  } else {
+    ;({error}=await db.from('feria_citas').insert(payload))
+  }
+  if(error){errEl.textContent='Error: '+error.message;errEl.style.display='block';return}
+
+  toast(solapa?'Guardado ✓ (atención: se solapa con otra reunión de este comercial)':'Reunión guardada ✓')
+  closeModal('modal-cita-feria')
+  _feriaDiaActual=dia
+  const tabDia=[...document.getElementById('feria-dias-tabs').children].find((t,i)=>FERIA_DIAS[i]===dia)
+  if(tabDia){document.getElementById('feria-dias-tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tabDia.classList.add('active')}
+  renderFeriaAgenda()
+}
+
+async function eliminarCitaFeria(id){
+  if(!confirm('¿Eliminar esta reunión de la agenda?'))return
+  const {error}=await db.from('feria_citas').delete().eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Reunión eliminada')
+  renderFeriaAgenda()
+}
+
+// ── Seguimiento de la reunión (puntos clave, intereses, tarjeta escaneada) ──
+let _sfTarjetaUrl=null
+
+function abrirModalSeguimientoFeria(citaId){
+  const c=_feriaCitas.find(x=>x.id===citaId)||_rvCitasTodas.find(x=>x.id===citaId)
+  if(!c)return
+  document.getElementById('sf-cita-id').value=citaId
+  document.getElementById('seguimiento-feria-err').style.display='none'
+  const nombreComercial=(_feriaComerciales.find(x=>x.id===c.comercial_id)||{}).nombre||'—'
+  document.getElementById('sf-resumen-cita').innerHTML=
+    '<strong>'+c.cliente_nombre+'</strong> · '+feriaDiaLabel(c.dia)+' · '+c.hora_inicio.slice(0,5)+'–'+c.hora_fin.slice(0,5)+' · '+nombreComercial
+  document.getElementById('sf-tipo-cliente').value=c.tipo_cliente||''
+  document.getElementById('sf-puntos-clave').value=c.puntos_clave||''
+  document.getElementById('sf-intereses').value=c.intereses||''
+  _sfTarjetaUrl=c.tarjeta_url||null
+  renderTarjetaPreview()
+  document.getElementById('seguimiento-feria-titulo').childNodes[0].textContent='Seguimiento de reunión '
+  openModal('modal-seguimiento-feria')
+}
+
+function renderTarjetaPreview(){
+  const cont=document.getElementById('sf-tarjeta-preview')
+  cont.innerHTML=_sfTarjetaUrl?
+    '<div style="position:relative;display:inline-block"><img src="'+_sfTarjetaUrl+'" style="max-width:220px;max-height:140px;border-radius:var(--radius);border:1px solid var(--border2);display:block">'+
+    '<button type="button" class="btn btn-sm btn-danger" style="position:absolute;top:4px;right:4px;padding:2px 6px" onclick="_sfTarjetaUrl=null;renderTarjetaPreview()"><i class="ti ti-x"></i></button></div>':
+    '<div class="empty" style="padding:10px 0">Sin tarjeta escaneada todavía</div>'
+}
+
+async function subirTarjetaFeria(files){
+  if(!files||!files.length)return
+  const file=files[0]
+  toast('Subiendo tarjeta...')
+  const ext=file.name.split('.').pop()
+  const path='tarjeta-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext
+  const {error}=await db.storage.from('feria').upload(path,file)
+  if(error){toast('Error subiendo tarjeta: '+error.message,'err');return}
+  const {data:urlData}=db.storage.from('feria').getPublicUrl(path)
+  _sfTarjetaUrl=urlData.publicUrl
+  renderTarjetaPreview()
+  toast('Tarjeta subida ✓')
+  document.getElementById('sf-tarjeta-input').value=''
+}
+
+async function guardarSeguimientoFeria(){
+  const citaId=document.getElementById('sf-cita-id').value
+  const tipo_cliente=document.getElementById('sf-tipo-cliente').value
+  const puntos_clave=document.getElementById('sf-puntos-clave').value.trim()
+  const intereses=document.getElementById('sf-intereses').value.trim()
+  const errEl=document.getElementById('seguimiento-feria-err');errEl.style.display='none'
+  if(!tipo_cliente){errEl.textContent='Indica si es cliente nuevo o actual';errEl.style.display='block';return}
+
+  const {error}=await db.from('feria_citas').update({
+    tipo_cliente,
+    puntos_clave:puntos_clave||null,
+    intereses:intereses||null,
+    tarjeta_url:_sfTarjetaUrl,
+    seguimiento_en:new Date().toISOString()
+  }).eq('id',citaId)
+  if(error){errEl.textContent='Error: '+error.message;errEl.style.display='block';return}
+
+  toast('Seguimiento guardado ✓')
+  closeModal('modal-seguimiento-feria')
+  renderFeriaAgenda()
+}
+
+// ── Registro completo de visitas (todos los días, todos los comerciales) ──
+let _rvCitasTodas=[]
+
+async function abrirRegistroVisitas(){
+  document.getElementById('rv-buscar').value=''
+  document.getElementById('rv-tabla').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
+  openModal('modal-registro-visitas')
+  const {data,error}=await db.from('feria_citas').select('*').order('dia').order('hora_inicio')
+  if(error){document.getElementById('rv-tabla').innerHTML='<div class="empty">No se pudo cargar el registro</div>';return}
+  _rvCitasTodas=data||[]
+  renderRegistroVisitas()
+}
+
+function renderRegistroVisitas(){
+  const buscar=(document.getElementById('rv-buscar')?.value||'').toLowerCase()
+  const lista=_rvCitasTodas.filter(c=>!buscar||c.cliente_nombre.toLowerCase().includes(buscar))
+  const mapaCom={}
+  _feriaComerciales.forEach(c=>mapaCom[c.id]=c.nombre)
+
+  document.getElementById('rv-tabla').innerHTML=lista.length?
+    '<table class="tabla-compacta"><thead><tr><th>Día</th><th>Hora</th><th>Comercial</th><th>Cliente</th><th>Tipo</th><th>Intereses</th><th>Tarjeta</th><th></th></tr></thead><tbody>'+
+    lista.map(c=>'<tr><td style="white-space:nowrap">'+feriaDiaLabel(c.dia)+'</td><td>'+c.hora_inicio.slice(0,5)+'</td><td>'+(mapaCom[c.comercial_id]||'—')+'</td><td>'+c.cliente_nombre+'</td>'+
+      '<td>'+(c.tipo_cliente?'<span class="badge '+(c.tipo_cliente==='nuevo'?'b-ok':'b-warn')+'">'+(c.tipo_cliente==='nuevo'?'Nuevo':'Actual')+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>'+
+      '<td style="max-width:220px">'+(c.intereses||'—')+'</td>'+
+      '<td>'+(c.tarjeta_url?'<a href="'+c.tarjeta_url+'" target="_blank"><i class="ti ti-photo"></i></a>':'—')+'</td>'+
+      '<td><button class="btn btn-sm" onclick="closeModal(\'modal-registro-visitas\');abrirModalSeguimientoFeria(\''+c.id+'\')"><i class="ti ti-edit"></i></button></td></tr>').join('')+
+    '</tbody></table>':'<div class="empty">Sin visitas registradas todavía</div>'
 }
 
 // ── EQUIPO COMERCIAL (solo admin) ────────────────────────────
@@ -6024,7 +6384,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadClientesSeguimiento,'equipo-comercial':loadEquipoComercial,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
+  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadFeriaFruitAttraction,'equipo-comercial':loadEquipoComercial,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
   if(map[id])map[id]()
 }
 </script>
