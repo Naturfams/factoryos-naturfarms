@@ -529,12 +529,23 @@ tr:hover td{background:var(--bg)}
         <div class="ph" style="margin-top:0">
           <div class="tabs" style="margin-bottom:0" id="feria-dias-tabs"></div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-sm" onclick="abrirRegistroVisitas()"><i class="ti ti-list-details"></i>Registro de visitas</button>
+            <button class="btn btn-sm" onclick="abrirModalVisitaStand()"><i class="ti ti-id-badge-2"></i>Visita al stand</button>
             <button class="btn btn-primary btn-sm" onclick="abrirModalCitaFeria()"><i class="ti ti-calendar-plus"></i>Nueva reunión</button>
           </div>
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Feria FruitAttraction · 6, 7 y 8 de octubre · 09:00 a 18:00h. Agenda de reuniones por comercial.</div>
-        <div id="feria-agenda" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Feria FruitAttraction · 6, 7 y 8 de octubre · 09:00 a 18:00h.</div>
+
+        <div id="feria-agenda-wrap">
+          <div id="feria-agenda" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+
+        <div id="feria-registro-wrap" style="display:none">
+          <div class="ph" style="margin-top:0">
+            <input type="text" id="rv-buscar" placeholder="Buscar cliente o empresa..." oninput="renderRegistroVisitas()" style="min-width:220px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px">
+            <button class="btn btn-sm" onclick="imprimirInformeFeria()"><i class="ti ti-printer"></i>Imprimir informe</button>
+          </div>
+          <div class="card" style="padding:0;overflow-x:auto"><div id="rv-tabla"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+        </div>
       </div>
 
       <div id="tab-cli-seguimiento" style="display:none">
@@ -953,14 +964,8 @@ tr:hover td{background:var(--bg)}
       <div class="fg"><label>Hora fin</label><input type="time" id="cf-hora-fin" min="09:00" max="18:00" value="09:30"></div>
     </div>
     <div class="fg"><label>Cliente / empresa</label>
-      <select id="cf-cliente-select" onchange="toggleClienteOtroFeria()">
-        <option value="">— Selecciona un cliente —</option>
-        <option value="__otro__">Otro / cliente nuevo...</option>
-      </select>
-    </div>
-    <div class="fg" id="cf-cliente-otro-wrap" style="display:none">
-      <label>Nombre del cliente o empresa</label>
-      <input type="text" id="cf-cliente-otro" placeholder="Escribe el nombre">
+      <input type="text" id="cf-cliente-nombre" list="feria-clientes-list" placeholder="Escribe o elige un cliente existente">
+      <datalist id="feria-clientes-list"></datalist>
     </div>
     <div class="fg"><label>Notas (stand, tema a tratar...)</label><textarea id="cf-notas" rows="2" placeholder="Ej. Stand 5B, interesados en cítricos bio"></textarea></div>
     <div class="err-box" id="cita-feria-err"></div>
@@ -1002,11 +1007,44 @@ tr:hover td{background:var(--bg)}
   </div>
 </div>
 
-<div class="modal-bg" id="modal-registro-visitas">
-  <div class="modal" style="width:920px;max-width:95vw">
-    <h3>Registro de visitas — Feria FruitAttraction <button class="close-btn" onclick="closeModal('modal-registro-visitas')">×</button></h3>
-    <div class="filter-row" style="margin-bottom:10px"><input type="text" id="rv-buscar" placeholder="Buscar cliente..." oninput="renderRegistroVisitas()" style="min-width:220px"></div>
-    <div style="overflow-x:auto;max-height:65vh;overflow-y:auto"><div id="rv-tabla"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+<div class="modal-bg" id="modal-visita-stand">
+  <div class="modal" style="width:520px">
+    <h3 id="visita-stand-titulo">Visita al stand <button class="close-btn" onclick="closeModal('modal-visita-stand')">×</button></h3>
+    <input type="hidden" id="vs-id">
+
+    <div class="fg">
+      <label>Tarjeta de visita</label>
+      <div id="vs-tarjeta-preview" style="margin-bottom:8px"></div>
+      <input type="file" id="vs-tarjeta-input" accept="image/*" capture="environment" style="display:none" onchange="subirTarjetaVisita(this.files)">
+      <button type="button" class="btn btn-sm" onclick="document.getElementById('vs-tarjeta-input').click()"><i class="ti ti-camera"></i>Escanear / subir tarjeta</button>
+    </div>
+
+    <div class="frow">
+      <div class="fg"><label>Día</label><select id="vs-dia"></select></div>
+      <div class="fg"><label>Atendido por</label><select id="vs-comercial"></select></div>
+    </div>
+    <div class="fg"><label>Empresa *</label><input type="text" id="vs-empresa" placeholder="Nombre de la empresa"></div>
+    <div class="frow">
+      <div class="fg"><label>Nombre del visitante</label><input type="text" id="vs-nombre" placeholder="Nombre y apellidos"></div>
+      <div class="fg"><label>Cargo</label><input type="text" id="vs-cargo" placeholder="Ej. Responsable de compras"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Teléfono</label><input type="text" id="vs-telefono"></div>
+      <div class="fg"><label>Email</label><input type="email" id="vs-email"></div>
+    </div>
+    <div class="fg"><label>¿Es cliente o proveedor?</label>
+      <select id="vs-tipo">
+        <option value="cliente">Cliente</option>
+        <option value="proveedor">Proveedor</option>
+      </select>
+    </div>
+    <div class="fg"><label>En qué está interesado</label><textarea id="vs-intereses" rows="2" placeholder="Productos, categorías, volumen aproximado..."></textarea></div>
+
+    <div class="err-box" id="visita-stand-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal('modal-visita-stand')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarVisitaStand()"><i class="ti ti-check"></i>Guardar visita</button>
+    </div>
   </div>
 </div>
 
@@ -2336,7 +2374,8 @@ function feriaDiaLabel(d){
 async function loadFeriaFruitAttraction(){
   const contTabs=document.getElementById('feria-dias-tabs')
   if(contTabs&&!contTabs.dataset.built){
-    contTabs.innerHTML=FERIA_DIAS.map((d,i)=>'<div class="tab'+(i===0?' active':'')+'" onclick="cambiarDiaFeria(this,\''+d+'\')">Día '+(i+1)+' · '+feriaDiaLabel(d)+'</div>').join('')
+    contTabs.innerHTML=FERIA_DIAS.map((d,i)=>'<div class="tab'+(i===0?' active':'')+'" onclick="cambiarDiaFeria(this,\''+d+'\')">Día '+(i+1)+' · '+feriaDiaLabel(d)+'</div>').join('')+
+      '<div class="tab" onclick="mostrarRegistroVisitasTab(this)"><i class="ti ti-list-details"></i> Registro de visitas</div>'
     contTabs.dataset.built='1'
   }
   if(!_feriaComerciales.length){
@@ -2350,7 +2389,17 @@ function cambiarDiaFeria(el,dia){
   el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
   el.classList.add('active')
   _feriaDiaActual=dia
+  document.getElementById('feria-agenda-wrap').style.display='block'
+  document.getElementById('feria-registro-wrap').style.display='none'
   renderFeriaAgenda()
+}
+
+function mostrarRegistroVisitasTab(el){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+  el.classList.add('active')
+  document.getElementById('feria-agenda-wrap').style.display='none'
+  document.getElementById('feria-registro-wrap').style.display='block'
+  cargarRegistroVisitas()
 }
 
 async function renderFeriaAgenda(){
@@ -2402,11 +2451,6 @@ function renderCitaFeriaCard(c){
     '</div></div></div>'
 }
 
-function toggleClienteOtroFeria(){
-  const val=document.getElementById('cf-cliente-select').value
-  document.getElementById('cf-cliente-otro-wrap').style.display=(val==='__otro__')?'block':'none'
-}
-
 function abrirModalCitaFeria(){
   document.getElementById('cf-id').value=''
   document.getElementById('cita-feria-err').style.display='none'
@@ -2418,12 +2462,8 @@ function abrirModalCitaFeria(){
     '<option value="">— Sin comerciales dados de alta —</option>'
   document.getElementById('cf-hora-inicio').value='09:00'
   document.getElementById('cf-hora-fin').value='09:30'
-  const selCli=document.getElementById('cf-cliente-select')
-  selCli.innerHTML='<option value="">— Selecciona un cliente —</option>'+
-    (clientes||[]).map(c=>'<option value="'+c.id+'">'+c.nombre+'</option>').join('')+
-    '<option value="__otro__">Otro / cliente nuevo...</option>'
-  document.getElementById('cf-cliente-otro-wrap').style.display='none'
-  document.getElementById('cf-cliente-otro').value=''
+  document.getElementById('feria-clientes-list').innerHTML=(clientes||[]).map(c=>'<option value="'+c.nombre+'">').join('')
+  document.getElementById('cf-cliente-nombre').value=''
   document.getElementById('cf-notas').value=''
   document.getElementById('cita-feria-titulo').childNodes[0].textContent='Nueva reunión — Feria FruitAttraction '
   openModal('modal-cita-feria')
@@ -2438,16 +2478,7 @@ function editarCitaFeria(id){
   document.getElementById('cf-comercial').value=c.comercial_id
   document.getElementById('cf-hora-inicio').value=c.hora_inicio.slice(0,5)
   document.getElementById('cf-hora-fin').value=c.hora_fin.slice(0,5)
-  const selCli=document.getElementById('cf-cliente-select')
-  const existeEnLista=c.cliente_id&&[...selCli.options].some(o=>o.value===c.cliente_id)
-  if(existeEnLista){
-    selCli.value=c.cliente_id
-    document.getElementById('cf-cliente-otro-wrap').style.display='none'
-  } else {
-    selCli.value='__otro__'
-    document.getElementById('cf-cliente-otro-wrap').style.display='block'
-    document.getElementById('cf-cliente-otro').value=c.cliente_nombre
-  }
+  document.getElementById('cf-cliente-nombre').value=c.cliente_nombre
   document.getElementById('cf-notas').value=c.notas||''
   document.getElementById('cita-feria-titulo').childNodes[0].textContent='Editar reunión — Feria FruitAttraction '
 }
@@ -2458,20 +2489,13 @@ async function guardarCitaFeria(){
   const comercial_id=document.getElementById('cf-comercial').value
   const hora_inicio=document.getElementById('cf-hora-inicio').value
   const hora_fin=document.getElementById('cf-hora-fin').value
-  const selCli=document.getElementById('cf-cliente-select')
-  const cliValor=selCli.value
-  let cliente_id=null,cliente_nombre=''
-  if(cliValor==='__otro__'){
-    cliente_nombre=document.getElementById('cf-cliente-otro').value.trim()
-  } else if(cliValor){
-    cliente_id=cliValor
-    cliente_nombre=(selCli.options[selCli.selectedIndex]||{}).textContent||''
-  }
+  const cliente_nombre=document.getElementById('cf-cliente-nombre').value.trim()
+  const clienteMatch=(clientes||[]).find(c=>c.nombre.toLowerCase()===cliente_nombre.toLowerCase())
+  const cliente_id=clienteMatch?clienteMatch.id:null
   const notas=document.getElementById('cf-notas').value.trim()
   const errEl=document.getElementById('cita-feria-err');errEl.style.display='none'
 
   if(!comercial_id){errEl.textContent='Selecciona un comercial';errEl.style.display='block';return}
-  if(!cliValor){errEl.textContent='Selecciona un cliente o "Otro / cliente nuevo..."';errEl.style.display='block';return}
   if(!cliente_nombre){errEl.textContent='Indica el nombre del cliente o empresa';errEl.style.display='block';return}
   if(!hora_inicio||!hora_fin||hora_fin<=hora_inicio){errEl.textContent='La hora de fin debe ser posterior a la de inicio';errEl.style.display='block';return}
   if(hora_inicio<'09:00'||hora_fin>'18:00'){errEl.textContent='El horario de la feria es de 9:00 a 18:00h';errEl.style.display='block';return}
@@ -2569,33 +2593,219 @@ async function guardarSeguimientoFeria(){
   renderFeriaAgenda()
 }
 
-// ── Registro completo de visitas (todos los días, todos los comerciales) ──
+// ── Registro completo (reuniones agendadas + visitas al stand) ──
 let _rvCitasTodas=[]
+let _rvVisitasTodas=[]
 
-async function abrirRegistroVisitas(){
+async function cargarRegistroVisitas(){
   document.getElementById('rv-buscar').value=''
   document.getElementById('rv-tabla').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
-  openModal('modal-registro-visitas')
-  const {data,error}=await db.from('feria_citas').select('*').order('dia').order('hora_inicio')
-  if(error){document.getElementById('rv-tabla').innerHTML='<div class="empty">No se pudo cargar el registro</div>';return}
-  _rvCitasTodas=data||[]
+  const [{data:citas,error:e1},{data:visitas,error:e2}]=await Promise.all([
+    db.from('feria_citas').select('*').order('dia').order('hora_inicio'),
+    db.from('feria_visitas').select('*').order('dia').order('hora')
+  ])
+  if(e1){document.getElementById('rv-tabla').innerHTML='<div class="empty">No se pudo cargar el registro</div>';return}
+  _rvCitasTodas=citas||[]
+  _rvVisitasTodas=visitas||[]
+  if(e2)_rvVisitasTodas=[] // tabla feria_visitas aún no creada
   renderRegistroVisitas()
+}
+
+function _rvFilas(){
+  const mapaCom={}
+  _feriaComerciales.forEach(c=>mapaCom[c.id]=c.nombre)
+  const deCitas=_rvCitasTodas.map(c=>({
+    id:c.id,origen:'cita',dia:c.dia,hora:c.hora_inicio,comercial:mapaCom[c.comercial_id]||'—',
+    nombre:c.cliente_nombre,tipoLabel:'Reunión agendada',tipoBadge:'b-ok',
+    clasificacion:c.tipo_cliente?(c.tipo_cliente==='nuevo'?'Cliente nuevo':'Cliente actual'):'—',
+    intereses:c.intereses||c.puntos_clave||'—',tarjeta:c.tarjeta_url
+  }))
+  const deVisitas=_rvVisitasTodas.map(v=>({
+    id:v.id,origen:'visita',dia:v.dia,hora:v.hora,comercial:mapaCom[v.comercial_id]||'—',
+    nombre:v.empresa+(v.nombre_visitante?' — '+v.nombre_visitante:''),tipoLabel:'Visita al stand',tipoBadge:'b-warn',
+    clasificacion:v.tipo==='proveedor'?'Proveedor':'Cliente',
+    intereses:v.intereses||'—',tarjeta:v.tarjeta_url
+  }))
+  return [...deCitas,...deVisitas].sort((a,b)=>(a.dia+a.hora).localeCompare(b.dia+b.hora))
 }
 
 function renderRegistroVisitas(){
   const buscar=(document.getElementById('rv-buscar')?.value||'').toLowerCase()
-  const lista=_rvCitasTodas.filter(c=>!buscar||c.cliente_nombre.toLowerCase().includes(buscar))
-  const mapaCom={}
-  _feriaComerciales.forEach(c=>mapaCom[c.id]=c.nombre)
+  let filas=_rvFilas()
+  if(buscar)filas=filas.filter(f=>f.nombre.toLowerCase().includes(buscar))
 
-  document.getElementById('rv-tabla').innerHTML=lista.length?
-    '<table class="tabla-compacta"><thead><tr><th>Día</th><th>Hora</th><th>Comercial</th><th>Cliente</th><th>Tipo</th><th>Intereses</th><th>Tarjeta</th><th></th></tr></thead><tbody>'+
-    lista.map(c=>'<tr><td style="white-space:nowrap">'+feriaDiaLabel(c.dia)+'</td><td>'+c.hora_inicio.slice(0,5)+'</td><td>'+(mapaCom[c.comercial_id]||'—')+'</td><td>'+c.cliente_nombre+'</td>'+
-      '<td>'+(c.tipo_cliente?'<span class="badge '+(c.tipo_cliente==='nuevo'?'b-ok':'b-warn')+'">'+(c.tipo_cliente==='nuevo'?'Nuevo':'Actual')+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>'+
-      '<td style="max-width:220px">'+(c.intereses||'—')+'</td>'+
-      '<td>'+(c.tarjeta_url?'<a href="'+c.tarjeta_url+'" target="_blank"><i class="ti ti-photo"></i></a>':'—')+'</td>'+
-      '<td><button class="btn btn-sm" onclick="closeModal(\'modal-registro-visitas\');abrirModalSeguimientoFeria(\''+c.id+'\')"><i class="ti ti-edit"></i></button></td></tr>').join('')+
+  document.getElementById('rv-tabla').innerHTML=filas.length?
+    '<table class="tabla-compacta"><thead><tr><th>Día</th><th>Hora</th><th>Comercial</th><th>Nombre / empresa</th><th>Origen</th><th>Clasificación</th><th>Intereses</th><th>Tarjeta</th><th></th></tr></thead><tbody>'+
+    filas.map(f=>'<tr><td style="white-space:nowrap">'+feriaDiaLabel(f.dia)+'</td><td>'+f.hora.slice(0,5)+'</td><td>'+f.comercial+'</td><td>'+f.nombre+'</td>'+
+      '<td><span class="badge '+f.tipoBadge+'">'+f.tipoLabel+'</span></td>'+
+      '<td>'+f.clasificacion+'</td><td style="max-width:200px">'+f.intereses+'</td>'+
+      '<td>'+(f.tarjeta?'<a href="'+f.tarjeta+'" target="_blank"><i class="ti ti-photo"></i></a>':'—')+'</td>'+
+      '<td style="white-space:nowrap">'+
+      (f.origen==='cita'?
+        '<button class="btn btn-sm" onclick="abrirModalSeguimientoFeria(\''+f.id+'\')"><i class="ti ti-edit"></i></button>':
+        '<button class="btn btn-sm" onclick="abrirModalVisitaStand(\''+f.id+'\')"><i class="ti ti-edit"></i></button> '+
+        '<button class="btn btn-sm btn-danger" onclick="eliminarVisitaStand(\''+f.id+'\')"><i class="ti ti-trash"></i></button>')+
+      '</td></tr>').join('')+
     '</tbody></table>':'<div class="empty">Sin visitas registradas todavía</div>'
+}
+
+async function imprimirInformeFeria(){
+  const filas=_rvFilas()
+  if(!filas.length){toast('No hay visitas registradas todavía','err');return}
+
+  const porDia={}
+  filas.forEach(f=>{(porDia[f.dia]=porDia[f.dia]||[]).push(f)})
+
+  const buildTablaDia=(items)=>{
+    const rows=items.map(f=>'<tr>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid #eee">'+f.hora.slice(0,5)+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid #eee">'+f.comercial+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid #eee">'+f.nombre+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid #eee">'+f.tipoLabel+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid #eee">'+f.clasificacion+'</td>'+
+      '<td style="padding:6px 8px;border-bottom:1px solid #eee">'+f.intereses+'</td>'+
+    '</tr>').join('')
+    return '<table style="width:100%;border-collapse:collapse;border:1px solid #e0e0dc;margin-bottom:22px">'+
+      '<thead><tr style="background:#3a3a36">'+
+      '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#fff">Hora</th>'+
+      '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#fff">Comercial</th>'+
+      '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#fff">Nombre / empresa</th>'+
+      '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#fff">Origen</th>'+
+      '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#fff">Clasificación</th>'+
+      '<th style="padding:7px 8px;text-align:left;font-size:11px;color:#fff">Intereses</th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table>'
+  }
+
+  let secciones=''
+  Object.keys(porDia).sort().forEach(dia=>{
+    secciones+='<div style="font-size:15px;font-weight:700;color:#1a1a18;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #2d7a3a;text-transform:capitalize">'+feriaDiaLabel(dia)+'</div>'+buildTablaDia(porDia[dia])
+  })
+
+  const totalReuniones=filas.filter(f=>f.origen==='cita').length
+  const totalVisitas=filas.filter(f=>f.origen==='visita').length
+
+  const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
+    '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a18;padding:24px 32px}'+
+    '@media print{body{padding:16px 24px;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{margin:8mm}}</style></head><body>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:3px solid #2d7a3a;margin-bottom:20px">'+
+    '<img src="data:image/png;base64,'+LOGO_B64+'" style="height:70px" alt="Naturfarms">'+
+    '<div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#2d7a3a">REGISTRO DE VISITAS — FRUIT ATTRACTION 2026</div>'+
+    '<div style="font-size:13px;color:#6b6b67;margin-top:4px">6, 7 y 8 de octubre · '+totalReuniones+' reuniones agendadas · '+totalVisitas+' visitas al stand</div></div>'+
+    '<div style="width:100px"></div></div>'+
+    secciones+
+    '<div style="margin-top:8px;padding-top:12px;border-top:1px solid #e0e0dc;font-size:10px;color:#9d9d98;display:flex;justify-content:space-between">'+
+    '<span>Naturfarms Organic · Feria FruitAttraction</span><span>Generado el '+new Date().toLocaleString('es-ES')+'</span></div>'+
+    '</body></html>'
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'})
+  const url=URL.createObjectURL(blob)
+  const w=window.open(url,'_blank')
+  if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
+}
+
+// ── VISITA AL STAND (sin cita previa) ────────────────────────
+let _vsTarjetaUrl=null
+
+function abrirModalVisitaStand(id){
+  document.getElementById('visita-stand-err').style.display='none'
+  document.getElementById('vs-id').value=id||''
+  const selDia=document.getElementById('vs-dia')
+  selDia.innerHTML=FERIA_DIAS.map((d,i)=>'<option value="'+d+'"'+(d===_feriaDiaActual?' selected':'')+'>Día '+(i+1)+' · '+feriaDiaLabel(d)+'</option>').join('')
+  const selCom=document.getElementById('vs-comercial')
+  selCom.innerHTML=_feriaComerciales.length?
+    _feriaComerciales.map(c=>'<option value="'+c.id+'">'+c.nombre+'</option>').join(''):
+    '<option value="">— Sin comerciales dados de alta —</option>'
+
+  const v=id?_rvVisitasTodas.find(x=>x.id===id):null
+  if(v){
+    selDia.value=v.dia
+    selCom.value=v.comercial_id
+    document.getElementById('vs-empresa').value=v.empresa
+    document.getElementById('vs-nombre').value=v.nombre_visitante||''
+    document.getElementById('vs-cargo').value=v.cargo||''
+    document.getElementById('vs-telefono').value=v.telefono||''
+    document.getElementById('vs-email').value=v.email||''
+    document.getElementById('vs-tipo').value=v.tipo||'cliente'
+    document.getElementById('vs-intereses').value=v.intereses||''
+    _vsTarjetaUrl=v.tarjeta_url||null
+    document.getElementById('visita-stand-titulo').childNodes[0].textContent='Editar visita al stand '
+  } else {
+    document.getElementById('vs-empresa').value=''
+    document.getElementById('vs-nombre').value=''
+    document.getElementById('vs-cargo').value=''
+    document.getElementById('vs-telefono').value=''
+    document.getElementById('vs-email').value=''
+    document.getElementById('vs-tipo').value='cliente'
+    document.getElementById('vs-intereses').value=''
+    _vsTarjetaUrl=null
+    document.getElementById('visita-stand-titulo').childNodes[0].textContent='Visita al stand '
+  }
+  renderTarjetaVisitaPreview()
+  openModal('modal-visita-stand')
+}
+
+function renderTarjetaVisitaPreview(){
+  const cont=document.getElementById('vs-tarjeta-preview')
+  cont.innerHTML=_vsTarjetaUrl?
+    '<div style="position:relative;display:inline-block"><img src="'+_vsTarjetaUrl+'" style="max-width:220px;max-height:140px;border-radius:var(--radius);border:1px solid var(--border2);display:block">'+
+    '<button type="button" class="btn btn-sm btn-danger" style="position:absolute;top:4px;right:4px;padding:2px 6px" onclick="_vsTarjetaUrl=null;renderTarjetaVisitaPreview()"><i class="ti ti-x"></i></button></div>':
+    '<div class="empty" style="padding:10px 0">Sin tarjeta escaneada todavía</div>'
+}
+
+async function subirTarjetaVisita(files){
+  if(!files||!files.length)return
+  const file=files[0]
+  toast('Subiendo tarjeta...')
+  const ext=file.name.split('.').pop()
+  const path='visita-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext
+  const {error}=await db.storage.from('feria').upload(path,file)
+  if(error){toast('Error subiendo tarjeta: '+error.message,'err');return}
+  const {data:urlData}=db.storage.from('feria').getPublicUrl(path)
+  _vsTarjetaUrl=urlData.publicUrl
+  renderTarjetaVisitaPreview()
+  toast('Tarjeta subida ✓')
+  document.getElementById('vs-tarjeta-input').value=''
+}
+
+async function guardarVisitaStand(){
+  const id=document.getElementById('vs-id').value
+  const dia=document.getElementById('vs-dia').value
+  const comercial_id=document.getElementById('vs-comercial').value
+  const empresa=document.getElementById('vs-empresa').value.trim()
+  const nombre_visitante=document.getElementById('vs-nombre').value.trim()
+  const cargo=document.getElementById('vs-cargo').value.trim()
+  const telefono=document.getElementById('vs-telefono').value.trim()
+  const email=document.getElementById('vs-email').value.trim()
+  const tipo=document.getElementById('vs-tipo').value
+  const intereses=document.getElementById('vs-intereses').value.trim()
+  const errEl=document.getElementById('visita-stand-err');errEl.style.display='none'
+
+  if(!empresa){errEl.textContent='Indica el nombre de la empresa';errEl.style.display='block';return}
+  if(!comercial_id){errEl.textContent='Indica quién atendió la visita';errEl.style.display='block';return}
+
+  const payload={dia,comercial_id,empresa,nombre_visitante:nombre_visitante||null,cargo:cargo||null,telefono:telefono||null,email:email||null,tipo,intereses:intereses||null,tarjeta_url:_vsTarjetaUrl,creado_por:currentPerfil?.nombre}
+
+  let error
+  if(id){
+    ;({error}=await db.from('feria_visitas').update(payload).eq('id',id))
+  } else {
+    payload.hora=new Date().toTimeString().slice(0,5)
+    ;({error}=await db.from('feria_visitas').insert(payload))
+  }
+  if(error){errEl.textContent='Error: '+error.message;errEl.style.display='block';return}
+
+  toast('Visita guardada ✓')
+  closeModal('modal-visita-stand')
+  const wrap=document.getElementById('feria-registro-wrap')
+  if(wrap&&wrap.style.display!=='none')cargarRegistroVisitas()
+}
+
+async function eliminarVisitaStand(id){
+  if(!confirm('¿Eliminar esta visita del registro?'))return
+  const {error}=await db.from('feria_visitas').delete().eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Visita eliminada')
+  cargarRegistroVisitas()
 }
 
 // ── EQUIPO COMERCIAL (solo admin) ────────────────────────────
