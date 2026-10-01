@@ -470,6 +470,7 @@ tr:hover td{background:var(--bg)}
       <div class="tabs">
         <div class="tab active" onclick="switchTab(this,'tab-tarifa-venta')">Precios de venta</div>
         <div class="tab" onclick="switchTab(this,'tab-tarifa-compra')">Precios de compra (proveedores)</div>
+        <div class="tab" onclick="switchTab(this,'tab-tarifa-transporte')">Transporte</div>
       </div>
 
       <div id="tab-tarifa-venta">
@@ -505,6 +506,19 @@ tr:hover td{background:var(--bg)}
         <div class="card">
           <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Precios de compra semanales por proveedor. Añade líneas de producto en cada proveedor y guarda todos a la vez. El informe impreso incluye todos los proveedores con precios cargados esta semana.</div>
           <div id="tabla-tarifas-compra"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+      </div>
+
+      <div id="tab-tarifa-transporte" style="display:none">
+        <div class="ph" style="margin-top:0">
+          <div style="font-size:12px;color:var(--text2)">Precio del transporte a cada destino. Puedes tener varias líneas por destino si trabajas con distintos transportistas.</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="addLineaTransporte()"><i class="ti ti-plus"></i>Añadir destino</button>
+            <button class="btn btn-success" onclick="guardarTarifasTransporte()"><i class="ti ti-device-floppy"></i>Guardar precios de transporte</button>
+          </div>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <div id="tabla-tarifas-transporte"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
         </div>
       </div>
     </div>
@@ -895,6 +909,7 @@ tr:hover td{background:var(--bg)}
       <div class="fg"><label>Teléfono</label><input type="text" id="cl-telefono"></div>
     </div>
     <div class="fg"><label>Email</label><input type="email" id="cl-email"></div>
+    <div class="fg"><label>Destino mercancía</label><input type="text" id="cl-destino-mercancia" placeholder="Ej: Perpiñán, Alemania, almacén del cliente..."></div>
     <div class="err-box" id="cliente-err"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button class="btn" onclick="closeModal('modal-cliente')">Cancelar</button>
@@ -1545,6 +1560,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-planning-producto')loadPlanning()
   if(tabId==='tab-reclam-hist')loadReclamacionesHistorico()
   if(tabId==='tab-tarifa-compra')loadTarifasCompra()
+  if(tabId==='tab-tarifa-transporte')loadTarifasTransporte()
   if(tabId==='tab-cli-listado')loadClientes()
   if(tabId==='tab-cli-feria')loadFeriaFruitAttraction()
 }
@@ -2320,16 +2336,17 @@ async function loadClientes(){
   lista.forEach(c=>{
     rows+='<tr><td><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+c.nombre+'</strong></td><td>'+(c.pais||'—')+'</td>'+
       '<td>'+(c.idiomas||[]).map(i=>'<span class="tag">'+i+'</span>').join('')+'</td>'+
+      '<td>'+(c.destino_mercancia||'—')+'</td>'+
       '<td>'+(c.contacto||'—')+'</td><td>'+(c.telefono||'—')+'</td><td>'+(c.email||'—')+'</td>'+
       '<td style="white-space:nowrap"><button class="btn btn-sm" onclick="verFichaCliente(\''+c.id+'\')" title="Ficha comercial"><i class="ti ti-address-book"></i></button> '+
       '<button class="btn btn-sm" onclick="editarCliente(\''+c.id+'\')" title="Editar"><i class="ti ti-edit"></i></button></td></tr>'
   })
-  document.getElementById('tabla-clientes').innerHTML='<table><thead><tr><th>Empresa</th><th>País</th><th>Idiomas</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+  document.getElementById('tabla-clientes').innerHTML='<table><thead><tr><th>Empresa</th><th>País</th><th>Idiomas</th><th>Destino mercancía</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
 }
 function abrirModalCliente(){
   document.getElementById('cl-id').value=''
   document.getElementById('cliente-modal-titulo').childNodes[0].textContent='Nuevo cliente '
-  ;['cl-nombre','cl-pais','cl-contacto','cl-telefono','cl-email'].forEach(id=>document.getElementById(id).value='')
+  ;['cl-nombre','cl-pais','cl-contacto','cl-telefono','cl-email','cl-destino-mercancia'].forEach(id=>document.getElementById(id).value='')
   document.getElementById('cliente-err').style.display='none'
   setIdiomasUI([]);openModal('modal-cliente')
 }
@@ -2343,6 +2360,7 @@ async function editarCliente(id){
   document.getElementById('cl-contacto').value=c.contacto||''
   document.getElementById('cl-telefono').value=c.telefono||''
   document.getElementById('cl-email').value=c.email||''
+  document.getElementById('cl-destino-mercancia').value=c.destino_mercancia||''
   document.getElementById('cliente-err').style.display='none'
   setIdiomasUI(c.idiomas||[]);openModal('modal-cliente')
 }
@@ -2351,7 +2369,7 @@ async function guardarCliente(){
   const nombre=document.getElementById('cl-nombre').value.trim()
   const err=document.getElementById('cliente-err');err.style.display='none'
   if(!nombre){err.textContent='El nombre es obligatorio';err.style.display='block';return}
-  const datos={nombre,pais:document.getElementById('cl-pais').value||null,idiomas:idiomasSeleccionados.length?idiomasSeleccionados:null,contacto:document.getElementById('cl-contacto').value||null,telefono:document.getElementById('cl-telefono').value||null,email:document.getElementById('cl-email').value||null}
+  const datos={nombre,pais:document.getElementById('cl-pais').value||null,idiomas:idiomasSeleccionados.length?idiomasSeleccionados:null,contacto:document.getElementById('cl-contacto').value||null,telefono:document.getElementById('cl-telefono').value||null,email:document.getElementById('cl-email').value||null,destino_mercancia:document.getElementById('cl-destino-mercancia').value.trim()||null}
   const {error}=id?await db.from('clientes').update(datos).eq('id',id):await db.from('clientes').insert(datos)
   if(error){err.textContent='Error: '+error.message;err.style.display='block';return}
   toast(id?'Cliente actualizado ✓':'Cliente creado ✓')
@@ -3001,7 +3019,7 @@ async function verFichaCliente(id){
 
   document.getElementById('ficha-cliente-titulo').childNodes[0].textContent=c.nombre+' '
   document.getElementById('ficha-cliente-datos').innerHTML=
-    [c.pais,c.contacto,c.telefono,c.email].filter(Boolean).join(' · ')||'Sin datos de contacto'
+    [c.pais,c.destino_mercancia?'Destino: '+c.destino_mercancia:null,c.contacto,c.telefono,c.email].filter(Boolean).join(' · ')||'Sin datos de contacto'
 
   document.getElementById('fs-cliente-id').value=id
   document.getElementById('fs-fecha').value=new Date().toISOString().split('T')[0]
@@ -6649,6 +6667,103 @@ async function imprimirOferta(){
   const url=URL.createObjectURL(blob)
   const w=window.open(url,'_blank')
   if(w)w.onload=()=>{setTimeout(()=>{w.print();URL.revokeObjectURL(url)},400)}
+}
+
+// ── PRECIOS DE TRANSPORTE POR DESTINO ────────────────────────
+let _transporteLineas=[]
+let _transporteMeta=null // {en,por} de la última actualización
+
+async function loadTarifasTransporte(){
+  const cont=document.getElementById('tabla-tarifas-transporte')
+  // Refrescar clientes para que los destinos de mercancía estén al día
+  const {data:cli}=await db.from('clientes').select('*').order('nombre')
+  if(cli)clientes=cli
+  const {data,error}=await db.from('tarifas_transporte').select('*').order('destino').order('transportista')
+  if(error){cont.innerHTML='<div class="empty">No se pudo cargar. ¿Existe la tabla "tarifas_transporte" en Supabase?</div>';return}
+  _transporteLineas=(data||[]).map(t=>({destino:t.destino||'',transportista:t.transportista||'',precio_palet:t.precio_palet??'',precio_camion:t.precio_camion??'',observaciones:t.observaciones||''}))
+  const ult=(data||[]).filter(t=>t.actualizado_en).sort((a,b)=>b.actualizado_en.localeCompare(a.actualizado_en))[0]
+  _transporteMeta=ult?{en:ult.actualizado_en,por:ult.actualizado_por}:null
+  if(!_transporteLineas.length)_transporteLineas=[{destino:'',transportista:'',precio_palet:'',precio_camion:'',observaciones:''}]
+  renderTarifasTransporte()
+}
+
+function syncTransporteDesdeInputs(){
+  _transporteLineas.forEach((l,i)=>{
+    const el=document.getElementById('tt-destino-'+i)
+    if(!el)return
+    l.destino=el.value
+    l.transportista=document.getElementById('tt-transportista-'+i)?.value||''
+    l.precio_palet=document.getElementById('tt-palet-'+i)?.value||''
+    l.precio_camion=document.getElementById('tt-camion-'+i)?.value||''
+    l.observaciones=document.getElementById('tt-obs-'+i)?.value||''
+  })
+}
+
+function renderTarifasTransporte(){
+  // Solo se permiten los destinos de mercancía definidos en las fichas de clientes
+  const destinosClientes=[...new Set((clientes||[]).map(c=>(c.destino_mercancia||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))
+  if(!destinosClientes.length){
+    document.getElementById('tabla-tarifas-transporte').innerHTML='<div class="empty">Ningún cliente tiene todavía un destino de mercancía. Añádelo en la ficha del cliente (Clientes → Listado de clientes → Editar).</div>'
+    return
+  }
+  const nombresTrans=(transportistas||[]).map(t=>t.nombre)
+  const inp='padding:5px 8px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)'
+  const rows=_transporteLineas.map((l,i)=>{
+    const opts=['<option value="">— Cualquiera —</option>']
+      .concat((nombresTrans.includes(l.transportista)||!l.transportista?nombresTrans:[l.transportista,...nombresTrans])
+      .map(n=>'<option value="'+n+'"'+(n===l.transportista?' selected':'')+'>'+n+'</option>')).join('')
+    const listaDest=(!l.destino||destinosClientes.includes(l.destino))?destinosClientes:[l.destino,...destinosClientes]
+    const optsDest='<option value="">— Seleccionar destino —</option>'+listaDest.map(d=>'<option value="'+d.replace(/"/g,'&quot;')+'"'+(d===l.destino?' selected':'')+'>'+d+(destinosClientes.includes(d)?'':' (ya no está en clientes)')+'</option>').join('')
+    return '<tr>'+
+      '<td><select id="tt-destino-'+i+'" style="min-width:170px;'+inp+'">'+optsDest+'</select></td>'+
+      '<td><select id="tt-transportista-'+i+'" style="'+inp+'">'+opts+'</select></td>'+
+      '<td><input type="number" id="tt-palet-'+i+'" value="'+(l.precio_palet??'')+'" step="0.01" min="0" placeholder="0.00" style="width:90px;'+inp+'"></td>'+
+      '<td><input type="number" id="tt-camion-'+i+'" value="'+(l.precio_camion??'')+'" step="0.01" min="0" placeholder="0.00" style="width:100px;'+inp+'"></td>'+
+      '<td><input type="text" id="tt-obs-'+i+'" value="'+(l.observaciones||'').replace(/"/g,'&quot;')+'" placeholder="Frigorífico, plazo, mínimo de palets..." style="width:220px;'+inp+'"></td>'+
+      '<td><button class="btn btn-sm btn-danger" onclick="eliminarLineaTransporte('+i+')"><i class="ti ti-trash"></i></button></td>'+
+    '</tr>'
+  }).join('')
+  document.getElementById('tabla-tarifas-transporte').innerHTML=
+    '<table class="tabla-compacta" style="width:100%"><thead><tr><th>Destino</th><th>Transportista</th><th>€/palet</th><th>€/camión completo</th><th>Observaciones</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>'+
+    (_transporteMeta?'<div style="font-size:11px;color:var(--text3);margin-top:10px">Última actualización: '+fmtDt(_transporteMeta.en)+(_transporteMeta.por?' · '+_transporteMeta.por:'')+'</div>':'')
+}
+
+function addLineaTransporte(){
+  syncTransporteDesdeInputs()
+  _transporteLineas.push({destino:'',transportista:'',precio_palet:'',precio_camion:'',observaciones:''})
+  renderTarifasTransporte()
+}
+
+function eliminarLineaTransporte(i){
+  syncTransporteDesdeInputs()
+  _transporteLineas.splice(i,1)
+  if(!_transporteLineas.length)_transporteLineas=[{destino:'',transportista:'',precio_palet:'',precio_camion:'',observaciones:''}]
+  renderTarifasTransporte()
+}
+
+async function guardarTarifasTransporte(){
+  syncTransporteDesdeInputs()
+  const ahora=new Date().toISOString()
+  const lineas=_transporteLineas.map(l=>({
+    destino:l.destino.trim(),
+    transportista:l.transportista||null,
+    precio_palet:parseFloat(l.precio_palet)||null,
+    precio_camion:parseFloat(l.precio_camion)||null,
+    observaciones:(l.observaciones||'').trim()||null,
+    actualizado_en:ahora,
+    actualizado_por:currentPerfil?.nombre||null
+  })).filter(l=>l.destino)
+  const sinPrecio=lineas.filter(l=>!l.precio_palet&&!l.precio_camion)
+  if(sinPrecio.length){toast('Indica al menos un precio (palet o camión) en: '+sinPrecio.map(l=>l.destino).join(', '),'err');return}
+  const {error:errDel}=await db.from('tarifas_transporte').delete().not('id','is',null)
+  if(errDel){toast('Error guardando: '+errDel.message,'err');return}
+  if(lineas.length){
+    const {error}=await db.from('tarifas_transporte').insert(lineas)
+    if(error){toast('Error guardando: '+error.message,'err');return}
+  }
+  toast('Precios de transporte guardados ✓')
+  loadTarifasTransporte()
 }
 
 function calcularImporteAbono(){
