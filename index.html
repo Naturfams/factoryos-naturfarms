@@ -190,6 +190,7 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="nav-sec">Principal</div>
     <div class="nav-item active" onclick="showPage('dashboard',this)" data-roles="admin,calidad,operario,comercial"><i class="ti ti-layout-dashboard"></i>Resumen</div>
+    <div class="nav-item" id="nav-mis-clientes" onclick="showPage('mis-clientes',this)" data-roles="admin,comercial"><i class="ti ti-address-book"></i>Mis clientes<span class="nav-badge" id="badge-mis-clientes" style="display:none">0</span></div>
     <div class="nav-item" onclick="showPage('cuadro-mandos',this)" data-roles="admin"><i class="ti ti-chart-dots-3"></i>Cuadro de mandos</div>
     <div class="nav-item" onclick="showPage('mi-perfil',this)" data-roles="admin,calidad,operario,comercial"><i class="ti ti-user-circle"></i>Mi perfil</div>
     <div class="nav-sec">Ventas</div>
@@ -311,6 +312,47 @@ tr:hover td{background:var(--bg)}
         </div>
       </div>
 
+      <!-- EQUIPO COMERCIAL -->
+      <div class="nav-sec" style="padding-left:0;padding-top:0">Equipo comercial</div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <div class="card-title" style="margin:0"><i class="ti ti-calendar-week"></i><span id="cmc-semana-label">Semana</span></div>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="cmcMoverSemana(-1)" title="Semana anterior"><i class="ti ti-chevron-left"></i>Anterior</button>
+            <button class="btn btn-sm" onclick="cmcMoverSemana(0)">Esta semana</button>
+            <button class="btn btn-sm" onclick="cmcMoverSemana(1)" title="Semana siguiente">Siguiente<i class="ti ti-chevron-right"></i></button>
+          </div>
+        </div>
+        <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px" id="cmc-kpis"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        <div style="overflow-x:auto"><div id="cmc-tabla-semana"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Pedidos por fecha de recogida, sin anulados, asignados al comercial del cliente. Interacciones asignadas a quien las registró. Venta estimada = €/kg × peso de cada línea. "Atrasados" y "Sin pedir" muestran la situación de hoy.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><i class="ti ti-chart-bar"></i>Estadística mensual · últimos 12 meses</div>
+          <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap" id="cmc-metricas">
+            <button class="btn btn-sm btn-primary" data-m="pedidos" onclick="cmcSetMetrica('pedidos')">Pedidos</button>
+            <button class="btn btn-sm" data-m="palets" onclick="cmcSetMetrica('palets')">Palets</button>
+            <button class="btn btn-sm" data-m="venta" onclick="cmcSetMetrica('venta')">Venta est.</button>
+            <button class="btn btn-sm" data-m="interacciones" onclick="cmcSetMetrica('interacciones')">Interacciones</button>
+          </div>
+        </div>
+        <div id="cmc-grafica-mes" style="margin-bottom:14px"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        <div style="overflow-x:auto"><div id="cmc-tabla-mes"></div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="tabs" style="margin:0;border:none">
+            <div class="tab active" id="cmc-tab-int" onclick="cmcSetDetalle('int')">Interacciones de la semana</div>
+            <div class="tab" id="cmc-tab-ped" onclick="cmcSetDetalle('ped')">Pedidos de la semana</div>
+          </div>
+          <select id="cmc-filtro-com" onchange="cmcRenderDetalle()" style="margin-left:auto;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px"></select>
+        </div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto"><div id="cmc-detalle"></div></div>
+      </div>
+
       <!-- VENTAS -->
       <div class="nav-sec" style="padding-left:0;padding-top:0">Ventas</div>
       <div class="two-col" style="margin-bottom:16px">
@@ -378,6 +420,7 @@ tr:hover td{background:var(--bg)}
         <div class="filter-row">
           <input type="date" id="hist-desde">
           <input type="date" id="hist-hasta">
+          <input type="text" id="hist-buscar" placeholder="Ref., nº ERP o cliente" oninput="loadHistorico()" style="min-width:170px">
           <select id="hist-estado"><option value="">Todos los estados</option><option>Pendiente</option><option>En preparación</option><option>Listo</option><option>Enviado</option><option>Anulado</option></select>
           <button class="btn" onclick="loadHistorico()"><i class="ti ti-search"></i>Buscar</button>
         </div>
@@ -570,6 +613,48 @@ tr:hover td{background:var(--bg)}
       <div id="tab-cli-listado" style="display:none">
         <div class="filter-row"><input type="text" id="filtro-cliente" placeholder="Buscar cliente..." oninput="loadClientes()" style="min-width:220px"></div>
         <div class="card" style="padding:0"><div id="tabla-clientes"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
+      </div>
+    </div>
+
+    <!-- MIS CLIENTES (agenda comercial) -->
+    <div class="page" id="page-mis-clientes">
+      <div class="ph">
+        <h1 class="pt">Mis clientes</h1>
+        <div id="mc-selector-wrap" style="display:none;align-items:center;gap:8px">
+          <span style="font-size:13px;color:var(--text2)">Ver clientes de:</span>
+          <select id="mc-comercial" onchange="loadMisClientes()" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;min-width:180px"></select>
+        </div>
+      </div>
+
+      <div class="metrics dash-metrics-grid" id="mc-kpis"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+
+      <div class="dash-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="card">
+          <div class="card-title"><i class="ti ti-calendar-event"></i>Agenda · pendientes</div>
+          <div id="mc-agenda"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><i class="ti ti-alert-triangle"></i>Llevan tiempo sin pedir
+            <span style="margin-left:auto;font-size:12px;font-weight:400;color:var(--text2)">más de
+              <select id="mc-umbral" onchange="cambiarUmbralMisClientes()" style="padding:3px 6px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
+                <option value="15">15 días</option><option value="21">21 días</option><option value="30">30 días</option><option value="45">45 días</option><option value="60">60 días</option><option value="90">90 días</option>
+              </select></span>
+          </div>
+          <div id="mc-avisos"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+      </div>
+
+      <div class="filter-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <input type="text" id="mc-buscar" placeholder="Buscar cliente..." oninput="renderMisClientes()" style="min-width:200px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="mc-filtros">
+          <button class="btn btn-sm btn-primary mc-filtro" data-f="todos" onclick="setFiltroMisClientes('todos')">Todos</button>
+          <button class="btn btn-sm mc-filtro" data-f="pendientes" onclick="setFiltroMisClientes('pendientes')"><i class="ti ti-calendar-event"></i>Con pendiente</button>
+          <button class="btn btn-sm mc-filtro" data-f="sinpedir" onclick="setFiltroMisClientes('sinpedir')"><i class="ti ti-alert-triangle"></i>Sin pedir</button>
+          <button class="btn btn-sm mc-filtro" data-f="sincontacto" onclick="setFiltroMisClientes('sincontacto')"><i class="ti ti-phone-off"></i>Sin contacto 30 días</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <div id="mc-tabla"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
       </div>
     </div>
 
@@ -853,7 +938,7 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="form-sec">Cliente y destino</div>
     <div class="frow">
-      <div class="fg"><label>Cliente *</label><select id="np-cliente" onchange="autoIdiomas()"><option value="">— Seleccionar —</option></select></div>
+      <div class="fg"><label>Cliente *</label><select id="np-cliente" onchange="autoIdiomas();onClientePedidoCambia()"><option value="">— Seleccionar —</option></select></div>
       <div class="fg"><label>Idiomas etiqueta</label><input type="text" id="np-idiomas" readonly style="background:var(--bg)"></div>
     </div>
     <div class="fg"><label>Destinatario *</label><input type="text" id="np-dest"></div>
@@ -868,9 +953,11 @@ tr:hover td{background:var(--bg)}
       </label>
     </div>
     <div class="form-sec">Productos <button type="button" class="btn btn-sm" onclick="addProductoLinea()"><i class="ti ti-plus"></i>Añadir línea</button></div>
+    <div id="np-habituales" style="display:none;background:var(--green-bg);border:1px solid #C0DD97;border-radius:var(--radius);padding:10px 12px;margin-bottom:10px;font-size:12px"></div>
     <div id="productos-container"></div>
     <div class="form-sec">Datos del pedido</div>
-    <div class="frow">
+    <div class="frow3">
+      <div class="fg"><label>Nº pedido ERP</label><input type="text" id="np-erp" placeholder="Nº en nuestro ERP"></div>
       <div class="fg"><label>Lote</label><input type="text" id="np-lote"></div>
       <div class="fg"><label>Nº palets total</label><input type="number" id="np-palets" min="1" value="1" placeholder="Se calcula automático"></div>
     </div>
@@ -916,6 +1003,74 @@ tr:hover td{background:var(--bg)}
       <button class="btn btn-primary" onclick="guardarCliente()"><i class="ti ti-check"></i>Guardar</button>
     </div>
   </div></div>
+
+<!-- MIS CLIENTES · modales -->
+<div class="modal-bg" id="modal-mc-interaccion">
+  <div class="modal" style="width:600px">
+    <h3><span id="mci-titulo">Interacción</span> <button class="close-btn" onclick="closeModal('modal-mc-interaccion')">×</button></h3>
+    <input type="hidden" id="mci-cliente-id">
+    <div id="mci-datos" style="font-size:12px;color:var(--text2);margin-bottom:12px"></div>
+    <div class="frow">
+      <div class="fg"><label>Fecha</label><input type="date" id="mci-fecha"></div>
+      <div class="fg"><label>Tipo</label>
+        <select id="mci-tipo">
+          <option value="llamada">Llamada</option><option value="email">Email</option><option value="visita">Visita</option><option value="whatsapp">WhatsApp</option><option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Qué se ha hablado</label><textarea id="mci-obs" rows="3" placeholder="Interés, precios comentados, quejas, próximos pasos..."></textarea></div>
+    <div id="mci-completar-wrap" style="display:none;margin-bottom:10px;font-size:13px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mci-completar" checked> Marcar como hecho el pendiente: <strong id="mci-pendiente-txt"></strong></label>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:6px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="mci-programar" onchange="document.getElementById('mci-prox').style.display=this.checked?'block':'none'"> Programar siguiente acción</label>
+      <div id="mci-prox" style="display:none;margin-top:8px">
+        <div class="frow">
+          <div class="fg"><label>Acción</label>
+            <select id="mci-prox-tipo"><option value="llamada">Llamar</option><option value="email">Enviar correo</option><option value="visita">Visitar</option><option value="whatsapp">WhatsApp</option><option value="oferta">Enviar oferta</option><option value="otro">Otro</option></select>
+          </div>
+          <div class="fg"><label>Para el día</label><input type="date" id="mci-prox-fecha"></div>
+        </div>
+        <div class="fg"><label>Nota</label><input type="text" id="mci-prox-nota" placeholder="Ej: confirmar precio de naranja la semana que viene"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="btn" onclick="closeModal('modal-mc-interaccion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarInteraccionMC()"><i class="ti ti-check"></i>Guardar</button>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin:16px 0 6px">Interacciones anteriores</div>
+    <div class="card" style="padding:0;max-height:240px;overflow-y:auto"><div id="mci-historial"></div></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-mc-pedidos">
+  <div class="modal" style="width:860px;max-width:95vw">
+    <h3><span id="mcp-titulo">Historial de pedidos</span> <button class="close-btn" onclick="closeModal('modal-mc-pedidos')">×</button></h3>
+    <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px" id="mcp-kpis"></div>
+    <div class="card" style="padding:0;overflow-x:auto;max-height:420px;overflow-y:auto"><div id="mcp-tabla"></div></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-mc-pendiente">
+  <div class="modal" style="width:440px">
+    <h3><span id="mcpe-titulo">Pendiente</span> <button class="close-btn" onclick="closeModal('modal-mc-pendiente')">×</button></h3>
+    <input type="hidden" id="mcpe-cliente-id">
+    <div class="frow">
+      <div class="fg"><label>Pendiente de</label>
+        <select id="mcpe-tipo"><option value="llamada">Llamar</option><option value="email">Enviar correo</option><option value="visita">Visitar</option><option value="whatsapp">WhatsApp</option><option value="oferta">Enviar oferta</option><option value="otro">Otro</option></select>
+      </div>
+      <div class="fg"><label>Para el día</label><input type="date" id="mcpe-fecha"></div>
+    </div>
+    <div class="fg"><label>Nota</label><input type="text" id="mcpe-nota" placeholder="Motivo o recordatorio"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-danger" id="mcpe-quitar" onclick="quitarPendienteMC()"><i class="ti ti-trash"></i>Quitar pendiente</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="closeModal('modal-mc-pendiente')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarPendienteMC()"><i class="ti ti-check"></i>Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal-bg" id="modal-ficha-cliente">
   <div class="modal" style="width:840px;max-width:95vw">
@@ -1593,6 +1748,9 @@ async function initApp(user){
   document.querySelectorAll('.nav-item[data-roles]').forEach(el=>{
     el.style.display=el.dataset.roles.split(',').includes(perfil.rol)?'flex':'none'
   })
+  // Usuarios añadidos al equipo comercial (aunque su rol sea otro) también ven "Mis clientes"
+  if(perfil.es_comercial===true)document.getElementById('nav-mis-clientes').style.display='flex'
+  initBadgeMisClientes()
   if(!can('admin,comercial,calidad,operario'))document.getElementById('btn-nuevo-pedido').style.display='none'
   document.getElementById('login-screen').style.display='none'
   document.getElementById('app-screen').style.display='flex'
@@ -1700,12 +1858,12 @@ function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet=
   div.className='producto-linea';div.id='linea-'+id
     div.innerHTML=
     '<div class="producto-linea-fila" style="grid-template-columns:2fr 1.5fr 90px 70px">'+
-    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Producto *</label><select id="lf-'+id+'"><option value="">—</option>'+
+    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Producto *</label><select id="lf-'+id+'" onchange="autoRellenarLinea('+id+')"><option value="">—</option>'+
     (_productosCache.includes(fruta)||!fruta?_productosCache:[fruta,..._productosCache]).map(f=>'<option value="'+f+'"'+(f===fruta?' selected':'')+'>'+f+(f===fruta&&!_productosCache.includes(fruta)?' (desactivado)':'')+'</option>').join('')+
     '</select></div>'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Variedad</label><input type="text" id="lp-'+id+'" value="'+producto+'" placeholder="Ej: Navelina"></div>'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Calibre</label><input type="text" id="lca2-'+id+'" value="'+calibre+'" placeholder="60-65" style="padding:6px 8px;font-size:13px"></div>'+
-    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Nº Palets</label><input type="number" id="lpa-'+id+'" value="'+npalets+'" min="1" oninput="calcularTotalPalets()" style="padding:6px 8px;font-size:13px"></div>'+
+    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Nº Palets</label><input type="number" id="lpa-'+id+'" value="'+npalets+'" min="1" oninput="escalarLineaHabitual('+id+');calcularTotalPalets()" style="padding:6px 8px;font-size:13px"></div>'+
     '</div>'+
     '<div class="producto-linea-fila" style="grid-template-columns:2fr 1.5fr 70px 80px 90px 90px 36px">'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Confección</label><select id="lc-'+id+'"><option value="">—</option>'+
@@ -1722,6 +1880,7 @@ function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet=
     (id>1?'<button type="button" class="btn btn-sm btn-danger" onclick="document.getElementById(\'linea-'+id+'\').remove()"><i class="ti ti-trash"></i></button>':'')+
     '</div>'+
     '</div>'
+  div.insertAdjacentHTML('beforeend','<div id="lhab-'+id+'" style="display:none;font-size:11px;color:var(--green-text);margin-top:4px"></div>')
   document.getElementById('productos-container').appendChild(div)
 }
 function calcularTotalPalets(){
@@ -1744,6 +1903,185 @@ function getProductosForm(){
   })
   return lineas
 }
+
+// ── PEDIDOS: PRODUCTOS HABITUALES DEL CLIENTE ────────────────
+// Analiza los últimos pedidos del cliente y propone, por producto, la configuración
+// que más repite (variedad, calibre, confección, tipo de palet, cajas y peso por palet).
+let _npHab={clienteId:null,porProducto:{},ultimo:null,ranking:[]}
+
+function onClientePedidoCambia(){
+  const cid=document.getElementById('np-cliente').value
+  const esNuevo=!document.getElementById('np-id').value
+  cargarHabitualesCliente(cid,null,esNuevo)
+}
+
+async function cargarHabitualesCliente(clienteId,excluirPedidoId,autoPrimeraLinea){
+  const box=document.getElementById('np-habituales')
+  _npHab={clienteId,porProducto:{},ultimo:null,ranking:[]}
+  if(!clienteId){box.style.display='none';return}
+  const {data:peds}=await db.from('pedidos').select('id,fecha_recogida,estado,creado_en').eq('cliente_id',clienteId).neq('estado','Anulado').order('fecha_recogida',{ascending:false}).limit(40)
+  if(document.getElementById('np-cliente').value!==clienteId)return // cambió de cliente mientras cargaba
+  const pedidos=(peds||[]).filter(p=>p.id!==excluirPedidoId)
+  if(!pedidos.length){
+    box.innerHTML='<i class="ti ti-info-circle"></i> Este cliente no tiene pedidos anteriores: rellena las líneas a mano.'
+    box.style.display='block'
+    return
+  }
+  const {data:prods}=await db.from('pedido_productos').select('*').in('pedido_id',pedidos.map(p=>p.id)).order('orden')
+  if(document.getElementById('np-cliente').value!==clienteId)return
+  const fechaPed={};pedidos.forEach((p,i)=>fechaPed[p.id]={fecha:p.fecha_recogida||'',idx:i})
+  const lineas=(prods||[]).filter(l=>l.fruta).map(l=>({...l,_fecha:fechaPed[l.pedido_id]?.fecha||'',_idx:fechaPed[l.pedido_id]?.idx??99}))
+
+  // Agrupar por producto y, dentro, por configuración
+  const porProd={}
+  lineas.forEach(l=>{
+    const pal=l.num_palets||0
+    const cajasPal=pal&&l.num_cajas?Math.round(l.num_cajas/pal):null
+    const pesoPal=pal&&l.peso_bruto?Math.round(l.peso_bruto/pal*10)/10:null
+    const firma=[l.producto||'',l.calibre||'',l.confeccion||'',l.tipo_palet||'',cajasPal||'',pesoPal||''].join('|')
+    const P=porProd[l.fruta]=porProd[l.fruta]||{fruta:l.fruta,veces:new Set(),configs:{},ultimoPrecio:null,ultimaFecha:''}
+    P.veces.add(l.pedido_id)
+    if(l.precio&&l._fecha>=P.ultimaFecha){P.ultimoPrecio=l.precio;P.ultimaFecha=l._fecha}
+    const C=P.configs[firma]=P.configs[firma]||{producto:l.producto||'',calibre:l.calibre||'',confeccion:l.confeccion||'',tipo_palet:l.tipo_palet||'',cajasPal,pesoPal,n:0,masReciente:99,palets:{}}
+    C.n++;C.masReciente=Math.min(C.masReciente,l._idx)
+    if(pal)C.palets[pal]=(C.palets[pal]||0)+1
+  })
+  Object.values(porProd).forEach(P=>{
+    const configs=Object.values(P.configs).sort((a,b)=>b.n-a.n||a.masReciente-b.masReciente)
+    const top=configs[0]
+    const paletsHab=Object.entries(top.palets).sort((a,b)=>b[1]-a[1]||b[0]-a[0])[0]
+    P.hab={...top,num_palets:paletsHab?parseInt(paletsHab[0]):null}
+    P.numPedidos=P.veces.size
+  })
+  _npHab.porProducto=porProd
+  _npHab.ranking=Object.values(porProd).sort((a,b)=>b.numPedidos-a.numPedidos)
+  _npHab.ultimo={id:pedidos[0].id,fecha:pedidos[0].fecha_recogida,lineas:lineas.filter(l=>l.pedido_id===pedidos[0].id)}
+
+  const chips=_npHab.ranking.slice(0,8).map((P,i)=>{
+    const h=P.hab
+    const det=[h.producto,h.confeccion,h.num_palets?h.num_palets+' pal':null].filter(Boolean).join(' · ')
+    return '<button type="button" class="btn btn-sm" style="background:var(--bg2);margin:2px" onclick="anadirLineaHabitual('+i+')" title="Pedido en '+P.numPedidos+' de '+pedidos.length+' pedidos"><i class="ti ti-plus"></i><strong>'+P.fruta+'</strong>'+(det?' <span style="color:var(--text2)">'+det+'</span>':'')+'</button>'
+  }).join('')
+  box.innerHTML='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">'+
+      '<span style="font-weight:600;color:var(--green-text)"><i class="ti ti-sparkles"></i> Lo que suele pedir este cliente</span>'+
+      (_npHab.ultimo.lineas.length?'<button type="button" class="btn btn-sm" style="margin-left:auto" onclick="repetirUltimoPedidoCliente()"><i class="ti ti-copy"></i>Repetir último pedido ('+fmt(_npHab.ultimo.fecha)+')</button>':'')+
+    '</div>'+chips+
+    '<div style="color:var(--text3);margin-top:4px">Al elegir un producto en una línea se rellena con su configuración habitual. Puedes cambiar cualquier dato.</div>'
+  box.style.display='block'
+
+  // En un pedido nuevo, si la primera línea está vacía, se rellena con el producto que más pide
+  if(autoPrimeraLinea&&_npHab.ranking.length){
+    const lineasDom=[...document.querySelectorAll('#productos-container .producto-linea')]
+    if(lineasDom.length===1){
+      const id=lineasDom[0].id.replace('linea-','')
+      if(!document.getElementById('lf-'+id).value)aplicarHabitualALinea(id,_npHab.ranking[0].fruta,true)
+    }
+  }
+}
+
+function npMarcarAuto(el,valor){
+  if(!el||valor===null||valor===undefined||valor==='')return
+  if(el.tagName==='SELECT'&&![...el.options].some(o=>o.value===String(valor))){
+    const o=document.createElement('option');o.textContent=valor;o.value=valor;el.appendChild(o)
+  }
+  el.value=valor
+  el.dataset.auto='1'
+  el.style.background='var(--green-bg)'
+}
+
+function aplicarHabitualALinea(id,fruta,ponerProducto){
+  const P=_npHab.porProducto[fruta]
+  const nota=document.getElementById('lhab-'+id)
+  if(ponerProducto){
+    const sel=document.getElementById('lf-'+id)
+    if(![...sel.options].some(o=>o.value===fruta)){const o=document.createElement('option');o.value=fruta;o.textContent=fruta;sel.appendChild(o)}
+    sel.value=fruta
+  }
+  const get=k=>document.getElementById(k+'-'+id)
+  // Borrar lo autorrellenado para el producto anterior (lo escrito a mano se respeta)
+  ;['lp','lca2','lc','ltp','lpa','lca','lpb'].forEach(k=>{const el=get(k);if(el&&el.dataset.auto==='1'){el.value='';delete el.dataset.auto;el.style.background=''}})
+  const prPh=get('lpr');if(prPh)prPh.placeholder='0.00'
+  const lineaEl0=document.getElementById('linea-'+id);if(lineaEl0){lineaEl0.dataset.cajasPal='';lineaEl0.dataset.pesoPal=''}
+  if(!P){if(nota)nota.style.display='none';calcularTotalPalets();return}
+  const h=P.hab
+  // Solo se rellenan los campos vacíos o los que se rellenaron automáticamente antes
+  const libre=el=>el&&(!el.value||el.dataset.auto==='1')
+  if(libre(get('lp')))npMarcarAuto(get('lp'),h.producto)
+  if(libre(get('lca2')))npMarcarAuto(get('lca2'),h.calibre)
+  if(libre(get('lc')))npMarcarAuto(get('lc'),h.confeccion)
+  if(libre(get('ltp')))npMarcarAuto(get('ltp'),h.tipo_palet)
+  if(libre(get('lpa')))npMarcarAuto(get('lpa'),h.num_palets)
+  const pal=parseInt(get('lpa')?.value)||h.num_palets||0
+  if(h.cajasPal&&pal&&libre(get('lca')))npMarcarAuto(get('lca'),h.cajasPal*pal)
+  if(h.pesoPal&&pal&&libre(get('lpb')))npMarcarAuto(get('lpb'),Math.round(h.pesoPal*pal*10)/10)
+  const pr=get('lpr')
+  if(pr&&P.ultimoPrecio){pr.placeholder='últ. '+Number(P.ultimoPrecio).toFixed(2);pr.title='Último precio a este cliente: '+Number(P.ultimoPrecio).toFixed(2)+' €/kg'}
+  const lineaEl=document.getElementById('linea-'+id)
+  if(lineaEl){lineaEl.dataset.cajasPal=h.cajasPal||'';lineaEl.dataset.pesoPal=h.pesoPal||''}
+  if(nota){
+    nota.innerHTML='<i class="ti ti-sparkles"></i> Rellenado con lo habitual de este cliente para '+fruta+' (en '+P.numPedidos+' pedido'+(P.numPedidos>1?'s':'')+')'+(h.cajasPal?' · '+h.cajasPal+' cajas/palet':'')+'. Los campos en verde se pueden cambiar.'
+    nota.style.display='block'
+  }
+  calcularTotalPalets()
+}
+
+function autoRellenarLinea(id){
+  const fruta=document.getElementById('lf-'+id)?.value
+  if(!fruta){const n=document.getElementById('lhab-'+id);if(n)n.style.display='none';return}
+  aplicarHabitualALinea(id,fruta,false)
+}
+
+// Si el comercial cambia el nº de palets, cajas y peso se recalculan con la proporción habitual
+function escalarLineaHabitual(id){
+  const lineaEl=document.getElementById('linea-'+id)
+  if(!lineaEl)return
+  const pal=parseInt(document.getElementById('lpa-'+id)?.value)||0
+  const cajasPal=parseFloat(lineaEl.dataset.cajasPal)||0
+  const pesoPal=parseFloat(lineaEl.dataset.pesoPal)||0
+  const elC=document.getElementById('lca-'+id),elP=document.getElementById('lpb-'+id)
+  if(pal&&cajasPal&&elC&&(elC.dataset.auto==='1'||!elC.value))npMarcarAuto(elC,cajasPal*pal)
+  if(pal&&pesoPal&&elP&&(elP.dataset.auto==='1'||!elP.value))npMarcarAuto(elP,Math.round(pesoPal*pal*10)/10)
+}
+
+function anadirLineaHabitual(idx){
+  const P=_npHab.ranking[idx]
+  if(!P)return
+  // Reutiliza la primera línea vacía si la hay
+  const vacia=[...document.querySelectorAll('#productos-container .producto-linea')].find(d=>!document.getElementById('lf-'+d.id.replace('linea-','')).value)
+  let id
+  if(vacia)id=vacia.id.replace('linea-','')
+  else{addProductoLinea();id=lineaCount}
+  aplicarHabitualALinea(id,P.fruta,true)
+}
+
+function repetirUltimoPedidoCliente(){
+  const u=_npHab.ultimo
+  if(!u||!u.lineas.length){toast('No hay un pedido anterior que repetir','err');return}
+  const hayDatos=[...document.querySelectorAll('#productos-container .producto-linea')].some(d=>document.getElementById('lf-'+d.id.replace('linea-','')).value)
+  if(hayDatos&&!confirm('Se sustituirán las líneas actuales por las del último pedido ('+fmt(u.fecha)+'). ¿Continuar?'))return
+  document.getElementById('productos-container').innerHTML=''
+  lineaCount=0
+  u.lineas.forEach(l=>{
+    addProductoLinea(l.fruta,l.producto||'',l.num_cajas||'',l.confeccion||'',l.peso_bruto||'',l.tipo_palet||'',l.num_palets||'',l.calibre||'',l.precio||'',l.precio_compra||'')
+    const id=lineaCount
+    const lineaEl=document.getElementById('linea-'+id)
+    if(l.num_palets){lineaEl.dataset.cajasPal=l.num_cajas?Math.round(l.num_cajas/l.num_palets):'';lineaEl.dataset.pesoPal=l.peso_bruto?Math.round(l.peso_bruto/l.num_palets*10)/10:''}
+    ;['lp','lca2','lc','ltp','lpa','lca','lpb','lpr','lprc'].forEach(k=>{const el=document.getElementById(k+'-'+id);if(el&&el.value){el.dataset.auto='1';el.style.background='var(--green-bg)'}})
+    const nota=document.getElementById('lhab-'+id)
+    if(nota&&id===1){nota.innerHTML='<i class="ti ti-copy"></i> Copiado del último pedido del '+fmt(u.fecha)+'. Revisa cantidades y precio.';nota.style.display='block'}
+  })
+  calcularTotalPalets()
+  toast('Líneas copiadas del último pedido ✓')
+}
+
+// Cuando el comercial toca un campo autorrellenado, deja de ser automático
+;['input','change'].forEach(ev=>document.addEventListener(ev,e=>{
+  const el=e.target
+  if(!el||!el.dataset||el.dataset.auto!=='1'||!el.closest||!el.closest('#productos-container'))return
+  if(ev==='change'&&el.tagName!=='SELECT')return
+  delete el.dataset.auto
+  el.style.background=''
+},true))
 
 // ── DASHBOARD ─────────────────────────────────────────────────
 function cambiarFechaDash(delta){
@@ -1885,11 +2223,224 @@ async function loadGraficaPalets(){
 }
 
 // ── CUADRO DE MANDOS ──────────────────────────────────────────
+// ── CUADRO DE MANDOS · EQUIPO COMERCIAL ──────────────────────
+let _cmc={semana:0,metrica:'pedidos',detalle:'int',com:[],cli:[],ped:[],lin:{},seg:[],cargado:false}
+const CMC_MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+
+function cmcLocal(d){return d.toLocaleDateString('sv-SE')}
+function cmcLunes(offset){const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)+offset*7);return d}
+function cmcEur(v){return v?Math.round(v).toLocaleString('es-ES')+' €':'—'}
+function cmcNum(v){return (v||0).toLocaleString('es-ES')}
+
+async function cmcEnTrozos(ids,fn){
+  const out=[]
+  for(let i=0;i<ids.length;i+=150){const {data}=await fn(ids.slice(i,i+150));if(data)out.push(...data)}
+  return out
+}
+
+async function loadCMComercial(){
+  const desde=new Date();desde.setDate(1);desde.setMonth(desde.getMonth()-11)
+  const desdeStr=cmcLocal(desde)
+  // Margen: una semana más hacia atrás para comparar con la semana anterior aunque caiga en el mes 12
+  const desdeQ=cmcLocal(new Date(desde.getTime()-14*86400000))
+  const [{data:com},{data:cli},{data:ped},{data:seg}]=await Promise.all([
+    db.from('perfiles').select('id,nombre,rol,es_comercial,activo').or('rol.eq.comercial,es_comercial.eq.true').order('nombre'),
+    db.from('clientes').select('id,nombre,comercial_id,pendiente_fecha'),
+    db.from('pedidos').select('id,referencia,numero_pedido_erp,cliente_id,fecha_recogida,palets,estado,proveedor').gte('fecha_recogida',desdeQ).neq('estado','Anulado'),
+    db.from('clientes_seguimiento').select('*').gte('fecha',desdeQ).order('fecha',{ascending:false}).order('creado_en',{ascending:false})
+  ])
+  _cmc.com=(com||[]).filter(c=>c.activo!==false)
+  _cmc.cli=cli||[]
+  _cmc.ped=ped||[]
+  _cmc.seg=seg||[]
+  _cmc.desdeMes=desdeStr
+  // Venta estimada por pedido (€/kg × peso de cada línea)
+  const lineas=await cmcEnTrozos(_cmc.ped.map(p=>p.id),ids=>db.from('pedido_productos').select('pedido_id,precio,peso_bruto').in('pedido_id',ids))
+  _cmc.lin={}
+  lineas.forEach(l=>{_cmc.lin[l.pedido_id]=(_cmc.lin[l.pedido_id]||0)+(l.precio&&l.peso_bruto?l.precio*l.peso_bruto:0)})
+
+  const mapCli={};_cmc.cli.forEach(c=>mapCli[c.id]=c)
+  const porNombre={};_cmc.com.forEach(c=>porNombre[(c.nombre||'').trim().toLowerCase()]=c.id)
+  const idsCom=new Set(_cmc.com.map(c=>c.id))
+  _cmc.ped.forEach(p=>{
+    const c=mapCli[p.cliente_id]
+    p._cliente=c?.nombre||'—'
+    p._com=c&&idsCom.has(c.comercial_id)?c.comercial_id:'sin'
+    p._venta=_cmc.lin[p.id]||0
+  })
+  _cmc.seg.forEach(s=>{
+    const c=mapCli[s.cliente_id]
+    s._cliente=c?.nombre||'—'
+    s._com=porNombre[(s.creado_por||'').trim().toLowerCase()]||(c&&idsCom.has(c.comercial_id)?c.comercial_id:'sin')
+  })
+  // Último pedido de cada cliente (para "sin pedir")
+  _cmc.ultPed={}
+  _cmc.ped.forEach(p=>{if(!_cmc.ultPed[p.cliente_id]||p.fecha_recogida>_cmc.ultPed[p.cliente_id])_cmc.ultPed[p.cliente_id]=p.fecha_recogida})
+
+  const sel=document.getElementById('cmc-filtro-com')
+  const prev=sel.value
+  sel.innerHTML='<option value="">Todo el equipo</option>'+_cmc.com.map(c=>'<option value="'+c.id+'">'+mcEsc(c.nombre)+'</option>').join('')+'<option value="sin">Sin asignar</option>'
+  sel.value=prev
+  _cmc.cargado=true
+  cmcRenderTodo()
+}
+
+function cmcFilas(){return [..._cmc.com.map(c=>({id:c.id,nombre:c.nombre})),{id:'sin',nombre:'Sin asignar'}]}
+
+function cmcRenderTodo(){cmcRenderSemana();cmcRenderMes();cmcRenderDetalle()}
+
+function cmcMoverSemana(d){_cmc.semana=d===0?0:_cmc.semana+d;if(_cmc.cargado){cmcRenderSemana();cmcRenderDetalle()}}
+
+function cmcRangoSemana(off){const l=cmcLunes(off),dom=new Date(l);dom.setDate(l.getDate()+6);return {ini:cmcLocal(l),fin:cmcLocal(dom),l,dom}}
+
+function cmcStats(ini,fin,comId){
+  const ped=_cmc.ped.filter(p=>p.fecha_recogida>=ini&&p.fecha_recogida<=fin&&(comId===undefined||p._com===comId))
+  const seg=_cmc.seg.filter(s=>s.fecha>=ini&&s.fecha<=fin&&(comId===undefined||s._com===comId))
+  const tipos={};seg.forEach(s=>tipos[s.tipo]=(tipos[s.tipo]||0)+1)
+  return {
+    pedidos:ped.length,palets:ped.reduce((a,p)=>a+(p.palets||0),0),venta:ped.reduce((a,p)=>a+p._venta,0),
+    interacciones:seg.length,contactados:new Set(seg.map(s=>s.cliente_id)).size,tipos,
+    clientesConPedido:new Set(ped.map(p=>p.cliente_id)).size
+  }
+}
+
+function cmcDelta(act,ant){
+  if(!ant&&!act)return '<span style="color:var(--text3)">igual que la semana anterior</span>'
+  if(!ant)return '<span style="color:var(--green-text)">▲ nueva actividad</span>'
+  const pct=Math.round((act-ant)/ant*100)
+  if(pct===0)return '<span style="color:var(--text3)">= semana anterior</span>'
+  return '<span style="color:'+(pct>0?'var(--green-text)':'var(--red-text)')+'">'+(pct>0?'▲ +':'▼ ')+pct+'% vs semana ant.</span>'
+}
+
+function cmcRenderSemana(){
+  const r=cmcRangoSemana(_cmc.semana),ra=cmcRangoSemana(_cmc.semana-1)
+  const fmtC=d=>d.getDate()+' '+CMC_MESES[d.getMonth()]
+  const numSem=(()=>{const d=new Date(r.l);d.setDate(d.getDate()+3);const y=new Date(d.getFullYear(),0,4);return 1+Math.round(((d-y)/86400000-3+((y.getDay()+6)%7))/7)})()
+  document.getElementById('cmc-semana-label').textContent='Semana '+numSem+' · '+fmtC(r.l)+' – '+fmtC(r.dom)+' '+r.dom.getFullYear()+(_cmc.semana===0?' (actual)':'')
+  const t=cmcStats(r.ini,r.fin),ta=cmcStats(ra.ini,ra.fin)
+  const kpi=(v,l,d)=>'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--text2)">'+l+'</div><div style="font-size:22px;font-weight:700;margin:2px 0">'+v+'</div><div style="font-size:10.5px">'+d+'</div></div>'
+  document.getElementById('cmc-kpis').innerHTML=
+    kpi(cmcNum(t.interacciones),'Interacciones',cmcDelta(t.interacciones,ta.interacciones))+
+    kpi(cmcNum(t.contactados),'Clientes contactados',cmcDelta(t.contactados,ta.contactados))+
+    kpi(cmcNum(t.pedidos),'Pedidos',cmcDelta(t.pedidos,ta.pedidos))+
+    kpi(cmcNum(t.palets),'Palets',cmcDelta(t.palets,ta.palets))+
+    kpi(cmcEur(t.venta),'Venta estimada',cmcDelta(t.venta,ta.venta))
+
+  const hoy=cmcLocal(new Date())
+  const hace30=cmcLocal(new Date(Date.now()-30*86400000))
+  const ico={llamada:'ti-phone',email:'ti-mail',visita:'ti-map-pin',whatsapp:'ti-brand-whatsapp',otro:'ti-note'}
+  const tot={cli:0,int:0,cont:0,ped:0,pal:0,venta:0,atr:0,sinp:0}
+  const filas=cmcFilas().map(f=>{
+    const st=cmcStats(r.ini,r.fin,f.id)
+    const misCli=_cmc.cli.filter(c=>(f.id==='sin'?!_cmc.com.some(x=>x.id===c.comercial_id):c.comercial_id===f.id))
+    const atr=misCli.filter(c=>c.pendiente_fecha&&c.pendiente_fecha<hoy).length
+    const sinp=misCli.filter(c=>_cmc.ultPed[c.id]&&_cmc.ultPed[c.id]<hace30).length
+    if(f.id==='sin'&&!st.interacciones&&!st.pedidos&&!misCli.length)return ''
+    tot.cli+=misCli.length;tot.int+=st.interacciones;tot.cont+=st.contactados;tot.ped+=st.pedidos;tot.pal+=st.palets;tot.venta+=st.venta;tot.atr+=atr;tot.sinp+=sinp
+    const desglose=Object.entries(st.tipos).map(([k,v])=>'<i class="ti '+(ico[k]||'ti-note')+'"></i>'+v).join(' ')
+    return '<tr'+(f.id==='sin'?' style="color:var(--text2)"':'')+'><td style="font-weight:600;max-width:none">'+mcEsc(f.nombre)+'</td>'+
+      '<td style="text-align:center">'+misCli.length+'</td>'+
+      '<td style="text-align:center"><strong>'+st.interacciones+'</strong>'+(desglose?'<div style="font-size:10px;color:var(--text3)">'+desglose+'</div>':'')+'</td>'+
+      '<td style="text-align:center">'+st.contactados+'</td>'+
+      '<td style="text-align:center"><strong>'+st.pedidos+'</strong></td>'+
+      '<td style="text-align:center">'+st.palets+'</td>'+
+      '<td style="text-align:right">'+cmcEur(st.venta)+'</td>'+
+      '<td style="text-align:center">'+(atr?'<span class="badge b-low"><i class="ti ti-alarm"></i>'+atr+'</span>':'0')+'</td>'+
+      '<td style="text-align:center">'+(sinp?'<span class="badge b-warn"><i class="ti ti-alert-triangle"></i>'+sinp+'</span>':'0')+'</td></tr>'
+  }).join('')
+  document.getElementById('cmc-tabla-semana').innerHTML=
+    '<table><thead><tr><th>Comercial</th><th style="text-align:center">Clientes</th><th style="text-align:center">Interacciones</th><th style="text-align:center">Contactados</th><th style="text-align:center">Pedidos</th><th style="text-align:center">Palets</th><th style="text-align:right">Venta est.</th><th style="text-align:center" title="Pendientes de llamada/correo con fecha pasada">Atrasados</th><th style="text-align:center" title="Clientes con más de 30 días sin pedir">Sin pedir +30 d</th></tr></thead><tbody>'+
+    filas+
+    '<tr style="font-weight:700;background:var(--bg3)"><td>Total</td><td style="text-align:center">'+tot.cli+'</td><td style="text-align:center">'+tot.int+'</td><td style="text-align:center">'+tot.cont+'</td><td style="text-align:center">'+tot.ped+'</td><td style="text-align:center">'+tot.pal+'</td><td style="text-align:right">'+cmcEur(tot.venta)+'</td><td style="text-align:center">'+tot.atr+'</td><td style="text-align:center">'+tot.sinp+'</td></tr>'+
+    '</tbody></table>'
+}
+
+function cmcSetMetrica(m){
+  _cmc.metrica=m
+  document.querySelectorAll('#cmc-metricas .btn').forEach(b=>b.classList.toggle('btn-primary',b.dataset.m===m))
+  if(_cmc.cargado)cmcRenderMes()
+}
+
+function cmcMeses(){
+  const out=[],d=new Date();d.setDate(1);d.setHours(12,0,0,0)
+  for(let i=11;i>=0;i--){const x=new Date(d);x.setMonth(d.getMonth()-i);const ini=cmcLocal(x);const f=new Date(x);f.setMonth(f.getMonth()+1);f.setDate(0);out.push({ini,fin:cmcLocal(f),label:CMC_MESES[x.getMonth()]+(x.getMonth()===0||i===11?' '+String(x.getFullYear()).slice(2):'')})}
+  return out
+}
+
+function cmcValor(st,m){return m==='venta'?st.venta:m==='palets'?st.palets:m==='interacciones'?st.interacciones:st.pedidos}
+function cmcFmtM(v,m){return m==='venta'?cmcEur(v):cmcNum(v)}
+
+function cmcRenderMes(){
+  const m=_cmc.metrica,meses=cmcMeses()
+  const totales=meses.map(x=>cmcValor(cmcStats(x.ini,x.fin),m))
+  const max=Math.max(...totales,1)
+  const nombreM={pedidos:'Pedidos',palets:'Palets',venta:'Venta estimada',interacciones:'Interacciones'}[m]
+  // Gráfico de barras (una serie: total del equipo). Valor en la barra máxima y en el mes actual; el resto en el tooltip.
+  const H=150,iMax=totales.indexOf(Math.max(...totales))
+  const barras=meses.map((x,i)=>{
+    const h=totales[i]?Math.max(4,Math.round(totales[i]/max*H)):0
+    const mostrar=(i===iMax||i===meses.length-1)&&totales[i]
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;cursor:default" title="'+x.label+': '+cmcFmtM(totales[i],m).replace(/<[^>]+>/g,'')+'">'+
+      '<div style="font-size:10px;font-weight:600;color:var(--text2);height:14px;white-space:nowrap">'+(mostrar?cmcFmtM(totales[i],m):'')+'</div>'+
+      '<div class="cmc-bar" style="width:70%;max-width:38px;height:'+h+'px;background:'+(i===meses.length-1?'var(--accent)':'var(--green)')+';border-radius:4px 4px 0 0"></div>'+
+      '<div style="font-size:10px;color:var(--text3);margin-top:4px;white-space:nowrap">'+x.label+'</div></div>'
+  }).join('')
+  document.getElementById('cmc-grafica-mes').innerHTML=
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">'+nombreM+' del equipo por mes</div>'+
+    '<div style="display:flex;align-items:flex-end;gap:2px;height:'+(H+36)+'px;border-bottom:1px solid var(--border);padding:0 2px">'+barras+'</div>'
+
+  // Tabla comercial × mes
+  const filas=cmcFilas().map(f=>{
+    const vals=meses.map(x=>cmcValor(cmcStats(x.ini,x.fin,f.id),m))
+    const total=vals.reduce((a,b)=>a+b,0)
+    if(f.id==='sin'&&!total)return ''
+    const maxF=Math.max(...vals,1)
+    return '<tr><td style="font-weight:600;max-width:none;white-space:nowrap">'+mcEsc(f.nombre)+'</td>'+
+      vals.map(v=>'<td style="text-align:center;font-size:12px;'+(v?'':'color:var(--text3);')+(v===maxF&&v?'font-weight:700':'')+'">'+(v?cmcFmtM(v,m):'·')+'</td>').join('')+
+      '<td style="text-align:center;font-weight:700;background:var(--bg3)">'+cmcFmtM(total,m)+'</td></tr>'
+  }).join('')
+  document.getElementById('cmc-tabla-mes').innerHTML=
+    '<table class="tabla-compacta"><thead><tr><th>Comercial</th>'+meses.map(x=>'<th style="text-align:center">'+x.label+'</th>').join('')+'<th style="text-align:center">Total</th></tr></thead><tbody>'+
+    filas+
+    '<tr style="font-weight:700;background:var(--bg3)"><td>Equipo</td>'+totales.map(v=>'<td style="text-align:center">'+(v?cmcFmtM(v,m):'·')+'</td>').join('')+'<td style="text-align:center">'+cmcFmtM(totales.reduce((a,b)=>a+b,0),m)+'</td></tr>'+
+    '</tbody></table>'
+}
+
+function cmcSetDetalle(d){
+  _cmc.detalle=d
+  document.getElementById('cmc-tab-int').classList.toggle('active',d==='int')
+  document.getElementById('cmc-tab-ped').classList.toggle('active',d==='ped')
+  cmcRenderDetalle()
+}
+
+function cmcRenderDetalle(){
+  if(!_cmc.cargado)return
+  const r=cmcRangoSemana(_cmc.semana)
+  const f=document.getElementById('cmc-filtro-com').value
+  const nom={};_cmc.com.forEach(c=>nom[c.id]=c.nombre);nom.sin='Sin asignar'
+  const cont=document.getElementById('cmc-detalle')
+  if(_cmc.detalle==='int'){
+    const lista=_cmc.seg.filter(s=>s.fecha>=r.ini&&s.fecha<=r.fin&&(!f||s._com===f))
+    const ico={llamada:['ti-phone','Llamada'],email:['ti-mail','Email'],visita:['ti-map-pin','Visita'],whatsapp:['ti-brand-whatsapp','WhatsApp'],otro:['ti-note','Otro']}
+    cont.innerHTML=lista.length?
+      '<table class="tabla-compacta"><thead><tr><th>Fecha</th><th>Comercial</th><th>Cliente</th><th>Tipo</th><th>Qué se habló</th></tr></thead><tbody>'+
+      lista.map(s=>{const [i,t]=ico[s.tipo]||ico.otro;return '<tr><td style="white-space:nowrap;vertical-align:top">'+fmt(s.fecha)+'</td><td style="vertical-align:top">'+mcEsc(nom[s._com]||s.creado_por||'—')+'</td><td style="vertical-align:top;font-weight:600">'+mcEsc(s._cliente)+'</td><td style="white-space:nowrap;vertical-align:top"><i class="ti '+i+'"></i> '+t+'</td><td style="max-width:none;white-space:normal">'+mcEsc(s.observaciones||'—')+'</td></tr>'}).join('')+
+      '</tbody></table>':'<div class="empty">No hay interacciones registradas esta semana'+(f?' para este comercial':'')+'</div>'
+  }else{
+    const lista=_cmc.ped.filter(p=>p.fecha_recogida>=r.ini&&p.fecha_recogida<=r.fin&&(!f||p._com===f)).sort((a,b)=>a.fecha_recogida.localeCompare(b.fecha_recogida))
+    cont.innerHTML=lista.length?
+      '<table class="tabla-compacta"><thead><tr><th>Recogida</th><th>Ref.</th><th>Nº ERP</th><th>Cliente</th><th>Comercial</th><th style="text-align:center">Palets</th><th style="text-align:right">Venta est.</th><th>Estado</th></tr></thead><tbody>'+
+      lista.map(p=>'<tr><td style="white-space:nowrap">'+fmt(p.fecha_recogida)+'</td><td>'+mcEsc(p.referencia||'—')+'</td><td>'+mcEsc(p.numero_pedido_erp||'—')+'</td><td style="font-weight:600">'+mcEsc(p._cliente)+'</td><td>'+mcEsc(nom[p._com]||'—')+'</td><td style="text-align:center">'+(p.palets||0)+'</td><td style="text-align:right">'+cmcEur(p._venta)+'</td><td>'+badgeHtml(p.estado)+'</td></tr>').join('')+
+      '</tbody></table>':'<div class="empty">No hay pedidos esta semana'+(f?' para este comercial':'')+'</div>'
+  }
+}
+
 async function loadCuadroMandos(){
   if(!can('admin')){
     document.getElementById('page-cuadro-mandos').innerHTML='<div class="empty" style="padding:60px"><i class="ti ti-lock" style="font-size:32px;display:block;margin-bottom:10px"></i>Acceso restringido a administradores</div>'
     return
   }
+  loadCMComercial()
   const senBlock=document.getElementById('cm-ventas-sensible')
   const vePermiso=can('admin,comercial,calidad')
   if(senBlock)senBlock.style.display=vePermiso?'':'none'
@@ -2075,7 +2626,9 @@ async function loadHistorico(){
   if(hasta)q=q.lte('fecha_recogida',hasta)
   if(est)q=q.eq('estado',est)
   const {data}=await q
-  document.getElementById('tabla-historico').innerHTML=await renderTablaPedidos(data||[])
+  const buscar=(document.getElementById('hist-buscar')?.value||'').trim().toLowerCase()
+  const lista=(data||[]).filter(p=>!buscar||[p.referencia,p.numero_pedido_erp,p.clientes?.nombre].some(v=>(v||'').toLowerCase().includes(buscar)))
+  document.getElementById('tabla-historico').innerHTML=await renderTablaPedidos(lista)
 }
 
 async function renderTablaPedidos(data){
@@ -2107,7 +2660,7 @@ async function renderTablaPedidos(data){
     const cajas=prods.reduce((s,pr)=>s+(pr.num_cajas||0),0)
 
     // Fila de tabla (desktop)
-    rows+='<tr><td>'+p.referencia+'</td><td>'+(p.clientes?.nombre||'—')+'</td>'+
+    rows+='<tr><td>'+p.referencia+(p.numero_pedido_erp?'<div style="font-size:10px;color:var(--text3)">ERP '+p.numero_pedido_erp+'</div>':'')+'</td><td>'+(p.clientes?.nombre||'—')+'</td>'+
       '<td>'+(p.proveedor?'<span class="badge b-ext" title="'+p.proveedor+'">'+p.proveedor.split(' ')[0]+'</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
       '<td style="max-width:170px;white-space:normal;line-height:1.4">'+ps+'</td>'+
       '<td>'+p.palets+'</td><td>'+(cajas||'—')+'</td><td>'+(p.lote||'—')+'</td>'+
@@ -2132,7 +2685,7 @@ async function renderTablaPedidos(data){
       '</div>':''
     cards+='<div class="order-card">'+
       '<div class="order-card-top">'+
-        '<div><div class="order-card-ref">'+p.referencia+'</div><div class="order-card-client">'+(p.clientes?.nombre||'—')+'</div></div>'+
+        '<div><div class="order-card-ref">'+p.referencia+(p.numero_pedido_erp?' <span style="font-size:11px;font-weight:400;color:var(--text3)">· ERP '+p.numero_pedido_erp+'</span>':'')+'</div><div class="order-card-client">'+(p.clientes?.nombre||'—')+'</div></div>'+
         badgeHtml(p.estado)+
       '</div>'+
       '<div class="order-card-prods">'+ps+'</div>'+
@@ -2157,7 +2710,9 @@ function abrirModalNuevoPedido(){
   document.getElementById('pedido-modal-titulo').childNodes[0].textContent='Nuevo pedido '
   document.getElementById('btn-guardar-pedido').innerHTML='<i class="ti ti-check"></i>Crear pedido'
   ;['np-cliente','np-tipopalet','np-trans'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})
-  ;['np-lote','np-dest','np-obs','np-idiomas'].forEach(id=>document.getElementById(id).value='')
+  ;['np-lote','np-dest','np-obs','np-idiomas','np-erp'].forEach(id=>document.getElementById(id).value='')
+  _npHab={clienteId:null,porProducto:{},ultimo:null,ranking:[]}
+  document.getElementById('np-habituales').style.display='none'
   const spReset=document.getElementById('np-proveedor-select');if(spReset)spReset.value=''
   document.getElementById('np-palets').value='1'
   document.getElementById('np-fecha').value=new Date().toISOString().split('T')[0]
@@ -2185,8 +2740,10 @@ async function editarPedido(id){
   document.getElementById('np-trans').value=p.transportista_id||''
   document.getElementById('np-fecha').value=p.fecha_recogida||''
   document.getElementById('np-obs').value=p.observaciones||''
+  document.getElementById('np-erp').value=p.numero_pedido_erp||''
   document.getElementById('productos-container').innerHTML=''
   lineaCount=0
+  cargarHabitualesCliente(p.cliente_id,p.id,false)
   setOrigen(p.proveedor||'propio')
   if(prods&&prods.length)prods.forEach(pr=>addProductoLinea(pr.fruta,pr.producto||'',pr.num_cajas||'',pr.confeccion||'',pr.peso_bruto||'',pr.tipo_palet||'',pr.num_palets||'',pr.calibre||'',pr.precio||'',pr.precio_compra||''))
   else addProductoLinea(p.fruta||'')
@@ -2214,7 +2771,7 @@ async function guardarPedido(){
   try{
     const idiomas=document.getElementById('np-idiomas').value.split(',').map(s=>s.trim()).filter(Boolean)
     const esExterno=origenActual!=='propio'
-    const datos={cliente_id:cid,palets,fruta:lineas[0].fruta,lote:document.getElementById('np-lote').value||null,destinatario:document.getElementById('np-dest').value||null,transportista_id:document.getElementById('np-trans').value||null,fecha_recogida:document.getElementById('np-fecha').value||null,observaciones:document.getElementById('np-obs').value||null,idiomas_etiqueta:idiomas,proveedor:esExterno?origenActual:null}
+    const datos={cliente_id:cid,palets,fruta:lineas[0].fruta,lote:document.getElementById('np-lote').value||null,numero_pedido_erp:document.getElementById('np-erp').value.trim()||null,destinatario:document.getElementById('np-dest').value||null,transportista_id:document.getElementById('np-trans').value||null,fecha_recogida:document.getElementById('np-fecha').value||null,observaciones:document.getElementById('np-obs').value||null,idiomas_etiqueta:idiomas,proveedor:esExterno?origenActual:null}
     let pedidoId=id
     if(id){
       // Comprobar si han cambiado cantidades (cajas, palets o peso) en alguna línea para reiniciar a Pendiente
@@ -3003,6 +3560,363 @@ async function asignarComercial(clienteId,comercialId){
   if(c)c.comercial_id=comercialId||null
   renderComercialesCards()
   renderTablaAsignacion()
+}
+
+// ── MIS CLIENTES (agenda y seguimiento comercial) ────────────
+let _mc={comerciales:[],clientes:[],pedidos:[],seguimiento:[],filas:[],filtro:'todos',comercialId:null}
+const MC_TIPO_CONTACTO={llamada:['ti-phone','Llamada'],email:['ti-mail','Email'],visita:['ti-map-pin','Visita'],whatsapp:['ti-brand-whatsapp','WhatsApp'],otro:['ti-note','Otro']}
+const MC_TIPO_PENDIENTE={llamada:['ti-phone','Llamar'],email:['ti-mail','Enviar correo'],visita:['ti-map-pin','Visitar'],whatsapp:['ti-brand-whatsapp','WhatsApp'],oferta:['ti-file-dollar','Enviar oferta'],otro:['ti-note','Otro']}
+
+function mcEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function mcHoy(){return new Date().toLocaleDateString('sv-SE')}
+function mcSumarDias(n){const d=new Date();d.setDate(d.getDate()+n);return d.toLocaleDateString('sv-SE')}
+function mcDiasDesde(fecha){
+  if(!fecha)return null
+  const a=new Date(fecha.slice(0,10)+'T12:00:00'),b=new Date(mcHoy()+'T12:00:00')
+  return Math.round((b-a)/86400000)
+}
+function mcUmbral(){
+  let v=30
+  try{const g=parseInt(localStorage.getItem('mc_umbral_dias'));if(g)v=g}catch(e){}
+  return v
+}
+function cambiarUmbralMisClientes(){
+  const v=document.getElementById('mc-umbral').value
+  try{localStorage.setItem('mc_umbral_dias',v)}catch(e){}
+  calcularFilasMisClientes();renderMisClientes()
+}
+function mcEsComercial(p){return p&&(p.rol==='comercial'||p.es_comercial===true)}
+
+async function loadMisClientes(){
+  const selWrap=document.getElementById('mc-selector-wrap')
+  const sel=document.getElementById('mc-comercial')
+  document.getElementById('mc-umbral').value=String(mcUmbral())
+
+  // El administrador puede ver la cartera de cualquier comercial
+  if(can('admin')){
+    if(!_mc.comerciales.length){
+      const {data}=await db.from('perfiles').select('id,nombre,rol,es_comercial,activo').or('rol.eq.comercial,es_comercial.eq.true').order('nombre')
+      _mc.comerciales=(data||[]).filter(p=>p.activo!==false)
+      sel.innerHTML=_mc.comerciales.map(p=>'<option value="'+p.id+'">'+mcEsc(p.nombre)+(p.id===currentPerfil.id?' (yo)':'')+'</option>').join('')+'<option value="sin">Clientes sin asignar</option>'
+      sel.value=_mc.comerciales.some(p=>p.id===currentPerfil.id)?currentPerfil.id:(_mc.comerciales[0]?.id||'sin')
+    }
+    selWrap.style.display='flex'
+    _mc.comercialId=sel.value
+  }else{
+    selWrap.style.display='none'
+    _mc.comercialId=currentPerfil.id
+  }
+
+  ;['mc-kpis','mc-agenda','mc-avisos','mc-tabla'].forEach(id=>document.getElementById(id).innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>')
+
+  let q=db.from('clientes').select('*').order('nombre')
+  q=_mc.comercialId==='sin'?q.is('comercial_id',null):q.eq('comercial_id',_mc.comercialId)
+  const {data:cli,error:errCli}=await q
+  if(errCli){document.getElementById('mc-tabla').innerHTML='<div class="empty">Error cargando clientes: '+mcEsc(errCli.message)+'</div>';return}
+  _mc.clientes=cli||[]
+  if(!_mc.clientes.length){
+    const msg=_mc.comercialId===currentPerfil.id?
+      'Todavía no tienes clientes asignados. El administrador los asigna desde <strong>Equipo comercial</strong>.':
+      'Este comercial no tiene clientes asignados.'
+    document.getElementById('mc-kpis').innerHTML=''
+    document.getElementById('mc-agenda').innerHTML='<div class="empty">Sin pendientes</div>'
+    document.getElementById('mc-avisos').innerHTML='<div class="empty">Sin avisos</div>'
+    document.getElementById('mc-tabla').innerHTML='<div class="empty" style="padding:40px">'+msg+'</div>'
+    actualizarBadgeMisClientes(0)
+    return
+  }
+  const ids=_mc.clientes.map(c=>c.id)
+  const [{data:ped},{data:seg}]=await Promise.all([
+    db.from('pedidos').select('id,cliente_id,fecha_recogida,palets,estado').in('cliente_id',ids),
+    db.from('clientes_seguimiento').select('*').in('cliente_id',ids).order('fecha',{ascending:false}).order('creado_en',{ascending:false})
+  ])
+  _mc.pedidos=(ped||[]).filter(p=>p.estado!=='Anulado')
+  _mc.seguimiento=seg||[]
+  calcularFilasMisClientes()
+  renderMisClientes()
+}
+
+function calcularFilasMisClientes(){
+  const umbral=mcUmbral()
+  _mc.filas=_mc.clientes.map(c=>{
+    const peds=_mc.pedidos.filter(p=>p.cliente_id===c.id&&p.fecha_recogida)
+    const fechas=[...new Set(peds.map(p=>p.fecha_recogida.slice(0,10)))].sort()
+    const ultimoPedido=fechas.length?fechas[fechas.length-1]:null
+    const diasSinPedir=mcDiasDesde(ultimoPedido)
+    // Frecuencia habitual: media de días entre los últimos 6 pedidos (mínimo 3 pedidos)
+    let intervalo=null
+    if(fechas.length>=3){
+      const ult=fechas.slice(-6),gaps=[]
+      for(let i=1;i<ult.length;i++)gaps.push(mcDiasDesde(ult[i-1])-mcDiasDesde(ult[i]))
+      intervalo=Math.round(gaps.reduce((s,g)=>s+g,0)/gaps.length)||null
+    }
+    const contactos=_mc.seguimiento.filter(s=>s.cliente_id===c.id)
+    const ultimoContacto=contactos[0]||null
+    const diasSinContacto=ultimoContacto?mcDiasDesde(ultimoContacto.fecha):null
+    // ¿Lleva demasiado sin pedir? Por umbral general o por romper su ritmo habitual
+    let motivoAviso=null
+    if(ultimoPedido&&diasSinPedir>umbral)motivoAviso='Más de '+umbral+' días sin pedir'
+    else if(ultimoPedido&&intervalo&&diasSinPedir>Math.max(intervalo*2,14))motivoAviso='Suele pedir cada '+intervalo+' días'
+    const pend=c.pendiente_fecha?{tipo:c.pendiente_tipo||'otro',fecha:c.pendiente_fecha,nota:c.pendiente_nota||'',dias:mcDiasDesde(c.pendiente_fecha)}:null
+    return {c,numPedidos:peds.length,palets:peds.reduce((s,p)=>s+(p.palets||0),0),ultimoPedido,diasSinPedir,intervalo,ultimoContacto,diasSinContacto,motivoAviso,pend}
+  })
+}
+
+function mcBadgePendiente(p,compacto){
+  if(!p)return '<span style="color:var(--text3)">—</span>'
+  const [ico,txt]=MC_TIPO_PENDIENTE[p.tipo]||MC_TIPO_PENDIENTE.otro
+  let cls='b-prep',cuando=fmt(p.fecha)
+  if(p.dias>0){cls='b-low';cuando='Atrasado '+p.dias+' d'}
+  else if(p.dias===0){cls='b-pending';cuando='Hoy'}
+  else if(p.dias===-1){cuando='Mañana'}
+  return '<span class="badge '+cls+'"><i class="ti '+ico+'"></i>'+txt+(compacto?'':' · '+cuando)+'</span>'
+}
+
+function mcColorDias(d,umbral){
+  if(d===null)return 'var(--text3)'
+  if(d>umbral)return 'var(--red-text)'
+  if(d>umbral*0.66)return 'var(--orange-text)'
+  return 'var(--green-text)'
+}
+
+function renderMisClientes(){
+  const umbral=mcUmbral()
+  const filas=_mc.filas
+  const hoy=mcHoy()
+  const inicioSemana=(()=>{const d=new Date();const dw=(d.getDay()+6)%7;d.setDate(d.getDate()-dw);return d.toLocaleDateString('sv-SE')})()
+
+  // KPIs
+  const pendientesUrg=filas.filter(f=>f.pend&&f.pend.dias>=0).length
+  const avisos=filas.filter(f=>f.motivoAviso)
+  const contactadosSemana=new Set(_mc.seguimiento.filter(s=>s.fecha>=inicioSemana).map(s=>s.cliente_id)).size
+  const kpi=(v,l,color,ico)=>'<div class="metric"><div class="metric-label"><i class="ti '+ico+'"></i> '+l+'</div><div class="metric-value" style="color:'+color+'">'+v+'</div></div>'
+  document.getElementById('mc-kpis').innerHTML=
+    kpi(filas.length,'Clientes','var(--text)','ti-users')+
+    kpi(pendientesUrg,'Pendientes para hoy o atrasados',pendientesUrg?'var(--orange-text)':'var(--text)','ti-calendar-event')+
+    kpi(avisos.length,'Llevan tiempo sin pedir',avisos.length?'var(--red-text)':'var(--text)','ti-alert-triangle')+
+    kpi(contactadosSemana,'Contactados esta semana','var(--green-text)','ti-message-circle')
+  actualizarBadgeMisClientes(pendientesUrg)
+
+  // Agenda: todos los pendientes ordenados por fecha
+  const agenda=filas.filter(f=>f.pend).sort((a,b)=>a.pend.fecha.localeCompare(b.pend.fecha))
+  document.getElementById('mc-agenda').innerHTML=agenda.length?
+    agenda.map(f=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:150px"><div style="font-weight:600;font-size:13px">'+mcEsc(f.c.nombre)+'</div>'+
+      '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+mcBadgePendiente(f.pend)+(f.pend.nota?' <span style="margin-left:4px">'+mcEsc(f.pend.nota)+'</span>':'')+'</div></div>'+
+      '<button class="btn btn-sm btn-success" title="Registrar y marcar como hecho" onclick="abrirInteraccionMC(\''+f.c.id+'\')"><i class="ti ti-check"></i>Hecho</button>'+
+      '<button class="btn btn-sm" title="Cambiar pendiente" onclick="abrirPendienteMC(\''+f.c.id+'\')"><i class="ti ti-edit"></i>Cambiar</button>'+
+    '</div>').join(''):
+    '<div class="empty">No hay pendientes. Márcalos con el botón <i class="ti ti-bell-plus"></i> de cada cliente.</div>'
+
+  // Avisos: los que más tiempo llevan primero
+  const listaAvisos=avisos.slice().sort((a,b)=>b.diasSinPedir-a.diasSinPedir)
+  document.getElementById('mc-avisos').innerHTML=listaAvisos.length?
+    listaAvisos.map(f=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:150px"><div style="font-weight:600;font-size:13px">'+mcEsc(f.c.nombre)+'</div>'+
+      '<div style="font-size:11px;color:var(--text2);margin-top:2px"><span style="color:var(--red-text);font-weight:600">'+f.diasSinPedir+' días</span> desde el último pedido ('+fmt(f.ultimoPedido)+') · '+mcEsc(f.motivoAviso)+
+      (f.ultimoContacto?'<br>Último contacto: '+fmt(f.ultimoContacto.fecha):'<br>Sin contactos registrados')+'</div></div>'+
+      (f.pend?mcBadgePendiente(f.pend,true):'<button class="btn btn-sm" title="Programar llamada" onclick="abrirPendienteMC(\''+f.c.id+'\',\'llamada\')"><i class="ti ti-bell-plus"></i>Programar</button>')+
+    '</div>').join(''):
+    '<div class="empty">Ningún cliente supera los '+umbral+' días sin pedir 👍</div>'
+
+  // Tabla principal
+  const buscar=(document.getElementById('mc-buscar').value||'').toLowerCase()
+  let lista=filas.filter(f=>!buscar||(f.c.nombre||'').toLowerCase().includes(buscar)||(f.c.destino_mercancia||'').toLowerCase().includes(buscar))
+  if(_mc.filtro==='pendientes')lista=lista.filter(f=>f.pend)
+  if(_mc.filtro==='sinpedir')lista=lista.filter(f=>f.motivoAviso)
+  if(_mc.filtro==='sincontacto')lista=lista.filter(f=>f.diasSinContacto===null||f.diasSinContacto>30)
+  // Orden: pendientes urgentes, luego avisos, luego alfabético
+  lista.sort((a,b)=>{
+    const pa=a.pend&&a.pend.dias>=0?0:1,pb=b.pend&&b.pend.dias>=0?0:1
+    if(pa!==pb)return pa-pb
+    const aa=a.motivoAviso?0:1,ab=b.motivoAviso?0:1
+    if(aa!==ab)return aa-ab
+    return (a.c.nombre||'').localeCompare(b.c.nombre||'','es')
+  })
+
+  const rows=lista.map(f=>{
+    const c=f.c
+    const ped=f.ultimoPedido?
+      fmt(f.ultimoPedido)+'<div style="font-size:11px;color:'+mcColorDias(f.diasSinPedir,umbral)+';font-weight:600">hace '+f.diasSinPedir+' d'+(f.intervalo?' <span style="font-weight:400;color:var(--text3)">· cada ~'+f.intervalo+' d</span>':'')+'</div>':
+      '<span style="color:var(--text3)">Nunca ha pedido</span>'
+    const cont=f.ultimoContacto?
+      fmt(f.ultimoContacto.fecha)+'<div style="font-size:11px;color:var(--text3)"><i class="ti '+(MC_TIPO_CONTACTO[f.ultimoContacto.tipo]||MC_TIPO_CONTACTO.otro)[0]+'"></i> '+(f.ultimoContacto.observaciones?mcEsc(f.ultimoContacto.observaciones.length>40?f.ultimoContacto.observaciones.slice(0,40)+'…':f.ultimoContacto.observaciones):(MC_TIPO_CONTACTO[f.ultimoContacto.tipo]||MC_TIPO_CONTACTO.otro)[1])+'</div>':
+      '<span style="color:var(--text3)">—</span>'
+    const datos=[c.telefono?'<a href="tel:'+mcEsc(c.telefono)+'" style="color:var(--accent)"><i class="ti ti-phone"></i></a>':'',c.email?'<a href="mailto:'+mcEsc(c.email)+'" style="color:var(--accent)"><i class="ti ti-mail"></i></a>':''].filter(Boolean).join(' ')
+    return '<tr'+(f.motivoAviso?' style="background:var(--red-bg)"':'')+'>'+
+      '<td style="max-width:220px"><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+mcEsc(c.nombre)+'</strong>'+
+        '<div style="font-size:11px;color:var(--text3)">'+[c.pais,c.destino_mercancia].filter(Boolean).map(mcEsc).join(' · ')+(datos?' '+datos:'')+'</div></td>'+
+      '<td style="white-space:nowrap">'+ped+'</td>'+
+      '<td style="text-align:center">'+f.numPedidos+'</td>'+
+      '<td>'+cont+'</td>'+
+      '<td>'+mcBadgePendiente(f.pend)+(f.pend&&f.pend.nota?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+mcEsc(f.pend.nota)+'</div>':'')+'</td>'+
+      '<td style="white-space:nowrap;max-width:none;overflow:visible">'+
+        '<button class="btn btn-sm" title="Registrar interacción" onclick="abrirInteraccionMC(\''+c.id+'\')"><i class="ti ti-message-plus"></i>Interacción</button> '+
+        '<button class="btn btn-sm" title="Historial de pedidos" onclick="abrirPedidosMC(\''+c.id+'\')"><i class="ti ti-history"></i>Pedidos</button> '+
+        '<button class="btn btn-sm" title="Marcar pendiente (llamada, correo...)" onclick="abrirPendienteMC(\''+c.id+'\')"><i class="ti ti-bell-plus"></i>Pendiente</button>'+
+      '</td></tr>'
+  }).join('')
+  document.getElementById('mc-tabla').innerHTML=lista.length?
+    '<table><thead><tr><th>Cliente</th><th>Último pedido</th><th style="text-align:center">Pedidos</th><th>Último contacto</th><th>Pendiente</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':
+    '<div class="empty">No hay clientes con este filtro</div>'
+}
+
+function setFiltroMisClientes(f){
+  _mc.filtro=f
+  document.querySelectorAll('.mc-filtro').forEach(b=>{
+    const on=b.dataset.f===f
+    b.classList.toggle('btn-primary',on)
+  })
+  renderMisClientes()
+}
+
+function actualizarBadgeMisClientes(n){
+  const b=document.getElementById('badge-mis-clientes')
+  if(!b)return
+  b.textContent=n
+  b.style.display=n?'':'none'
+}
+
+// Al iniciar sesión: contador de pendientes para el menú
+async function initBadgeMisClientes(){
+  if(!currentPerfil||!(can('admin')||mcEsComercial(currentPerfil)))return
+  const {data}=await db.from('clientes').select('pendiente_fecha').eq('comercial_id',currentPerfil.id).not('pendiente_fecha','is',null).lte('pendiente_fecha',mcHoy())
+  actualizarBadgeMisClientes((data||[]).length)
+}
+
+// ── Interacción ──
+async function abrirInteraccionMC(clienteId){
+  const f=_mc.filas.find(x=>x.c.id===clienteId)
+  if(!f)return
+  const c=f.c
+  document.getElementById('mci-titulo').textContent='Interacción · '+c.nombre
+  document.getElementById('mci-cliente-id').value=c.id
+  document.getElementById('mci-datos').innerHTML=[c.contacto,c.telefono?'<a href="tel:'+mcEsc(c.telefono)+'" style="color:var(--accent)">'+mcEsc(c.telefono)+'</a>':null,c.email?'<a href="mailto:'+mcEsc(c.email)+'" style="color:var(--accent)">'+mcEsc(c.email)+'</a>':null].filter(Boolean).map(x=>x.startsWith('<a')?x:mcEsc(x)).join(' · ')||'Sin datos de contacto en la ficha'
+  document.getElementById('mci-fecha').value=mcHoy()
+  document.getElementById('mci-tipo').value=f.pend&&MC_TIPO_CONTACTO[f.pend.tipo]?f.pend.tipo:'llamada'
+  document.getElementById('mci-obs').value=''
+  const wrap=document.getElementById('mci-completar-wrap')
+  if(f.pend){
+    wrap.style.display='block'
+    document.getElementById('mci-completar').checked=true
+    document.getElementById('mci-pendiente-txt').textContent=(MC_TIPO_PENDIENTE[f.pend.tipo]||MC_TIPO_PENDIENTE.otro)[1]+' ('+fmt(f.pend.fecha)+')'+(f.pend.nota?' — '+f.pend.nota:'')
+  }else wrap.style.display='none'
+  document.getElementById('mci-programar').checked=false
+  document.getElementById('mci-prox').style.display='none'
+  document.getElementById('mci-prox-tipo').value='llamada'
+  document.getElementById('mci-prox-fecha').value=mcSumarDias(7)
+  document.getElementById('mci-prox-nota').value=''
+
+  const hist=_mc.seguimiento.filter(s=>s.cliente_id===c.id)
+  document.getElementById('mci-historial').innerHTML=hist.length?
+    '<table class="tabla-compacta"><tbody>'+hist.map(s=>{
+      const [ico,txt]=MC_TIPO_CONTACTO[s.tipo]||MC_TIPO_CONTACTO.otro
+      return '<tr><td style="white-space:nowrap;vertical-align:top">'+fmt(s.fecha)+'</td><td style="white-space:nowrap;vertical-align:top"><i class="ti '+ico+'"></i> '+txt+'</td><td style="max-width:none">'+mcEsc(s.observaciones||'—')+'</td><td style="white-space:nowrap;color:var(--text3);vertical-align:top">'+mcEsc(s.creado_por||'')+'</td></tr>'
+    }).join('')+'</tbody></table>':
+    '<div class="empty">Todavía no hay interacciones con este cliente</div>'
+  openModal('modal-mc-interaccion')
+  setTimeout(()=>document.getElementById('mci-obs').focus(),50)
+}
+
+async function guardarInteraccionMC(){
+  const clienteId=document.getElementById('mci-cliente-id').value
+  const fecha=document.getElementById('mci-fecha').value
+  const tipo=document.getElementById('mci-tipo').value
+  const obs=document.getElementById('mci-obs').value.trim()
+  if(!fecha){toast('Indica la fecha','err');return}
+  if(!obs){toast('Escribe qué se ha hablado','err');return}
+  const programar=document.getElementById('mci-programar').checked
+  const completar=document.getElementById('mci-completar-wrap').style.display!=='none'&&document.getElementById('mci-completar').checked
+  if(programar&&!document.getElementById('mci-prox-fecha').value){toast('Indica la fecha de la siguiente acción','err');return}
+
+  const {error}=await db.from('clientes_seguimiento').insert({cliente_id:clienteId,fecha,tipo,observaciones:obs,creado_por:currentPerfil?.nombre||null})
+  if(error){toast('Error guardando: '+error.message,'err');return}
+
+  let upd=null
+  if(programar)upd={pendiente_tipo:document.getElementById('mci-prox-tipo').value,pendiente_fecha:document.getElementById('mci-prox-fecha').value,pendiente_nota:document.getElementById('mci-prox-nota').value.trim()||null}
+  else if(completar)upd={pendiente_tipo:null,pendiente_fecha:null,pendiente_nota:null}
+  if(upd){
+    const {error:e2}=await db.from('clientes').update(upd).eq('id',clienteId)
+    if(e2){toast('Interacción guardada, pero no se pudo actualizar el pendiente: '+e2.message,'err');closeModal('modal-mc-interaccion');loadMisClientes();return}
+  }
+  toast(programar?'Interacción guardada y siguiente acción programada ✓':'Interacción guardada ✓')
+  closeModal('modal-mc-interaccion')
+  loadMisClientes()
+}
+
+// ── Historial de pedidos ──
+async function abrirPedidosMC(clienteId){
+  const f=_mc.filas.find(x=>x.c.id===clienteId)
+  if(!f)return
+  document.getElementById('mcp-titulo').textContent='Historial de pedidos · '+f.c.nombre
+  document.getElementById('mcp-kpis').innerHTML=''
+  document.getElementById('mcp-tabla').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
+  openModal('modal-mc-pedidos')
+
+  const {data:peds,error}=await db.from('pedidos').select('*').eq('cliente_id',clienteId).order('fecha_recogida',{ascending:false})
+  if(error){document.getElementById('mcp-tabla').innerHTML='<div class="empty">Error: '+mcEsc(error.message)+'</div>';return}
+  const lista=peds||[]
+  let lineas=[]
+  if(lista.length){
+    const {data:pp}=await db.from('pedido_productos').select('*').in('pedido_id',lista.map(p=>p.id)).order('orden')
+    lineas=pp||[]
+  }
+  const validos=lista.filter(p=>p.estado!=='Anulado')
+  const caja=(v,l)=>'<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:700">'+v+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">'+l+'</div></div>'
+  document.getElementById('mcp-kpis').innerHTML=
+    caja(validos.length,'Pedidos')+
+    caja(validos.reduce((s,p)=>s+(p.palets||0),0),'Palets totales')+
+    caja(f.intervalo?'~'+f.intervalo+' días':'—','Frecuencia de pedido')+
+    caja(f.ultimoPedido?fmt(f.ultimoPedido):'—','Último pedido')
+
+  document.getElementById('mcp-tabla').innerHTML=lista.length?
+    '<table class="tabla-compacta"><thead><tr><th>Fecha</th><th>Referencia</th><th>Productos</th><th>Palets</th><th>Estado</th></tr></thead><tbody>'+
+    lista.map(p=>{
+      const ls=lineas.filter(l=>l.pedido_id===p.id)
+      const prods=ls.length?ls.map(l=>{
+        const partes=[[l.fruta,l.producto].filter(Boolean).join(' '),l.calibre?'cal. '+l.calibre:null,l.confeccion,l.num_cajas?l.num_cajas+' cajas':null,l.precio?Number(l.precio).toFixed(2)+' €':null].filter(Boolean)
+        return mcEsc(partes.join(' · '))
+      }).join('<br>'):mcEsc(p.fruta||'—')
+      return '<tr'+(p.estado==='Anulado'?' style="opacity:.5"':'')+'><td style="white-space:nowrap;vertical-align:top">'+fmt(p.fecha_recogida)+'</td><td style="vertical-align:top">'+mcEsc(p.referencia||'—')+'</td><td style="max-width:none;font-size:11px">'+prods+'</td><td style="vertical-align:top;text-align:center">'+(p.palets||0)+'</td><td style="vertical-align:top">'+badgeHtml(p.estado)+'</td></tr>'
+    }).join('')+'</tbody></table>':
+    '<div class="empty">Este cliente aún no tiene pedidos</div>'
+}
+
+// ── Pendiente (llamar, correo...) ──
+function abrirPendienteMC(clienteId,tipoDefecto){
+  const f=_mc.filas.find(x=>x.c.id===clienteId)
+  if(!f)return
+  document.getElementById('mcpe-titulo').textContent='Pendiente · '+f.c.nombre
+  document.getElementById('mcpe-cliente-id').value=clienteId
+  document.getElementById('mcpe-tipo').value=f.pend?.tipo||tipoDefecto||'llamada'
+  document.getElementById('mcpe-fecha').value=f.pend?.fecha||mcHoy()
+  document.getElementById('mcpe-nota').value=f.pend?.nota||''
+  document.getElementById('mcpe-quitar').style.visibility=f.pend?'visible':'hidden'
+  openModal('modal-mc-pendiente')
+}
+
+async function guardarPendienteMC(){
+  const id=document.getElementById('mcpe-cliente-id').value
+  const fecha=document.getElementById('mcpe-fecha').value
+  if(!fecha){toast('Indica para qué día','err');return}
+  const {error}=await db.from('clientes').update({
+    pendiente_tipo:document.getElementById('mcpe-tipo').value,
+    pendiente_fecha:fecha,
+    pendiente_nota:document.getElementById('mcpe-nota').value.trim()||null
+  }).eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Pendiente guardado ✓')
+  closeModal('modal-mc-pendiente')
+  loadMisClientes()
+}
+
+async function quitarPendienteMC(){
+  const id=document.getElementById('mcpe-cliente-id').value
+  const {error}=await db.from('clientes').update({pendiente_tipo:null,pendiente_fecha:null,pendiente_nota:null}).eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Pendiente eliminado')
+  closeModal('modal-mc-pendiente')
+  loadMisClientes()
 }
 
 // ── FICHA COMERCIAL DE CLIENTE ───────────────────────────────
@@ -5707,6 +6621,8 @@ async function cargarDatosPedidoReclamacion(pedidoId){
   const productosStr=(prods||[]).map(pr=>pr.fruta+(pr.producto?' — '+pr.producto:'')+(pr.num_palets?' ('+pr.num_palets+'pal)':'')).join(', ')
   document.getElementById('rc-info-productos').textContent=productosStr||'—'
   document.getElementById('rc-proveedor-bloque').style.display=p.proveedor?'block':'none'
+  const elErp=document.getElementById('rc-pedido-erp')
+  if(elErp&&!elErp.value&&p.numero_pedido_erp)elErp.value=p.numero_pedido_erp
 }
 
 function renderFotosReclamacion(){
@@ -6792,7 +7708,7 @@ function showPage(id,el){
   if(el)el.classList.add('active')
   document.getElementById('sidebar').classList.remove('open')
   document.getElementById('sidebar-overlay').classList.remove('open')
-  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadFeriaFruitAttraction,'equipo-comercial':loadEquipoComercial,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,productos:loadProductos,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
+  const map={dashboard:loadDashboard,'cuadro-mandos':loadCuadroMandos,pedidos:loadPedidosHoy,'ped-proveedores':loadPedProvPendientes,reclamaciones:loadReclamaciones,clientes:loadFeriaFruitAttraction,'equipo-comercial':loadEquipoComercial,'mis-clientes':loadMisClientes,proveedores:loadProveedores,preparacion:loadPreparacion,planning:loadPlanning,calidad:loadCalidad,envios:loadEnvios,stock:loadStock,productos:loadProductos,'informes-qc':loadInformesQC,usuarios:loadUsuarios,partidas:loadPartidas,tarifas:loadTarifas,'mi-perfil':loadMiPerfil,equipo:loadEquipoAdmin}
   if(map[id])map[id]()
 }
 </script>
