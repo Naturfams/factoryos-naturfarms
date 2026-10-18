@@ -327,7 +327,44 @@ tr:hover td{background:var(--bg)}
         </div>
         <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px" id="cmc-kpis"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
         <div style="overflow-x:auto"><div id="cmc-tabla-semana"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
-        <div style="font-size:11px;color:var(--text3);margin-top:8px">Pedidos por fecha de recogida, sin anulados, asignados al comercial del cliente. Interacciones asignadas a quien las registró. Venta estimada = €/kg × peso de cada línea. "Atrasados" y "Sin pedir" muestran la situación de hoy.</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Pedidos por fecha de recogida, sin anulados, asignados al comercial del cliente. Interacciones asignadas a quien las registró. "Atrasados" y "Sin pedir" muestran la situación de hoy.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title"><i class="ti ti-coin-euro"></i>Ventas y márgenes · <span id="cmv-semana-label" style="font-weight:400">semana</span></div>
+        <div class="dash-metrics-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px" id="cmv-kpis"></div>
+        <div style="overflow-x:auto"><div id="cmv-tabla"></div></div>
+        <div id="cmv-nota" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6"></div>
+      </div>
+
+      <!-- MARGEN POR PEDIDO -->
+      <div class="card" style="margin-bottom:16px" id="mp-card">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <div class="card-title" style="margin:0"><i class="ti ti-report-money"></i>Margen y gastos por pedido <span id="mp-badge"></span></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+          <div class="fg" style="margin:0"><label style="font-size:11px">Desde</label><input type="date" id="mp-desde" onchange="mpRender()" style="padding:5px 8px;font-size:12px"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Hasta</label><input type="date" id="mp-hasta" onchange="mpRender()" style="padding:5px 8px;font-size:12px"></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Comercial</label><select id="mp-com" onchange="mpRender()" style="padding:5px 8px;font-size:12px;min-width:140px"></select></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Margen bajo si menos de</label><span style="font-size:12px"><input type="number" id="mp-umbral" value="5" step="0.5" min="0" onchange="mpGuardarUmbral();mpRender()" style="width:60px;padding:5px 8px;font-size:12px"> %</span></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Buscar</label><input type="text" id="mp-buscar" placeholder="Ref., ERP o cliente" oninput="mpRender()" style="padding:5px 8px;font-size:12px;min-width:150px"></div>
+          <div style="display:flex;gap:4px;margin-left:auto;flex-wrap:wrap" id="mp-rangos">
+            <button class="btn btn-sm" onclick="mpRango(7)">7 días</button>
+            <button class="btn btn-sm" onclick="mpRango(30)">30 días</button>
+            <button class="btn btn-sm" onclick="mpRango('mes')">Este mes</button>
+            <button class="btn btn-sm" onclick="mpRango(365)">12 meses</button>
+          </div>
+        </div>
+        <div id="mp-resumen" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="mp-filtros">
+          <button class="btn btn-sm btn-primary" data-f="todos" onclick="mpFiltro('todos')">Todos</button>
+          <button class="btn btn-sm" data-f="negativos" onclick="mpFiltro('negativos')"><i class="ti ti-trending-down"></i>Negativos</button>
+          <button class="btn btn-sm" data-f="alertas" onclick="mpFiltro('alertas')"><i class="ti ti-alert-triangle"></i>Con alertas</button>
+          <button class="btn btn-sm" data-f="bajo" onclick="mpFiltro('bajo')"><i class="ti ti-arrow-down-right"></i>Margen bajo</button>
+          <button class="btn btn-sm" data-f="incompletos" onclick="mpFiltro('incompletos')"><i class="ti ti-question-mark"></i>Datos incompletos</button>
+        </div>
+        <div style="overflow-x:auto;max-height:560px;overflow-y:auto"><div id="mp-tabla"></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Gastos = compra al proveedor + transporte + abonos. Margen = venta bruta − gastos (solo en pedidos con precio de compra; la producción propia no tiene coste guardado). Pulsa una fila para ver el desglose por línea.</div>
       </div>
 
       <div class="card" style="margin-bottom:16px">
@@ -336,7 +373,9 @@ tr:hover td{background:var(--bg)}
           <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap" id="cmc-metricas">
             <button class="btn btn-sm btn-primary" data-m="pedidos" onclick="cmcSetMetrica('pedidos')">Pedidos</button>
             <button class="btn btn-sm" data-m="palets" onclick="cmcSetMetrica('palets')">Palets</button>
-            <button class="btn btn-sm" data-m="venta" onclick="cmcSetMetrica('venta')">Venta est.</button>
+            <button class="btn btn-sm" data-m="bruta" onclick="cmcSetMetrica('bruta')">Venta bruta</button>
+            <button class="btn btn-sm" data-m="neta" onclick="cmcSetMetrica('neta')">Venta neta</button>
+            <button class="btn btn-sm" data-m="margen" onclick="cmcSetMetrica('margen')">Margen</button>
             <button class="btn btn-sm" data-m="interacciones" onclick="cmcSetMetrica('interacciones')">Interacciones</button>
           </div>
         </div>
@@ -2003,7 +2042,7 @@ function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet=
     '<div class="producto-linea-fila" style="grid-template-columns:repeat(4,1fr) 36px">'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Cajas</label><input type="number" id="lca-'+id+'" value="'+cajas+'" min="0" oninput="npCalcPesoLinea('+id+')" style="padding:6px 8px;font-size:13px"></div>'+
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Peso (kg)</label><input type="number" id="lpb-'+id+'" value="'+peso+'" min="0" step="0.1" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
-    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">€/kg venta</label><input type="number" id="lpr-'+id+'" value="'+precio+'" min="0" step="0.01" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
+    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">€/kg venta</label><input type="number" id="lpr-'+id+'" value="'+precio+'" min="0" step="0.01" oninput="npCalcPesoLinea('+id+')" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
     '<div class="fg" id="lprc-wrap-'+id+'" style="display:'+(origenActual!=="propio"?"block":"none")+'"><label style="font-size:11px;color:var(--text2);font-weight:500">€/kg compra</label><input type="number" id="lprc-'+id+'" value="'+precioCompra+'" min="0" step="0.01" placeholder="0.00" style="padding:6px 8px;font-size:13px"></div>'+
     '<div class="fg" style="display:flex;align-items:flex-end">'+
     (id>1?'<button type="button" class="btn btn-sm btn-danger" onclick="document.getElementById(\'linea-'+id+'\').remove()"><i class="ti ti-trash"></i></button>':'')+
@@ -2375,8 +2414,8 @@ async function loadCMComercial(){
   const desdeQ=cmcLocal(new Date(desde.getTime()-14*86400000))
   const [{data:com},{data:cli},{data:ped},{data:seg}]=await Promise.all([
     db.from('perfiles').select('id,nombre,rol,es_comercial,activo').or('rol.eq.comercial,es_comercial.eq.true').order('nombre'),
-    db.from('clientes').select('id,nombre,comercial_id,pendiente_fecha,estado_comercial'),
-    db.from('pedidos').select('id,referencia,numero_pedido_erp,cliente_id,fecha_recogida,palets,estado,proveedor').gte('fecha_recogida',desdeQ).neq('estado','Anulado'),
+    db.from('clientes').select('*'),
+    db.from('pedidos').select('id,referencia,numero_pedido_erp,cliente_id,fecha_recogida,palets,estado,proveedor,transportista_id,precio_compra').gte('fecha_recogida',desdeQ).neq('estado','Anulado'),
     db.from('clientes_seguimiento').select('*').gte('fecha',desdeQ).order('fecha',{ascending:false}).order('creado_en',{ascending:false})
   ])
   _cmc.com=(com||[]).filter(c=>c.activo!==false)
@@ -2384,10 +2423,21 @@ async function loadCMComercial(){
   _cmc.ped=ped||[]
   _cmc.seg=(seg||[]).filter(x=>x.tipo!=='estado')
   _cmc.desdeMes=desdeStr
-  // Venta estimada por pedido (€/kg × peso de cada línea)
-  const lineas=await cmcEnTrozos(_cmc.ped.map(p=>p.id),ids=>db.from('pedido_productos').select('pedido_id,precio,peso_bruto').in('pedido_id',ids))
-  _cmc.lin={}
-  lineas.forEach(l=>{_cmc.lin[l.pedido_id]=(_cmc.lin[l.pedido_id]||0)+(l.precio&&l.peso_bruto?l.precio*l.peso_bruto:0)})
+  // Datos económicos por pedido
+  const idsPed=_cmc.ped.map(p=>p.id)
+  const [lineas,rcl,{data:stockCajas},{data:transp}]=await Promise.all([
+    cmcEnTrozos(idsPed,ids=>db.from('pedido_productos').select('*').in('pedido_id',ids)),
+    cmcEnTrozos(idsPed,ids=>db.from('reclamaciones').select('pedido_id,importe,importe_base').in('pedido_id',ids)),
+    db.from('stock').select('*').eq('categoria','caja'),
+    db.from('tarifas_transporte').select('*')
+  ])
+  const kgCaja={};(stockCajas||[]).forEach(s=>{if(parseFloat(s.kg_caja))kgCaja[s.nombre]=parseFloat(s.kg_caja)})
+  _cmc.lineasPorPed={};lineas.forEach(l=>(_cmc.lineasPorPed[l.pedido_id]=_cmc.lineasPorPed[l.pedido_id]||[]).push(l))
+  _cmc.abonos={};rcl.forEach(r=>{_cmc.abonos[r.pedido_id]=(_cmc.abonos[r.pedido_id]||0)+(parseFloat(r.importe_base)||parseFloat(r.importe)||0)})
+  _cmc.kgCaja=kgCaja
+  _cmc.transp=transp||[]
+  const cliTodos={};(cli||[]).forEach(c=>cliTodos[c.id]=c)
+  _cmc.ped.forEach(p=>cmcEconomia(p,cliTodos[p.cliente_id]))
 
   const mapCli={};_cmc.cli.forEach(c=>mapCli[c.id]=c)
   const porNombre={};_cmc.com.forEach(c=>porNombre[(c.nombre||'').trim().toLowerCase()]=c.id)
@@ -2396,7 +2446,6 @@ async function loadCMComercial(){
     const c=mapCli[p.cliente_id]
     p._cliente=c?.nombre||'—'
     p._com=c&&idsCom.has(c.comercial_id)?c.comercial_id:'sin'
-    p._venta=_cmc.lin[p.id]||0
   })
   _cmc.seg.forEach(s=>{
     const c=mapCli[s.cliente_id]
@@ -2415,9 +2464,224 @@ async function loadCMComercial(){
   cmcRenderTodo()
 }
 
+// ── MARGEN Y GASTOS POR PEDIDO ───────────────────────────────
+let _mp={filtro:'todos',abiertos:new Set(),orden:'margen',inicial:false}
+
+function mpUmbral(){return parseFloat(document.getElementById('mp-umbral')?.value)||0}
+function mpGuardarUmbral(){try{localStorage.setItem('mp_umbral',document.getElementById('mp-umbral').value)}catch(e){}}
+function mpEur2(v){return v===null||v===undefined?'—':(Math.round(v*100)/100).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'}
+
+function mpRango(r){
+  const hoy=new Date(),d=new Date()
+  if(r==='mes')d.setDate(1);else d.setDate(d.getDate()-r)
+  document.getElementById('mp-desde').value=cmcLocal(d)
+  document.getElementById('mp-hasta').value=cmcLocal(hoy)
+  mpRender()
+}
+function mpFiltro(f){
+  _mp.filtro=f
+  document.querySelectorAll('#mp-filtros .btn').forEach(b=>b.classList.toggle('btn-primary',b.dataset.f===f))
+  mpRender()
+}
+function mpOrden(o){_mp.orden=_mp.orden===o?o+'_desc':o;mpRender()}
+
+// Alertas de un pedido. Gravedad: b-low (revisar ya), b-warn (atención), b-prep (dato incompleto)
+function mpAlertas(p){
+  const a=[],umbral=mpUmbral()
+  const lineas=_cmc.lineasPorPed[p.id]||[]
+  if(p._margen!==null&&p._margen<0)a.push({t:'Margen negativo: '+mpEur2(p._margen),c:'b-low',k:'neg'})
+  else if(p._margen!==null&&p._bruta&&p._margen/p._bruta*100<umbral)a.push({t:'Margen bajo ('+cmcPct(p._margen,p._bruta)+')',c:'b-warn',k:'bajo'})
+  if(p._margen===null&&p._bruta&&p._neta<0)a.push({t:'Venta neta negativa: '+mpEur2(p._neta),c:'b-low',k:'neg'})
+  lineas.forEach(l=>{const pv=parseFloat(l.precio)||0,pc=parseFloat(l.precio_compra)||parseFloat(p.precio_compra)||0
+    if(pv&&pc&&pv<pc)a.push({t:'Venta por debajo de compra: '+(l.fruta||'')+' ('+pv.toFixed(2)+' < '+pc.toFixed(2)+' €/kg)',c:'b-low',k:'neg'})})
+  if(p._bruta&&p._transp/p._bruta>0.2)a.push({t:'Transporte alto: '+cmcPct(p._transp,p._bruta)+' de la venta',c:'b-warn'})
+  if(p._abono)a.push({t:'Reclamación: abono '+mpEur2(p._abono),c:p._bruta&&p._abono/p._bruta>0.1?'b-low':'b-warn'})
+  if(p._sinPrecio)a.push({t:'Sin precio de venta',c:'b-low',k:'inc'})
+  if(p.proveedor&&p._coste===null&&p._bruta)a.push({t:'Pedido de proveedor sin precio de compra',c:'b-warn',k:'inc'})
+  if(p._sinTransp)a.push({t:'Cliente sin destino: transporte no calculado',c:'b-prep',k:'inc'})
+  if(p._kgEstimado)a.push({t:'Kg estimados (caja sin kg en Stock)',c:'b-prep',k:'inc'})
+  return a
+}
+
+function mpRender(){
+  if(!_cmc.cargado)return
+  const elD=document.getElementById('mp-desde'),elH=document.getElementById('mp-hasta')
+  if(!_mp.inicial){
+    _mp.inicial=true
+    try{const u=localStorage.getItem('mp_umbral');if(u)document.getElementById('mp-umbral').value=u}catch(e){}
+    if(!elD.value){const d=new Date();d.setDate(d.getDate()-30);elD.value=cmcLocal(d);elH.value=cmcLocal(new Date())}
+    const sel=document.getElementById('mp-com')
+    sel.innerHTML='<option value="">Todo el equipo</option>'+_cmc.com.map(c=>'<option value="'+c.id+'">'+mcEsc(c.nombre)+'</option>').join('')+'<option value="sin">Sin asignar</option>'
+  }
+  const desde=elD.value,hasta=elH.value,com=document.getElementById('mp-com').value
+  const buscar=(document.getElementById('mp-buscar').value||'').toLowerCase()
+  const nom={};_cmc.com.forEach(c=>nom[c.id]=c.nombre);nom.sin='Sin asignar'
+  let lista=_cmc.ped.filter(p=>(!desde||p.fecha_recogida>=desde)&&(!hasta||p.fecha_recogida<=hasta)&&(!com||p._com===com)&&
+    (!buscar||[p.referencia,p.numero_pedido_erp,p._cliente].some(v=>(v||'').toLowerCase().includes(buscar))))
+  lista.forEach(p=>{p._alertas=mpAlertas(p);p._gastos=(p._coste||0)+(p._transp||0)+(p._abono||0)})
+
+  // Resumen del periodo (antes de filtrar por tipo)
+  const sum=k=>lista.reduce((a,p)=>a+(p[k]||0),0)
+  const conCoste=lista.filter(p=>p._margen!==null)
+  const margen=conCoste.reduce((a,p)=>a+p._margen,0),brutaCC=conCoste.reduce((a,p)=>a+p._bruta,0)
+  const negativos=lista.filter(p=>p._alertas.some(x=>x.k==='neg'))
+  const conAlertas=lista.filter(p=>p._alertas.some(x=>x.c!=='b-prep'))
+  const incompletos=lista.filter(p=>p._alertas.some(x=>x.k==='inc'))
+  const perdida=negativos.reduce((a,p)=>a+Math.min(0,p._margen!==null?p._margen:p._neta),0)
+  const box=(v,l,color,sub)=>'<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;min-width:120px;flex:1"><div style="font-size:11px;color:var(--text2)">'+l+'</div><div style="font-size:18px;font-weight:700;color:'+(color||'var(--text)')+'">'+v+'</div>'+(sub?'<div style="font-size:10.5px;color:var(--text3)">'+sub+'</div>':'')+'</div>'
+  document.getElementById('mp-resumen').innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    box(lista.length,'Pedidos',null,cmcNum(sum('palets'))+' palets')+
+    box(cmcEur(sum('_bruta')),'Venta bruta')+
+    box(cmcEur(sum('_coste')),'Compra a proveedores','var(--text2)')+
+    box(cmcEur(sum('_transp')),'Transporte','var(--text2)',cmcPct(sum('_transp'),sum('_bruta'))+' de la venta')+
+    box(cmcEur(sum('_abono')),'Abonos',sum('_abono')?'var(--red-text)':null)+
+    box(conCoste.length?cmcEur(margen):'—','Margen',margen<0?'var(--red-text)':'var(--green-text)',conCoste.length?cmcPct(margen,brutaCC)+' · '+conCoste.length+' con coste':'')+
+    box(negativos.length,'En negativo',negativos.length?'var(--red-text)':'var(--green-text)',negativos.length?'pérdida '+cmcEur(perdida):'ninguno 👍')+
+  '</div>'
+  document.getElementById('mp-badge').innerHTML=negativos.length?'<span class="badge b-low" style="margin-left:6px"><i class="ti ti-alert-octagon"></i>'+negativos.length+' en negativo</span>':''
+
+  // Filtro por tipo
+  if(_mp.filtro==='negativos')lista=negativos
+  else if(_mp.filtro==='alertas')lista=conAlertas
+  else if(_mp.filtro==='bajo')lista=lista.filter(p=>p._alertas.some(x=>x.k==='bajo'||x.k==='neg'))
+  else if(_mp.filtro==='incompletos')lista=incompletos
+  document.querySelectorAll('#mp-filtros .btn').forEach(b=>{
+    const n={todos:null,negativos:negativos.length,alertas:conAlertas.length,bajo:null,incompletos:incompletos.length}[b.dataset.f]
+    const base=b.dataset.base||(b.dataset.base=b.innerHTML)
+    b.innerHTML=base+(n?' ('+n+')':'')
+  })
+
+  // Orden
+  const val=p=>p._margen!==null?p._margen:(p._bruta?p._neta:Infinity)
+  const ord={margen:(a,b)=>val(a)-val(b),margen_desc:(a,b)=>val(b)-val(a),pct:(a,b)=>((a._margen??1e9)/(a._bruta||1))-((b._margen??1e9)/(b._bruta||1)),pct_desc:(a,b)=>((b._margen??-1e9)/(b._bruta||1))-((a._margen??-1e9)/(a._bruta||1)),
+    fecha:(a,b)=>a.fecha_recogida.localeCompare(b.fecha_recogida),fecha_desc:(a,b)=>b.fecha_recogida.localeCompare(a.fecha_recogida),
+    bruta:(a,b)=>a._bruta-b._bruta,bruta_desc:(a,b)=>b._bruta-a._bruta}[_mp.orden]||((a,b)=>val(a)-val(b))
+  lista=lista.slice().sort(ord)
+
+  const th=(t,k,al)=>'<th style="cursor:pointer;'+(al?'text-align:'+al:'')+'" onclick="mpOrden(\''+k+'\')">'+t+(_mp.orden.startsWith(k)?(_mp.orden.endsWith('_desc')?' ▼':' ▲'):'')+'</th>'
+  const rows=lista.map(p=>{
+    const neg=p._alertas.some(x=>x.k==='neg')
+    const abierto=_mp.abiertos.has(p.id)
+    const m=p._margen
+    const alertasHtml=p._alertas.length?p._alertas.map(x=>'<span class="badge '+x.c+'" style="font-size:10px;margin:1px">'+mcEsc(x.t)+'</span>').join(''):'<span style="color:var(--green-text);font-size:11px"><i class="ti ti-check"></i> OK</span>'
+    let fila='<tr style="cursor:pointer;'+(neg?'background:var(--red-bg)':'')+'" onclick="mpToggle(\''+p.id+'\')">'+
+      '<td style="white-space:nowrap"><i class="ti ti-chevron-'+(abierto?'down':'right')+'" style="color:var(--text3)"></i> '+fmt(p.fecha_recogida)+'</td>'+
+      '<td style="white-space:nowrap"><strong>'+mcEsc(p.referencia||'—')+'</strong>'+(p.numero_pedido_erp?'<div style="font-size:10px;color:var(--text3)">ERP '+mcEsc(p.numero_pedido_erp)+'</div>':'')+'</td>'+
+      '<td style="max-width:170px;white-space:normal"><strong>'+mcEsc(p._cliente)+'</strong><div style="font-size:10px;color:var(--text3)">'+mcEsc(nom[p._com]||'—')+' · '+(p.proveedor?'Proveedor: '+mcEsc(p.proveedor):'Propio')+'</div></td>'+
+      '<td style="text-align:center">'+(p.palets||0)+'</td>'+
+      '<td style="text-align:right">'+(p._bruta?cmcEur(p._bruta):'—')+'</td>'+
+      '<td style="text-align:right;color:var(--text2)">'+(p._coste!==null?cmcEur(p._coste):(p.proveedor?'<span style="color:var(--orange-text)">?</span>':'<span style="font-size:10px;color:var(--text3)">propio</span>'))+'</td>'+
+      '<td style="text-align:right;color:var(--text2)">'+(p._transp?cmcEur(p._transp):'—')+'</td>'+
+      '<td style="text-align:right;color:var(--red-text)">'+(p._abono?cmcEur(p._abono):'—')+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:'+(m===null?'var(--text3)':(m<0?'var(--red-text)':'var(--green-text)'))+'">'+(m!==null?cmcEur(m):(p._bruta?'<span style="font-weight:400;font-size:11px" title="Venta neta (sin coste de producto)">neta '+cmcEur(p._neta)+'</span>':'—'))+'</td>'+
+      '<td style="text-align:right;'+(m!==null&&p._bruta&&m/p._bruta*100<mpUmbral()?'color:var(--red-text);font-weight:600':'')+'">'+(m!==null&&p._bruta?cmcPct(m,p._bruta):'—')+'</td>'+
+      '<td style="text-align:right">'+(p._bruta&&p.palets?cmcEur(p._bruta/p.palets):'—')+'</td>'+
+      '<td style="max-width:260px;white-space:normal">'+alertasHtml+'</td></tr>'
+    if(abierto)fila+=mpDetalle(p)
+    return fila
+  }).join('')
+  document.getElementById('mp-tabla').innerHTML=lista.length?
+    '<table class="tabla-compacta"><thead><tr>'+th('Fecha','fecha')+'<th>Pedido</th><th>Cliente</th><th style="text-align:center">Palets</th>'+th('Venta bruta','bruta','right')+
+    '<th style="text-align:right">Compra</th><th style="text-align:right">Transporte</th><th style="text-align:right">Abonos</th>'+th('Margen','margen','right')+th('%','pct','right')+'<th style="text-align:right">€/palet</th><th>Alertas</th></tr></thead><tbody>'+rows+'</tbody></table>':
+    '<div class="empty">'+(_mp.filtro==='negativos'?'Ningún pedido en negativo en este periodo 👍':'No hay pedidos con este filtro')+'</div>'
+}
+
+function mpToggle(id){_mp.abiertos.has(id)?_mp.abiertos.delete(id):_mp.abiertos.add(id);mpRender()}
+
+// Desglose por línea: dónde se gana o se pierde
+function mpDetalle(p){
+  const lineas=_cmc.lineasPorPed[p.id]||[]
+  const filas=lineas.map(l=>{
+    const kc=_cmc.kgCaja[l.confeccion]
+    const kg=(kc&&l.num_cajas)?l.num_cajas*kc:(parseFloat(l.peso_bruto)||0)
+    const pv=parseFloat(l.precio)||0,pc=parseFloat(l.precio_compra)||parseFloat(p.precio_compra)||0
+    const venta=pv*kg,compra=pc?pc*kg:null
+    const dif=pc?pv-pc:null
+    return '<tr><td>'+mcEsc([l.fruta,l.producto].filter(Boolean).join(' '))+'</td><td>'+mcEsc(l.confeccion||'—')+'</td>'+
+      '<td style="text-align:center">'+(l.num_cajas||'—')+'</td><td style="text-align:right">'+fmtKg(kg)+(kc&&l.num_cajas?'':' <span title="Peso indicado: la caja no tiene kg en Stock" style="color:var(--orange-text)">*</span>')+'</td>'+
+      '<td style="text-align:right">'+(pv?pv.toFixed(2):'<span style="color:var(--red-text)">—</span>')+'</td><td style="text-align:right">'+(pc?pc.toFixed(2):'—')+'</td>'+
+      '<td style="text-align:right;color:'+(dif===null?'var(--text3)':(dif<0?'var(--red-text)':'var(--green-text)'))+'">'+(dif!==null?(dif>=0?'+':'')+dif.toFixed(2):'—')+'</td>'+
+      '<td style="text-align:right">'+mpEur2(venta||null)+'</td><td style="text-align:right">'+mpEur2(compra)+'</td></tr>'
+  }).join('')
+  const reparto=p.palets&&p._transp?' · transporte '+mpEur2(p._transp/p.palets)+'/palet':''
+  return '<tr><td colspan="12" style="background:var(--bg3);max-width:none;white-space:normal;padding:10px 14px">'+
+    '<table class="tabla-compacta" style="background:var(--bg2);border-radius:8px"><thead><tr><th>Producto</th><th>Confección</th><th style="text-align:center">Cajas</th><th style="text-align:right">Kg</th><th style="text-align:right">€/kg venta</th><th style="text-align:right">€/kg compra</th><th style="text-align:right">Dif. €/kg</th><th style="text-align:right">Venta</th><th style="text-align:right">Compra</th></tr></thead><tbody>'+
+    (filas||'<tr><td colspan="9" class="empty">Sin líneas</td></tr>')+'</tbody></table>'+
+    '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12px">'+
+      '<span>Bruta <strong>'+mpEur2(p._bruta)+'</strong></span><span>− Compra <strong>'+mpEur2(p._coste)+'</strong></span><span>− Transporte <strong>'+mpEur2(p._transp)+'</strong>'+reparto+'</span><span>− Abonos <strong>'+mpEur2(p._abono)+'</strong></span>'+
+      '<span>= Margen <strong style="color:'+((p._margen??p._neta)<0?'var(--red-text)':'var(--green-text)')+'">'+(p._margen!==null?mpEur2(p._margen):'— (propio: neta '+mpEur2(p._neta)+')')+'</strong></span>'+
+      '<button class="btn btn-sm" style="margin-left:auto" onclick="event.stopPropagation();editarPedido(\''+p.id+'\')"><i class="ti ti-edit"></i>Abrir pedido</button>'+
+    '</div></td></tr>'
+}
+
+// Kg netos = cajas × kg/caja (Stock); si la caja no tiene kg, el peso indicado en la línea
+function cmcEconomia(p,cliente){
+  const lineas=_cmc.lineasPorPed[p.id]||[]
+  let kg=0,bruta=0,coste=0,lineasPrecio=0,lineasCoste=0,kgEstimado=false
+  lineas.forEach(l=>{
+    const kc=_cmc.kgCaja[l.confeccion]
+    let k=(kc&&l.num_cajas)?l.num_cajas*kc:(parseFloat(l.peso_bruto)||0)
+    if(!(kc&&l.num_cajas))kgEstimado=true
+    kg+=k
+    const pv=parseFloat(l.precio)||0
+    if(pv&&k){bruta+=pv*k;lineasPrecio++}
+    const pc=parseFloat(l.precio_compra)||parseFloat(p.precio_compra)||0
+    if(pc&&k){coste+=pc*k;lineasCoste++}
+  })
+  // Transporte: €/palet del destino de mercancía del cliente (o €/camión si no hay precio por palet)
+  let transporte=0
+  const destino=(cliente?.destino_mercancia||'').trim()
+  if(destino){
+    const nomTrans=(transportistas||[]).find(t=>t.id===p.transportista_id)?.nombre
+    const filas=_cmc.transp.filter(t=>(t.destino||'').trim()===destino)
+    const t=filas.find(x=>nomTrans&&x.transportista===nomTrans)||filas.find(x=>!x.transportista)||filas[0]
+    if(t)transporte=t.precio_palet?(parseFloat(t.precio_palet)||0)*(p.palets||0):(parseFloat(t.precio_camion)||0)
+  }
+  const abono=_cmc.abonos[p.id]||0
+  const neta=bruta-transporte-abono
+  const conCoste=lineasPrecio>0&&lineasCoste>=lineasPrecio
+  Object.assign(p,{_kg:kg,_bruta:bruta,_transp:transporte,_abono:abono,_neta:neta,_coste:conCoste?coste:null,_margen:conCoste?neta-coste:null,_sinPrecio:lineas.length&&!lineasPrecio,_kgEstimado:kgEstimado,_sinTransp:!destino})
+}
+
 function cmcFilas(){return [..._cmc.com.map(c=>({id:c.id,nombre:c.nombre})),{id:'sin',nombre:'Sin asignar'}]}
 
-function cmcRenderTodo(){cmcRenderSemana();cmcRenderMes();cmcRenderDetalle()}
+function cmcRenderTodo(){cmcRenderSemana();cmcRenderMes();cmcRenderDetalle();mpRender()}
+
+function cmcPct(a,b){return b?(Math.round(a/b*1000)/10).toLocaleString('es-ES')+' %':'—'}
+
+function cmcRenderVentas(){
+  const r=cmcRangoSemana(_cmc.semana),ra=cmcRangoSemana(_cmc.semana-1)
+  document.getElementById('cmv-semana-label').textContent=document.getElementById('cmc-semana-label').textContent
+  const t=cmcStats(r.ini,r.fin),ta=cmcStats(ra.ini,ra.fin)
+  const kpi=(v,l,d,color)=>'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:11px;color:var(--text2)">'+l+'</div><div style="font-size:20px;font-weight:700;margin:2px 0;color:'+(color||'var(--text)')+'">'+v+'</div><div style="font-size:10.5px">'+d+'</div></div>'
+  const porPal=t.paletsConPrecio?t.bruta/t.paletsConPrecio:0,porPalA=ta.paletsConPrecio?ta.bruta/ta.paletsConPrecio:0
+  document.getElementById('cmv-kpis').innerHTML=
+    kpi(cmcEur(t.bruta),'Venta bruta',cmcDelta(t.bruta,ta.bruta))+
+    kpi(cmcEur(t.transp),'Transporte','<span style="color:var(--text3)">'+cmcPct(t.transp,t.bruta)+' de la venta</span>')+
+    kpi(cmcEur(t.abono),'Abonos por reclamaciones','<span style="color:var(--text3)">'+cmcPct(t.abono,t.bruta)+' de la venta</span>',t.abono?'var(--red-text)':null)+
+    kpi(cmcEur(t.neta),'Venta neta',cmcDelta(t.neta,ta.neta),'var(--accent)')+
+    kpi(t.pedConCoste?cmcEur(t.margen):'—','Margen','<span style="color:var(--text3)">'+(t.pedConCoste?cmcPct(t.margen,t.netaConCoste)+' · '+t.pedConCoste+' pedido'+(t.pedConCoste>1?'s':'')+' con coste':'sin pedidos con precio de compra')+'</span>',t.margen<0?'var(--red-text)':'var(--green-text)')+
+    kpi(porPal?cmcEur(porPal):'—','Valor medio por palet',porPal?cmcDelta(porPal,porPalA):'<span style="color:var(--text3)">—</span>')
+  const tot={pal:0,kg:0,bruta:0,transp:0,abono:0,neta:0,margen:0,netaCC:0,palP:0,cc:0}
+  const filas=cmcFilas().map(f=>{
+    const st=cmcStats(r.ini,r.fin,f.id)
+    if(!st.pedidos)return ''
+    tot.pal+=st.palets;tot.kg+=st.kg;tot.bruta+=st.bruta;tot.transp+=st.transp;tot.abono+=st.abono;tot.neta+=st.neta;tot.margen+=st.margen;tot.netaCC+=st.netaConCoste;tot.palP+=st.paletsConPrecio;tot.cc+=st.pedConCoste
+    return '<tr><td style="font-weight:600;max-width:none">'+mcEsc(f.nombre)+'</td><td style="text-align:center">'+st.palets+'</td><td style="text-align:right">'+fmtKg(st.kg)+'</td>'+
+      '<td style="text-align:right">'+cmcEur(st.bruta)+'</td><td style="text-align:right;color:var(--text2)">'+cmcEur(st.transp)+'</td><td style="text-align:right;color:var(--red-text)">'+(st.abono?cmcEur(st.abono):'—')+'</td>'+
+      '<td style="text-align:right;font-weight:700">'+cmcEur(st.neta)+'</td><td style="text-align:right">'+(st.paletsConPrecio?cmcEur(st.bruta/st.paletsConPrecio):'—')+'</td>'+
+      '<td style="text-align:right;color:'+(st.margen<0?'var(--red-text)':'var(--green-text)')+';font-weight:600">'+(st.pedConCoste?cmcEur(st.margen):'—')+'</td><td style="text-align:right">'+(st.pedConCoste?cmcPct(st.margen,st.netaConCoste):'—')+'</td></tr>'
+  }).join('')
+  document.getElementById('cmv-tabla').innerHTML=filas?
+    '<table><thead><tr><th>Comercial</th><th style="text-align:center">Palets</th><th style="text-align:right">Kg</th><th style="text-align:right">Venta bruta</th><th style="text-align:right">Transporte</th><th style="text-align:right">Abonos</th><th style="text-align:right">Venta neta</th><th style="text-align:right">€/palet</th><th style="text-align:right">Margen</th><th style="text-align:right">% margen</th></tr></thead><tbody>'+filas+
+    '<tr style="font-weight:700;background:var(--bg3)"><td>Total</td><td style="text-align:center">'+tot.pal+'</td><td style="text-align:right">'+fmtKg(tot.kg)+'</td><td style="text-align:right">'+cmcEur(tot.bruta)+'</td><td style="text-align:right">'+cmcEur(tot.transp)+'</td><td style="text-align:right">'+(tot.abono?cmcEur(tot.abono):'—')+'</td><td style="text-align:right">'+cmcEur(tot.neta)+'</td><td style="text-align:right">'+(tot.palP?cmcEur(tot.bruta/tot.palP):'—')+'</td><td style="text-align:right">'+(tot.cc?cmcEur(tot.margen):'—')+'</td><td style="text-align:right">'+(tot.cc?cmcPct(tot.margen,tot.netaCC):'—')+'</td></tr>'+
+    '</tbody></table>':'<div class="empty">No hay pedidos esta semana</div>'
+  const avisos=[]
+  if(t.sinPrecio)avisos.push('<span style="color:var(--orange-text)">'+t.sinPrecio+' pedido'+(t.sinPrecio>1?'s':'')+' sin precio de venta (no suman venta)</span>')
+  if(t.sinTransp)avisos.push('<span style="color:var(--orange-text)">'+t.sinTransp+' pedido'+(t.sinTransp>1?'s':'')+' de clientes sin destino de mercancía (transporte 0)</span>')
+  if(t.kgEst)avisos.push(t.kgEst+' pedido'+(t.kgEst>1?'s':'')+' con kg tomados del peso indicado porque la caja no tiene kg en Stock')
+  document.getElementById('cmv-nota').innerHTML='<strong>Cómo se calcula:</strong> kg = cajas × kg por caja (Stock) · venta bruta = kg × €/kg venta · transporte = palets × €/palet del destino del cliente (Tarifas → Transporte) · abonos = importe sin IVA de las reclamaciones del pedido · venta neta = bruta − transporte − abonos · margen = venta neta − kg × €/kg compra, solo en pedidos con precio de compra en todas sus líneas · % de margen sobre la venta bruta.'+(avisos.length?'<br>'+avisos.join(' · '):'')
+}
 
 function cmcMoverSemana(d){_cmc.semana=d===0?0:_cmc.semana+d;if(_cmc.cargado){cmcRenderSemana();cmcRenderDetalle()}}
 
@@ -2428,7 +2692,14 @@ function cmcStats(ini,fin,comId){
   const seg=_cmc.seg.filter(s=>s.fecha>=ini&&s.fecha<=fin&&(comId===undefined||s._com===comId))
   const tipos={};seg.forEach(s=>tipos[s.tipo]=(tipos[s.tipo]||0)+1)
   return {
-    pedidos:ped.length,palets:ped.reduce((a,p)=>a+(p.palets||0),0),venta:ped.reduce((a,p)=>a+p._venta,0),
+    pedidos:ped.length,palets:ped.reduce((a,p)=>a+(p.palets||0),0),
+    kg:ped.reduce((a,p)=>a+(p._kg||0),0),bruta:ped.reduce((a,p)=>a+(p._bruta||0),0),transp:ped.reduce((a,p)=>a+(p._transp||0),0),
+    abono:ped.reduce((a,p)=>a+(p._abono||0),0),neta:ped.reduce((a,p)=>a+(p._neta||0),0),
+    margen:ped.filter(p=>p._margen!==null).reduce((a,p)=>a+p._margen,0),
+    netaConCoste:ped.filter(p=>p._margen!==null).reduce((a,p)=>a+p._bruta,0), // base del % de margen: venta bruta de los pedidos con coste
+    pedConCoste:ped.filter(p=>p._margen!==null).length,
+    paletsConPrecio:ped.filter(p=>p._bruta>0).reduce((a,p)=>a+(p.palets||0),0),
+    sinPrecio:ped.filter(p=>p._sinPrecio).length,sinTransp:ped.filter(p=>p._sinTransp).length,kgEst:ped.filter(p=>p._kgEstimado).length,
     interacciones:seg.length,contactados:new Set(seg.map(s=>s.cliente_id)).size,tipos,
     clientesConPedido:new Set(ped.map(p=>p.cliente_id)).size
   }
@@ -2443,6 +2714,7 @@ function cmcDelta(act,ant){
 }
 
 function cmcRenderSemana(){
+  setTimeout(cmcRenderVentas,0)
   const r=cmcRangoSemana(_cmc.semana),ra=cmcRangoSemana(_cmc.semana-1)
   const fmtC=d=>d.getDate()+' '+CMC_MESES[d.getMonth()]
   const numSem=(()=>{const d=new Date(r.l);d.setDate(d.getDate()+3);const y=new Date(d.getFullYear(),0,4);return 1+Math.round(((d-y)/86400000-3+((y.getDay()+6)%7))/7)})()
@@ -2454,12 +2726,12 @@ function cmcRenderSemana(){
     kpi(cmcNum(t.contactados),'Clientes contactados',cmcDelta(t.contactados,ta.contactados))+
     kpi(cmcNum(t.pedidos),'Pedidos',cmcDelta(t.pedidos,ta.pedidos))+
     kpi(cmcNum(t.palets),'Palets',cmcDelta(t.palets,ta.palets))+
-    kpi(cmcEur(t.venta),'Venta estimada',cmcDelta(t.venta,ta.venta))
+    kpi(cmcEur(t.neta),'Venta neta',cmcDelta(t.neta,ta.neta))
 
   const hoy=cmcLocal(new Date())
   const hace30=cmcLocal(new Date(Date.now()-30*86400000))
   const ico={llamada:'ti-phone',email:'ti-mail',visita:'ti-map-pin',whatsapp:'ti-brand-whatsapp',otro:'ti-note'}
-  const tot={cli:0,nue:0,int:0,cont:0,ped:0,pal:0,venta:0,atr:0,sinp:0}
+  const tot={cli:0,nue:0,int:0,cont:0,ped:0,pal:0,neta:0,atr:0,sinp:0}
   const filas=cmcFilas().map(f=>{
     const st=cmcStats(r.ini,r.fin,f.id)
     const misCli=_cmc.cli.filter(c=>(f.id==='sin'?!_cmc.com.some(x=>x.id===c.comercial_id):c.comercial_id===f.id))
@@ -2467,7 +2739,7 @@ function cmcRenderSemana(){
     const sinp=misCli.filter(c=>_cmc.ultPed[c.id]&&_cmc.ultPed[c.id]<hace30).length
     if(f.id==='sin'&&!st.interacciones&&!st.pedidos&&!misCli.length)return ''
     const nue=misCli.filter(c=>c.estado_comercial==='prospecto').length
-    tot.cli+=misCli.length;tot.nue+=nue;tot.int+=st.interacciones;tot.cont+=st.contactados;tot.ped+=st.pedidos;tot.pal+=st.palets;tot.venta+=st.venta;tot.atr+=atr;tot.sinp+=sinp
+    tot.cli+=misCli.length;tot.nue+=nue;tot.int+=st.interacciones;tot.cont+=st.contactados;tot.ped+=st.pedidos;tot.pal+=st.palets;tot.neta+=st.neta;tot.atr+=atr;tot.sinp+=sinp
     const desglose=Object.entries(st.tipos).map(([k,v])=>'<i class="ti '+(ico[k]||'ti-note')+'"></i>'+v).join(' ')
     return '<tr'+(f.id==='sin'?' style="color:var(--text2)"':'')+'><td style="font-weight:600;max-width:none">'+mcEsc(f.nombre)+'</td>'+
       '<td style="text-align:center">'+misCli.length+'</td>'+
@@ -2476,14 +2748,14 @@ function cmcRenderSemana(){
       '<td style="text-align:center">'+st.contactados+'</td>'+
       '<td style="text-align:center"><strong>'+st.pedidos+'</strong></td>'+
       '<td style="text-align:center">'+st.palets+'</td>'+
-      '<td style="text-align:right">'+cmcEur(st.venta)+'</td>'+
+      '<td style="text-align:right">'+cmcEur(st.neta)+'</td>'+
       '<td style="text-align:center">'+(atr?'<span class="badge b-low"><i class="ti ti-alarm"></i>'+atr+'</span>':'0')+'</td>'+
       '<td style="text-align:center">'+(sinp?'<span class="badge b-warn"><i class="ti ti-alert-triangle"></i>'+sinp+'</span>':'0')+'</td></tr>'
   }).join('')
   document.getElementById('cmc-tabla-semana').innerHTML=
-    '<table><thead><tr><th>Comercial</th><th style="text-align:center">Clientes</th><th style="text-align:center" title="Posibles clientes en seguimiento especial">Nuevos</th><th style="text-align:center">Interacciones</th><th style="text-align:center">Contactados</th><th style="text-align:center">Pedidos</th><th style="text-align:center">Palets</th><th style="text-align:right">Venta est.</th><th style="text-align:center" title="Pendientes de llamada/correo con fecha pasada">Atrasados</th><th style="text-align:center" title="Clientes con más de 30 días sin pedir">Sin pedir +30 d</th></tr></thead><tbody>'+
+    '<table><thead><tr><th>Comercial</th><th style="text-align:center">Clientes</th><th style="text-align:center" title="Posibles clientes en seguimiento especial">Nuevos</th><th style="text-align:center">Interacciones</th><th style="text-align:center">Contactados</th><th style="text-align:center">Pedidos</th><th style="text-align:center">Palets</th><th style="text-align:right">Venta neta</th><th style="text-align:center" title="Pendientes de llamada/correo con fecha pasada">Atrasados</th><th style="text-align:center" title="Clientes con más de 30 días sin pedir">Sin pedir +30 d</th></tr></thead><tbody>'+
     filas+
-    '<tr style="font-weight:700;background:var(--bg3)"><td>Total</td><td style="text-align:center">'+tot.cli+'</td><td style="text-align:center">'+tot.nue+'</td><td style="text-align:center">'+tot.int+'</td><td style="text-align:center">'+tot.cont+'</td><td style="text-align:center">'+tot.ped+'</td><td style="text-align:center">'+tot.pal+'</td><td style="text-align:right">'+cmcEur(tot.venta)+'</td><td style="text-align:center">'+tot.atr+'</td><td style="text-align:center">'+tot.sinp+'</td></tr>'+
+    '<tr style="font-weight:700;background:var(--bg3)"><td>Total</td><td style="text-align:center">'+tot.cli+'</td><td style="text-align:center">'+tot.nue+'</td><td style="text-align:center">'+tot.int+'</td><td style="text-align:center">'+tot.cont+'</td><td style="text-align:center">'+tot.ped+'</td><td style="text-align:center">'+tot.pal+'</td><td style="text-align:right">'+cmcEur(tot.neta)+'</td><td style="text-align:center">'+tot.atr+'</td><td style="text-align:center">'+tot.sinp+'</td></tr>'+
     '</tbody></table>'
 }
 
@@ -2499,14 +2771,14 @@ function cmcMeses(){
   return out
 }
 
-function cmcValor(st,m){return m==='venta'?st.venta:m==='palets'?st.palets:m==='interacciones'?st.interacciones:st.pedidos}
-function cmcFmtM(v,m){return m==='venta'?cmcEur(v):cmcNum(v)}
+function cmcValor(st,m){return m==='bruta'?st.bruta:m==='neta'?st.neta:m==='margen'?st.margen:m==='palets'?st.palets:m==='interacciones'?st.interacciones:st.pedidos}
+function cmcFmtM(v,m){return ['bruta','neta','margen'].includes(m)?cmcEur(v):cmcNum(v)}
 
 function cmcRenderMes(){
   const m=_cmc.metrica,meses=cmcMeses()
   const totales=meses.map(x=>cmcValor(cmcStats(x.ini,x.fin),m))
   const max=Math.max(...totales,1)
-  const nombreM={pedidos:'Pedidos',palets:'Palets',venta:'Venta estimada',interacciones:'Interacciones'}[m]
+  const nombreM={pedidos:'Pedidos',palets:'Palets',bruta:'Venta bruta',neta:'Venta neta',margen:'Margen (pedidos con coste)',interacciones:'Interacciones'}[m]
   // Gráfico de barras (una serie: total del equipo). Valor en la barra máxima y en el mes actual; el resto en el tooltip.
   const H=150,iMax=totales.indexOf(Math.max(...totales))
   const barras=meses.map((x,i)=>{
@@ -2561,8 +2833,8 @@ function cmcRenderDetalle(){
   }else{
     const lista=_cmc.ped.filter(p=>p.fecha_recogida>=r.ini&&p.fecha_recogida<=r.fin&&(!f||p._com===f)).sort((a,b)=>a.fecha_recogida.localeCompare(b.fecha_recogida))
     cont.innerHTML=lista.length?
-      '<table class="tabla-compacta"><thead><tr><th>Recogida</th><th>Ref.</th><th>Nº ERP</th><th>Cliente</th><th>Comercial</th><th style="text-align:center">Palets</th><th style="text-align:right">Venta est.</th><th>Estado</th></tr></thead><tbody>'+
-      lista.map(p=>'<tr><td style="white-space:nowrap">'+fmt(p.fecha_recogida)+'</td><td>'+mcEsc(p.referencia||'—')+'</td><td>'+mcEsc(p.numero_pedido_erp||'—')+'</td><td style="font-weight:600">'+mcEsc(p._cliente)+'</td><td>'+mcEsc(nom[p._com]||'—')+'</td><td style="text-align:center">'+(p.palets||0)+'</td><td style="text-align:right">'+cmcEur(p._venta)+'</td><td>'+badgeHtml(p.estado)+'</td></tr>').join('')+
+      '<table class="tabla-compacta"><thead><tr><th>Recogida</th><th>Ref.</th><th>Nº ERP</th><th>Cliente</th><th>Comercial</th><th style="text-align:center">Palets</th><th style="text-align:right">Venta bruta</th><th style="text-align:right">Transp.</th><th style="text-align:right">Venta neta</th><th style="text-align:right">€/palet</th><th style="text-align:right">Margen</th><th>Estado</th></tr></thead><tbody>'+
+      lista.map(p=>'<tr><td style="white-space:nowrap">'+fmt(p.fecha_recogida)+'</td><td>'+mcEsc(p.referencia||'—')+'</td><td>'+mcEsc(p.numero_pedido_erp||'—')+'</td><td style="font-weight:600">'+mcEsc(p._cliente)+'</td><td>'+mcEsc(nom[p._com]||'—')+'</td><td style="text-align:center">'+(p.palets||0)+'</td><td style="text-align:right">'+(p._bruta?cmcEur(p._bruta):'<span style="color:var(--orange-text)" title="Sin precio de venta">sin precio</span>')+'</td><td style="text-align:right;color:var(--text2)">'+(p._transp?cmcEur(p._transp):'—')+'</td><td style="text-align:right;font-weight:600">'+(p._bruta?cmcEur(p._neta):'—')+(p._abono?'<div style="font-size:10px;color:var(--red-text)">abono '+cmcEur(p._abono)+'</div>':'')+'</td><td style="text-align:right">'+(p._bruta&&p.palets?cmcEur(p._bruta/p.palets):'—')+'</td><td style="text-align:right;color:'+((p._margen||0)<0?'var(--red-text)':'var(--green-text)')+'">'+(p._margen!==null&&p._margen!==undefined?cmcEur(p._margen)+'<div style="font-size:10px;color:var(--text3)">'+cmcPct(p._margen,p._bruta)+'</div>':'—')+'</td><td>'+badgeHtml(p.estado)+'</td></tr>').join('')+
       '</tbody></table>':'<div class="empty">No hay pedidos esta semana'+(f?' para este comercial':'')+'</div>'
   }
 }
@@ -6986,10 +7258,17 @@ function npCalcPesoLinea(id){
     div.insertAdjacentHTML('beforeend','<div id="lkg-'+id+'" style="font-size:11px;color:var(--text2);margin-top:4px"></div>')
     nota=document.getElementById('lkg-'+id)
   }
+  // Valor de la línea: kg × €/kg
+  const precio=parseFloat(document.getElementById('lpr-'+id)?.value)||0
+  const kgV=(info&&info.kg&&cajas)?cajas*info.kg:(parseFloat(elP.value)||0)
+  const eur=v=>(Math.round(v*100)/100).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'
+  const valorTxt=precio&&kgV?' · <span style="color:var(--accent)"><i class="ti ti-coin-euro"></i> valor <strong>'+eur(precio*kgV)+'</strong>'+(pal?' ('+eur(precio*kgV/pal)+'/palet)':'')+'</span>':''
   if(info&&info.kg&&cajas){
     const kgTot=cajas*info.kg
     const porPal=pal?kgTot/pal:null
-    nota.innerHTML='<i class="ti ti-scale"></i> '+cajas+' cajas × '+info.kg+' kg = <strong>'+fmtKg(kgTot)+'</strong>'+(porPal?' · '+fmtKg(porPal)+' por palet':'')+(cpp&&pal&&cajas!==cpp*pal?' <span style="color:var(--orange-text)">(un palet completo son '+cpp+' cajas)</span>':'')
+    nota.innerHTML='<i class="ti ti-scale"></i> '+cajas+' cajas × '+info.kg+' kg = <strong>'+fmtKg(kgTot)+'</strong>'+(porPal?' · '+fmtKg(porPal)+' por palet':'')+valorTxt+(cpp&&pal&&cajas!==cpp*pal?' <span style="color:var(--orange-text)">(un palet completo son '+cpp+' cajas)</span>':'')
+  }else if(valorTxt){
+    nota.innerHTML=valorTxt.replace(/^ · /,'')
   }else if(document.getElementById('lc-'+id)?.value&&info&&!info.kg){
     nota.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-info-circle"></i> Esta confección no tiene kg por caja en Stock</span>'
   }else nota.innerHTML=''
