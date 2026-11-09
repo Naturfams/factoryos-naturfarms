@@ -2122,6 +2122,12 @@ async function initApp(user){
     err.style.display='block'
     await db.auth.signOut();return
   }
+  if(perfil.activo===false){
+    const err=document.getElementById('login-err')
+    err.textContent='Usuario desactivado. Contacta con el administrador.'
+    err.style.display='block'
+    await db.auth.signOut();return
+  }
   currentPerfil=perfil
   document.getElementById('u-nombre').textContent=perfil.nombre
   document.getElementById('u-rol').textContent=ROL_LABEL[perfil.rol]||perfil.rol
@@ -6569,28 +6575,27 @@ async function crearUsuario(){
   if(!nombre||!email||!pass){toast('Rellena todos los campos','err');return}
   if(pass.length<6){errEl.textContent='Contraseña mínimo 6 caracteres';errEl.style.display='block';return}
 
-  const {data:d2,error:e2}=await db.auth.signUp({
+  if(!can('admin')){errEl.textContent='Solo un administrador puede crear usuarios';errEl.style.display='block';return}
+  // Se crea la cuenta con un cliente aparte (sin guardar sesión) para que el administrador
+  // siga conectado: así el perfil lo da de alta el administrador, que es el único que tiene permiso.
+  const dbAlta=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'fos-alta-usuario'}})
+  const {data:d2,error:e2}=await dbAlta.auth.signUp({
     email,password:pass,
-    options:{data:{nombre,rol}}
+    options:{data:{nombre}}
   })
   if(e2){errEl.textContent='Error: '+e2.message;errEl.style.display='block';return}
 
   const uid=d2.user?.id
   if(!uid){errEl.textContent='No se pudo obtener el ID del usuario';errEl.style.display='block';return}
 
-  // Intentar insertar el perfil con reintentos
-  let insertado=false
-  for(let i=0;i<5;i++){
-    await new Promise(r=>setTimeout(r,1000))
-    const {error:ep}=await db.from('perfiles').upsert({id:uid,nombre,email,rol,activo:true},{onConflict:'id'})
-    if(!ep){insertado=true;break}
-    if(ep.code==='23505'){insertado=true;break} // ya existe
+  // Alta del perfil (lo hace el administrador con su sesión)
+  let ep=null
+  for(let i=0;i<3;i++){
+    ;({error:ep}=await db.from('perfiles').upsert({id:uid,nombre,email,rol,activo:true},{onConflict:'id'}))
+    if(!ep||ep.code==='23505'){ep=null;break}
+    await new Promise(r=>setTimeout(r,800))
   }
-
-  if(!insertado){
-    // Insertar igualmente aunque falle auth — el admin puede haberlo creado ya en Supabase
-    await db.from('perfiles').upsert({id:uid,nombre,email,rol,activo:true},{onConflict:'id'})
-  }
+  if(ep){errEl.textContent='La cuenta se creó pero no el perfil: '+ep.message;errEl.style.display='block';return}
 
   toast('Usuario '+nombre+' creado ✓')
   closeModal('modal-usuario')
