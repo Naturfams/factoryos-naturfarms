@@ -883,6 +883,7 @@ tr:hover td{background:var(--bg)}
         <div class="tab" onclick="switchTab(this,'tab-envios-hist')">Histórico</div>
         <div class="tab" onclick="switchTab(this,'tab-envios-cmr')">CMR</div>
         <div class="tab" onclick="switchTab(this,'tab-envios-transportes')"><i class="ti ti-truck"></i> Transportes</div>
+        <div class="tab" onclick="switchTab(this,'tab-envios-destinos')"><i class="ti ti-map-pin"></i> Destinos</div>
       </div>
 
       <div id="tab-envios-hoy">
@@ -919,13 +920,26 @@ tr:hover td{background:var(--bg)}
           </div>
           <div id="tp-lista"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
         </div>
+        <div style="font-size:12px;color:var(--text3)">La lista de destinos (dirección, ciudad, país) se gestiona en la pestaña <a href="#" onclick="event.preventDefault();irADestinos()">Destinos</a>.</div>
+      </div>
+      <div id="tab-envios-destinos" style="display:none">
+        <div id="ds-avisos"></div>
+        <div id="ds-completar"></div>
+        <datalist id="ds-ciudades-list"></datalist><datalist id="ds-paises-list"></datalist>
         <div class="card">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
             <div class="card-title" style="margin:0"><i class="ti ti-map-pin"></i>Destinos de mercancía</div>
-            <span style="font-size:12px;color:var(--text2)">Zonas de precio y los almacenes de cada zona. El cliente tiene asignado el almacén o la zona a la que le mandamos la mercancía.</span>
-            <button class="btn btn-sm" style="margin-left:auto" onclick="tpAbrirDestino()"><i class="ti ti-plus"></i>Nuevo destino</button>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="tpAbrirDestino()"><i class="ti ti-plus"></i>Nuevo destino</button>
           </div>
-          <div style="overflow-x:auto"><div id="tp-destinos"></div></div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Lugares a los que mandamos la mercancía. El precio del transporte va <strong>por ciudad</strong>: todos los destinos de una misma ciudad usan el mismo precio (se pone en la pestaña Transportes).</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+            <input type="text" id="ds-buscar" placeholder="Buscar destino, ciudad, dirección..." oninput="tpRender()" style="padding:6px 10px;font-size:13px;min-width:220px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
+            <div style="display:flex;gap:6px;flex-wrap:wrap" id="ds-filtros">
+              <button class="btn btn-sm btn-primary" data-f="todos" onclick="dsFiltro('todos')">Todos</button>
+              <button class="btn btn-sm" data-f="incompletos" onclick="dsFiltro('incompletos')"><i class="ti ti-alert-triangle"></i>Datos incompletos</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto"><div id="tp-destinos"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>
         </div>
       </div>
       <div id="tab-envios-cmr" style="display:none">
@@ -1169,7 +1183,7 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="frow">
       <div class="fg"><label>Destinatario *</label><input type="text" id="np-dest" list="np-dest-list" autocomplete="off" oninput="this.dataset.auto='';this.style.background='';document.getElementById('np-dest-nota').innerHTML=''"><datalist id="np-dest-list"></datalist><div id="np-dest-nota" style="font-size:11px;margin-top:3px"></div></div>
-      <div class="fg"><label>Destino de la mercancía</label><select id="np-destino" onchange="npMarcarDestino();npActualizarCosteTransporte()"><option value="">— Sin destino —</option></select><div id="np-destino-nota" style="font-size:11px;margin-top:3px"></div></div>
+      <div class="fg"><label>Destino de la mercancía</label><select id="np-destino" onchange="npMarcarDestino();npActualizarCosteTransporte()"><option value="">— A la dirección del cliente —</option></select><div id="np-destino-nota" style="font-size:11px;margin-top:3px"></div></div>
     </div>
     <div class="frow">
       <div class="fg"><label>Transportista</label><select id="np-trans" onchange="npActualizarCosteTransporte()"><option value="">— Seleccionar —</option></select><div id="np-coste-transp" style="font-size:11.5px;margin-top:4px;color:var(--text2)"></div></div>
@@ -1226,8 +1240,17 @@ tr:hover td{background:var(--bg)}
       <div class="fg"><label>Teléfono</label><input type="text" id="cl-telefono"></div>
     </div>
     <div class="fg"><label>Email</label><input type="email" id="cl-email"></div>
-    <div class="fg"><label>Dirección (para CMR y documentos)</label><input type="text" id="cl-direccion" placeholder="Calle, nº, CP"></div>
-    <div class="fg"><label>Destino mercancía</label><select id="cl-destino-mercancia" onchange="clDestinoCambia(this)"><option value="">— Sin destino —</option></select></div>
+    <div class="fg"><label>Dirección (para CMR y documentos)</label><input type="text" id="cl-direccion" placeholder="Calle, nº, código postal (almacén del cliente)"></div>
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;background:var(--bg3);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px"><input type="checkbox" id="cl-recoge" onchange="clRecogeCambia()" style="margin-top:2px;width:auto;min-height:0">
+      <span><strong>Recoge con transporte propio</strong><br><span style="font-size:12px;color:var(--text2)">El cliente viene a por la mercancía con su camión: no hay coste de transporte para nosotros.</span></span></label>
+    <div id="cl-envio-wrap">
+    <div class="fg"><label>Destino mercancía (donde lo mandamos nosotros) <span style="font-weight:400;color:var(--text3)">· vacío = a la dirección del cliente</span></label><select id="cl-destino-mercancia" onchange="clDestinoCambia(this)"><option value="">— A la dirección del cliente —</option></select></div>
+    <div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px">
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="cl-segundo" onchange="document.getElementById('cl-segundo-wrap').style.display=this.checked?'block':'none'" style="margin-top:2px;width:auto;min-height:0">
+        <span><strong>Tiene un segundo transporte</strong> desde nuestro destino hasta el almacén del cliente</span></label>
+      <div id="cl-segundo-wrap" style="display:none;margin-top:8px" class="fg"><label>¿Quién lo hace? / notas</label><input type="text" id="cl-segundo-notas" placeholder="Ej: lo recoge su transportista los martes"></div>
+    </div>
+    </div>
     <div class="form-sec" style="margin-top:6px">Seguimiento comercial</div>
     <div class="frow">
       <div class="fg"><label>Comercial</label><select id="cl-comercial"></select></div>
@@ -1532,16 +1555,12 @@ tr:hover td{background:var(--bg)}
     <h3 id="ds-titulo">Nuevo destino <button class="close-btn" onclick="closeModal('modal-destino')">×</button></h3>
     <input type="hidden" id="ds-id">
     <div class="fg"><label>Nombre *</label><input type="text" id="ds-nombre" placeholder="Ej: Escande, Perpiñán, Hamburgo…"></div>
-    <div class="fg"><label>Tipo</label>
-      <label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;font-weight:400;color:var(--text)"><input type="radio" name="ds-tipo" value="zona" onchange="dsToggle()" style="width:auto;min-height:0;margin-top:2px"><span><strong>Zona de precio</strong><br><span style="font-size:12px;color:var(--text2)">Los transportistas tienen precio a esta zona (ej: Perpiñán, Alemania).</span></span></label>
-      <label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;font-weight:400;color:var(--text)"><input type="radio" name="ds-tipo" value="almacen" onchange="dsToggle()" style="width:auto;min-height:0;margin-top:2px"><span><strong>Almacén dentro de una zona</strong><br><span style="font-size:12px;color:var(--text2)">Se lleva aquí y el transporte se cobra al precio de su zona (ej: Escande → Perpiñán).</span></span></label>
-      <div id="ds-aviso-alm" style="display:none;font-size:11px;color:var(--orange-text);margin-top:4px"></div>
-    </div>
-    <div class="fg" id="ds-zona-wrap" style="display:none"><label>Zona de precio *</label><select id="ds-zona"></select></div>
+    <div class="fg"><label>Dirección</label><input type="text" id="ds-direccion" placeholder="Calle, nº, código postal"></div>
     <div class="frow">
-      <div class="fg"><label>País</label><input type="text" id="ds-pais"></div>
-      <div class="fg"><label>Dirección (para el CMR)</label><input type="text" id="ds-direccion" placeholder="Calle, CP, ciudad"></div>
+      <div class="fg"><label>Ciudad * <span style="font-weight:400;color:var(--text3)">(el transporte se valora por ciudad)</span></label><input type="text" id="ds-ciudad" list="ds-ciudades-list" placeholder="Ej: Perpignan" autocomplete="off"></div>
+      <div class="fg"><label>País</label><input type="text" id="ds-pais" list="ds-paises-list" placeholder="Ej: Francia" autocomplete="off"></div>
     </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:-4px">Dirección, ciudad y país salen en el CMR (lugar de entrega).</div>
     <div class="err-box" id="ds-err"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button class="btn" onclick="closeModal('modal-destino')">Cancelar</button>
@@ -2069,6 +2088,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-envios-hist')loadEnviosHistorico()
   if(tabId==='tab-envios-cmr')loadCMR()
   if(tabId==='tab-envios-transportes')loadTransportes()
+  if(tabId==='tab-envios-destinos')loadTransportes()
   if(tabId==='tab-partidas-hist')loadPartidasHistorico()
   if(tabId==='tab-resultados')loadResultados()
   if(tabId==='tab-pedprov-hist')loadPedProvHistorico()
@@ -2858,9 +2878,9 @@ function cmcEconomia(p,cliente){
   })
   // Transporte: €/palet del destino de mercancía del cliente (o €/camión si no hay precio por palet)
   const destino=(p.destino_mercancia||cliente?.destino_mercancia||'').trim()
-  const rT=transpCoste(destino,p.transportista_id,paletsPorTipo(lineas,p.palets),_cmc.transp)
+  const rT=transpCoste(destino,p.transportista_id,paletsPorTipo(lineas,p.palets),_cmc.transp,cliente)
   const transporte=rT.importe
-  p._transpDetalle=rT.detalle||null;p._transpFuente=rT.fuente||null;p._sinPrecioTransp=rT.motivo==='sin_precio';p._transpFalta=rT.falta||null
+  p._transpDetalle=rT.detalle||null;p._transpFuente=rT.fuente||null;p._sinPrecioTransp=rT.motivo==='sin_precio'||rT.motivo==='sin_ciudad';p._recogeCliente=rT.motivo==='recoge_cliente';p._transpFalta=rT.falta||null
   const abono=_cmc.abonos[p.id]||0
   const neta=bruta-transporte-abono
   p._abonoRecuperado=_cmc.abonosRecuperados[p.id]||0
@@ -3528,23 +3548,27 @@ async function loadClientesSeguimiento(){
 async function loadClientes(){
   const buscar=(document.getElementById('filtro-cliente')?.value||'').toLowerCase()
   const {data}=await db.from('clientes').select('*').order('nombre')
-  const lista=(data||[]).filter(c=>!buscar||[c.nombre,c.ciudad,c.contacto].some(v=>(v||'').toLowerCase().includes(buscar)))
+  const lista=(data||[]).filter(c=>!buscar||[c.nombre,c.ciudad,c.contacto,c.direccion,c.destino_mercancia].some(v=>(v||'').toLowerCase().includes(buscar)))
   let rows=''
   lista.forEach(c=>{
     const etq=c.estado_comercial==='prospecto'?' <span class="badge b-warn" style="font-size:10px">Posible cliente</span>':c.estado_comercial==='descartado'?' <span class="badge b-low" style="font-size:10px">Descartado</span>':''
     rows+='<tr><td><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+c.nombre+'</strong>'+etq+'</td><td>'+(c.pais||'—')+'</td>'+
       '<td>'+(c.idiomas||[]).map(i=>'<span class="tag">'+i+'</span>').join('')+'</td>'+
-      '<td>'+(c.destino_mercancia||'—')+'</td>'+
+      '<td>'+(c.recoge_cliente?'<span class="badge b-prep" style="font-size:10px"><i class="ti ti-truck-loading"></i>Transporte propio</span>':c.destino_mercancia?(typeof destEtiqueta==='function'?destEtiqueta(c.destino_mercancia):c.destino_mercancia):'<span style="color:var(--text3);font-size:12px">A su dirección</span>')+'</td>'+
+      '<td style="text-align:center">'+(c.recoge_cliente?'<span style="color:var(--text3)">—</span>':c.segundo_transporte?'<span class="badge b-prep" style="font-size:10px" title="'+(c.segundo_transporte_notas||'').replace(/"/g,'&quot;')+'"><i class="ti ti-truck"></i>Sí</span>':'<span style="color:var(--text3)">No</span>')+'</td>'+
+      '<td style="max-width:220px;white-space:normal;font-size:12px">'+(c.direccion||'<span style="color:var(--text3)">—</span>')+'</td>'+
       '<td>'+(c.ciudad||'—')+'</td><td>'+(c.contacto||'—')+'</td><td>'+(c.telefono||'—')+'</td><td>'+(c.email||'—')+'</td>'+
       '<td style="white-space:nowrap"><button class="btn btn-sm" onclick="verFichaCliente(\''+c.id+'\')" title="Ficha comercial"><i class="ti ti-address-book"></i></button> '+
       '<button class="btn btn-sm" onclick="editarCliente(\''+c.id+'\')" title="Editar"><i class="ti ti-edit"></i></button></td></tr>'
   })
-  document.getElementById('tabla-clientes').innerHTML='<table><thead><tr><th>Empresa</th><th>País</th><th>Idiomas</th><th>Destino mercancía</th><th>Ciudad</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+  document.getElementById('tabla-clientes').innerHTML='<table><thead><tr><th>Empresa</th><th>País</th><th>Idiomas</th><th>Destino mercancía</th><th style="text-align:center">2º transporte</th><th>Dirección</th><th>Ciudad</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
 }
 function abrirModalCliente(comercialPorDefecto){
   document.getElementById('cl-id').value=''
   document.getElementById('cliente-modal-titulo').childNodes[0].textContent='Nuevo cliente '
-  ;['cl-nombre','cl-pais','cl-ciudad','cl-direccion','cl-contacto','cl-telefono','cl-email','cl-origen','cl-intereses'].forEach(id=>document.getElementById(id).value='')
+  ;['cl-nombre','cl-pais','cl-ciudad','cl-direccion','cl-contacto','cl-telefono','cl-email','cl-origen','cl-intereses','cl-segundo-notas'].forEach(id=>document.getElementById(id).value='')
+  document.getElementById('cl-segundo').checked=false;document.getElementById('cl-segundo-wrap').style.display='none'
+  document.getElementById('cl-recoge').checked=false;clRecogeCambia()
   clPoblarDestinos('');cargarDestinosMercancia().then(()=>clPoblarDestinos(document.getElementById('cl-destino-mercancia').value))
   document.getElementById('cliente-err').style.display='none'
   // Todo cliente nuevo entra como posible cliente hasta que empiece a pedir
@@ -3568,6 +3592,10 @@ async function editarCliente(id){
   document.getElementById('cl-pais').value=c.pais||''
   document.getElementById('cl-ciudad').value=c.ciudad||''
   document.getElementById('cl-direccion').value=c.direccion||''
+  document.getElementById('cl-segundo').checked=!!c.segundo_transporte
+  document.getElementById('cl-segundo-notas').value=c.segundo_transporte_notas||''
+  document.getElementById('cl-segundo-wrap').style.display=c.segundo_transporte?'block':'none'
+  document.getElementById('cl-recoge').checked=!!c.recoge_cliente;clRecogeCambia()
   document.getElementById('cl-contacto').value=c.contacto||''
   document.getElementById('cl-telefono').value=c.telefono||''
   document.getElementById('cl-email').value=c.email||''
@@ -3591,7 +3619,7 @@ async function guardarCliente(){
   const err=document.getElementById('cliente-err');err.style.display='none'
   if(!nombre){err.textContent='El nombre es obligatorio';err.style.display='block';return}
   if(!id&&clientes.some(c=>(c.nombre||'').trim().toLowerCase()===nombre.toLowerCase())){err.textContent='Ya existe un cliente llamado "'+nombre+'"';err.style.display='block';return}
-  const datos={nombre,pais:document.getElementById('cl-pais').value||null,ciudad:document.getElementById('cl-ciudad').value.trim()||null,direccion:document.getElementById('cl-direccion').value.trim()||null,idiomas:idiomasSeleccionados.length?idiomasSeleccionados:null,contacto:document.getElementById('cl-contacto').value||null,telefono:document.getElementById('cl-telefono').value||null,email:document.getElementById('cl-email').value||null,destino_mercancia:(v=>v&&v!=='__nuevo'?v:null)(document.getElementById('cl-destino-mercancia').value.trim()),
+  const datos={nombre,pais:document.getElementById('cl-pais').value||null,ciudad:document.getElementById('cl-ciudad').value.trim()||null,direccion:document.getElementById('cl-direccion').value.trim()||null,recoge_cliente:document.getElementById('cl-recoge').checked,segundo_transporte:!document.getElementById('cl-recoge').checked&&document.getElementById('cl-segundo').checked,segundo_transporte_notas:document.getElementById('cl-segundo').checked?(document.getElementById('cl-segundo-notas').value.trim()||null):null,idiomas:idiomasSeleccionados.length?idiomasSeleccionados:null,contacto:document.getElementById('cl-contacto').value||null,telefono:document.getElementById('cl-telefono').value||null,email:document.getElementById('cl-email').value||null,destino_mercancia:(v=>v&&v!=='__nuevo'?v:null)(document.getElementById('cl-destino-mercancia').value.trim()),
     origen:document.getElementById('cl-origen').value.trim()||null}
   const selCom=document.getElementById('cl-comercial')
   if(!selCom.disabled)datos.comercial_id=selCom.value||null
@@ -4034,14 +4062,15 @@ async function cmrCargarPedido(id){
   document.getElementById('cmr-guardar-dir').checked=false
   const _dm=p.destino_mercancia||cli?.destino_mercancia
   const _di=destInfo(_dm)
-  cmrSet('cmr-entrega',[_di?.zona?_dm+(_di.direccion?' — '+_di.direccion:'')+' ('+_di.zona+')':null,p.destinatario,!_di?.zona&&_dm&&_dm!==p.destinatario?_dm:null].filter(Boolean).join('\n')||[cli?.ciudad,cli?.pais].filter(Boolean).join(', '))
+  const _dirDest=_di?[_di.direccion,[_di.ciudad,_di.pais].filter(Boolean).join(', ')].filter(Boolean).join(', '):''
+  cmrSet('cmr-entrega',[_di&&_dirDest?_dm+'\n'+_dirDest:null,p.destinatario&&p.destinatario!==_dm?p.destinatario:null,!_di&&_dm&&_dm!==p.destinatario?_dm:null].filter(Boolean).join('\n')||[cli?.nombre,cli?.direccion,[cli?.ciudad,cli?.pais].filter(Boolean).join(', ')].filter(Boolean).join('\n'))
   const ciudadRem=CMR_LUGAR
   cmrSet('cmr-carga','Brenes (Sevilla), España\n'+(p.fecha_recogida?fmt(p.fecha_recogida):''))
   cmrSet('cmr-docs',['Albarán'+(p.numero_pedido_erp?' nº '+p.numero_pedido_erp:' '+p.referencia),'Certificado ecológico'].join(' · '))
   cmrSet('cmr-temp',u.temp||'')
   cmrSet('cmr-instrucciones','Mercancía perecedera. Mantener la cadena de frío durante todo el transporte.')
   cmrSet('cmr-portes',u.portes||'pagados')
-  cmrSet('cmr-transportista',t?[t.nombre,t.contacto,t.telefono].filter(Boolean).join('\n'):'')
+  cmrSet('cmr-transportista',t?[t.nombre,t.contacto,t.telefono].filter(Boolean).join('\n'):(cli?.recoge_cliente?(cli.nombre+'\n(transporte propio del cliente)'):''))
   ;['cmr-matricula','cmr-sucesivos','cmr-reservas','cmr-estipulaciones'].forEach(i=>cmrSet(i,''))
   cmrSet('cmr-lugar-emision',ciudadRem)
   cmrSet('cmr-fecha',p.fecha_recogida||new Date().toLocaleDateString('sv-SE'))
@@ -5255,7 +5284,7 @@ async function verFichaCliente(id){
 
   document.getElementById('ficha-cliente-titulo').childNodes[0].textContent=c.nombre+' '
   document.getElementById('ficha-cliente-datos').innerHTML=
-    [[c.ciudad,c.pais].filter(Boolean).join(', ')||null,c.destino_mercancia?'Destino: '+c.destino_mercancia:null,c.contacto,c.telefono,c.email].filter(Boolean).join(' · ')||'Sin datos de contacto'
+    [[c.direccion,c.ciudad,c.pais].filter(Boolean).join(', ')||null,c.recoge_cliente?'Recoge con transporte propio':c.destino_mercancia?'Destino: '+c.destino_mercancia+(c.segundo_transporte?' + 2º transporte hasta su almacén'+(c.segundo_transporte_notas?' ('+c.segundo_transporte_notas+')':''):''):null,c.contacto,c.telefono,c.email].filter(Boolean).join(' · ')||'Sin datos de contacto'
 
   document.getElementById('fs-cliente-id').value=id
   document.getElementById('fs-fecha').value=new Date().toISOString().split('T')[0]
@@ -8604,49 +8633,76 @@ async function loadPlanning(){
   })
   document.getElementById('planning-por-dia').innerHTML=htmlDia
 
-  // ── VISTA POR PRODUCTO ─────────────────────────────────
-  const resumenProducto={}
-  ;(pedidos||[]).forEach(p=>{
-    const prods=prodMap[p.id]||[]
-    prods.forEach(pr=>{
-      const key=(pr.fruta||'')+'|||'+(pr.producto||'')+'|||'+(pr.calibre||'')
-      if(!resumenProducto[key])resumenProducto[key]={fruta:pr.fruta,producto:pr.producto,calibre:pr.calibre,totalPalets:0,totalCajas:0,confecciones:{},pedidos:[]}
-      resumenProducto[key].totalPalets+=pr.num_palets||0
-      resumenProducto[key].totalCajas+=pr.num_cajas||0
-      if(pr.confeccion)resumenProducto[key].confecciones[pr.confeccion]=(resumenProducto[key].confecciones[pr.confeccion]||0)+(pr.num_cajas||0)
-      resumenProducto[key].pedidos.push({ref:p.referencia,cliente:p.clientes?.nombre,fecha:p.fecha_recogida,num_palets:pr.num_palets,num_cajas:pr.num_cajas,estado:p.estado})
-    })
-  })
-
-  let htmlProd=''
-  if(!Object.keys(resumenProducto).length){
-    htmlProd='<div class="empty">Sin pedidos propios esta semana</div>'
-  } else {
-    Object.values(resumenProducto).sort((a,b)=>(a.fruta+a.producto).localeCompare(b.fruta+b.producto)).forEach(r=>{
-      const confHtml=Object.entries(r.confecciones).map(([c,n])=>'<span style="background:var(--bg);border:1px solid var(--border);padding:3px 10px;border-radius:var(--radius);font-size:12px">'+c+': <strong>'+n+' cj</strong></span>').join('')
-      const pedRows=r.pedidos.map(p=>'<tr><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+fmt(p.fecha)+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+p.ref+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+(p.cliente||'—')+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-size:12px">'+(p.num_palets||'—')+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-size:12px">'+(p.num_cajas||'—')+'</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);font-size:12px">'+badgeHtml(p.estado)+'</td></tr>').join('')
-
-      htmlProd+='<div style="border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden">'+
-        '<div style="padding:12px 16px;background:#2d7a3a;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
-          '<div><div style="font-size:15px;font-weight:700">'+r.fruta+(r.producto?' — '+r.producto:'')+'</div>'+(r.calibre?'<div style="font-size:12px;opacity:.8">Cal. '+r.calibre+'</div>':'')+'</div>'+
-          '<div style="display:flex;gap:16px">'+
-            '<div style="text-align:center"><div style="font-size:11px;opacity:.7">PALETS</div><div style="font-size:22px;font-weight:700">'+r.totalPalets+'</div></div>'+
-            '<div style="text-align:center"><div style="font-size:11px;opacity:.7">CAJAS</div><div style="font-size:22px;font-weight:700">'+r.totalCajas+'</div></div>'+
-          '</div>'+
-        '</div>'+
-        (confHtml?'<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px">'+confHtml+'</div>':'')+
-        '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg)">'+
-          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Fecha</th>'+
-          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Ref</th>'+
-          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Cliente</th>'+
-          '<th style="padding:5px 8px;text-align:center;font-size:11px;color:var(--text2);font-weight:600">Palets</th>'+
-          '<th style="padding:5px 8px;text-align:center;font-size:11px;color:var(--text2);font-weight:600">Cajas</th>'+
-          '<th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--text2);font-weight:600">Estado</th>'+
-        '</tr></thead><tbody>'+pedRows+'</tbody></table>'+
-      '</div>'
-    })
+  // ── VISTA POR PRODUCTO: una tabla horizontal por producto, una columna por calibre ──
+  // Naranja: columnas = líneas de producción 1-8 con su calibre debajo
+  document.getElementById('planning-por-producto').innerHTML=planningPorProductoHtml(pedidos||[],prodMap)
+}
+const LINEAS_NARANJA=[{linea:1,cal:'0'},{linea:2,cal:'1'},{linea:3,cal:'2'},{linea:4,cal:'3'},{linea:5,cal:'4'},{linea:6,cal:'5'},{linea:7,cal:'6'},{linea:8,cal:'7/8',alias:['7','8','7/8','78','7-8']}]
+function plCalNorm(c){return String(c||'').toLowerCase().replace(/cal(ibre)?\.?/g,'').replace(/\s+/g,'').replace(/-/g,'/').trim()}
+function plLineaNaranja(cal){
+  const c=plCalNorm(cal);if(!c)return null
+  return LINEAS_NARANJA.find(l=>(l.alias||[l.cal]).some(x=>plCalNorm(x)===c))||null
+}
+function planningPorProductoHtml(pedidos,prodMap){
+  const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  const grupos={}
+  pedidos.forEach(p=>(prodMap[p.id]||[]).forEach(pr=>{
+    const fruta=(pr.fruta||'Sin producto').trim()
+    const k=bselNorm(fruta)
+    ;(grupos[k]=grupos[k]||{fruta,items:[]}).items.push({p,pr})
+  }))
+  if(!Object.keys(grupos).length)return '<div class="empty">Sin pedidos propios esta semana</div>'
+  const th='padding:6px 6px;text-align:center;border:1px solid #d9d9d5;font-size:12px'
+  const td='padding:4px;border:1px solid #d9d9d5;vertical-align:top'
+  const tarjeta=({p,pr})=>{
+    const est=p.estado==='Enviado'?'#E1F5EE':p.estado==='Listo'?'#E6F1FB':'#fff'
+    return '<div style="border:1px solid #d9d9d5;border-left:3px solid #2d7a3a;border-radius:6px;padding:4px 6px;margin-bottom:4px;background:'+est+';font-size:11px;line-height:1.35;break-inside:avoid;overflow-wrap:anywhere">'+
+      '<div style="display:flex;justify-content:space-between;gap:4px"><strong>'+esc(p.referencia)+'</strong><span style="color:#6b6b67">'+(p.fecha_recogida?new Date(p.fecha_recogida+'T12:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric'}):'')+'</span></div>'+
+      '<div style="font-weight:600">'+esc(p.clientes?.nombre||'—')+'</div>'+
+      (pr.producto?'<div style="color:#4a4a46">'+esc(pr.producto)+'</div>':'')+
+      (pr.confeccion?'<div style="color:#4a4a46">'+esc(pr.confeccion)+'</div>':'')+
+      '<div><strong>'+(pr.num_palets||0)+' pal</strong>'+(pr.num_cajas?' · '+pr.num_cajas+' cj':'')+'</div>'+(pr.tipo_palet?'<div style="color:#6b6b67">'+esc(String(pr.tipo_palet).replace(/\s*\(.*\)/,''))+'</div>':'')+
+      (p.estado&&p.estado!=='Pendiente'?'<div style="font-size:10px;color:#185FA5;font-weight:600">'+esc(p.estado)+'</div>':'')+
+    '</div>'
   }
-  document.getElementById('planning-por-producto').innerHTML=htmlProd
+  return Object.values(grupos).sort((a,b)=>{const na=/naranja/i.test(a.fruta)?0:1,nb=/naranja/i.test(b.fruta)?0:1;return na-nb||a.fruta.localeCompare(b.fruta,'es')}).map(g=>{
+    const esNaranja=/naranja/i.test(bselNorm(g.fruta))
+    let cols
+    if(esNaranja){
+      cols=LINEAS_NARANJA.map(l=>({titulo:'Línea '+l.linea,cal:l.cal,items:[]}))
+      const otros={}
+      g.items.forEach(it=>{
+        const l=plLineaNaranja(it.pr.calibre)
+        if(l)cols[l.linea-1].items.push(it)
+        else{const c=(it.pr.calibre||'').trim()||'Sin calibre';(otros[c]=otros[c]||{titulo:'Fuera de línea',cal:c,items:[],fuera:true}).items.push(it)}
+      })
+      cols=cols.concat(Object.values(otros))
+    }else{
+      const m={}
+      g.items.forEach(it=>{const c=(it.pr.calibre||'').trim()||'Sin calibre';(m[c]=m[c]||{titulo:'',cal:c,items:[]}).items.push(it)})
+      cols=Object.values(m).sort((a,b)=>(a.cal==='Sin calibre')-(b.cal==='Sin calibre')||a.cal.localeCompare(b.cal,'es',{numeric:true}))
+    }
+    cols.forEach(c=>c.items.sort((a,b)=>(a.p.fecha_recogida||'').localeCompare(b.p.fecha_recogida||'')||(a.p.referencia||'').localeCompare(b.p.referencia||'')))
+    const totPal=g.items.reduce((s,it)=>s+(parseFloat(it.pr.num_palets)||0),0)
+    const totCj=g.items.reduce((s,it)=>s+(parseInt(it.pr.num_cajas)||0),0)
+    const nPed=new Set(g.items.map(it=>it.p.id)).size
+    const w=Math.max(110,Math.floor(1000/cols.length))
+    return '<div style="border:1px solid var(--border,#d9d9d5);border-radius:var(--radius-lg,8px);margin-bottom:18px;overflow:hidden;break-inside:avoid;page-break-inside:avoid">'+
+      '<div style="padding:10px 16px;background:#2d7a3a;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+        '<div style="font-size:16px;font-weight:700">'+esc(g.fruta)+'</div>'+
+        '<div style="display:flex;gap:18px;font-size:12px"><span>'+nPed+' pedido'+(nPed!==1?'s':'')+'</span><span><strong style="font-size:15px">'+totPal+'</strong> palets</span><span><strong style="font-size:15px">'+totCj+'</strong> cajas</span></div>'+
+      '</div>'+
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:'+(cols.length*w)+'px;background:var(--bg2,#fff)">'+
+        '<thead>'+
+          (esNaranja?'<tr>'+cols.map(c=>'<th style="'+th+';background:'+(c.fuera?'#FCEBEB;color:#A32D2D':'#1f5c2b;color:#fff')+';font-size:13px">'+c.titulo+'</th>').join('')+'</tr>':'')+
+          '<tr>'+cols.map(c=>'<th style="'+th+';background:'+(c.fuera?'#FCEBEB;color:#A32D2D':'#EAF3DE;color:#1a1a18')+'">'+(esNaranja?'Calibre ':'Cal. ')+'<span style="font-size:15px;font-weight:800">'+esc(c.cal)+'</span></th>').join('')+'</tr>'+
+        '</thead><tbody>'+
+          '<tr>'+cols.map(c=>'<td style="'+td+'">'+(c.items.length?c.items.map(tarjeta).join(''):'<div style="text-align:center;color:#b4b2a9;font-size:11px;padding:8px 0">—</div>')+'</td>').join('')+'</tr>'+
+          '<tr>'+cols.map(c=>{const pal=c.items.reduce((s,it)=>s+(parseFloat(it.pr.num_palets)||0),0),cj=c.items.reduce((s,it)=>s+(parseInt(it.pr.num_cajas)||0),0)
+            return '<td style="'+td+';text-align:center;background:var(--bg3,#f1efe8);font-size:11.5px;font-weight:700">'+(c.items.length?pal+' pal'+(cj?' · '+cj+' cj':''):'')+'</td>'}).join('')+'</tr>'+
+        '</tbody></table></div>'+
+    '</div>'
+  }).join('')
 }
 
 async function imprimirPlanning(){
@@ -9504,7 +9560,7 @@ function npPoblarDestinos(valor,habitual){
   const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')
   const lista=destOrdenados().map(d=>d.nombre)
   ;[valor,habitual].forEach(v=>{if(v&&!lista.some(n=>n.toLowerCase()===v.toLowerCase()))lista.unshift(v)})
-  sel.innerHTML='<option value="">— Sin destino —</option>'+lista.map(n=>'<option value="'+esc(n)+'">'+esc(destEtiqueta(n))+(habitual&&n.toLowerCase()===habitual.toLowerCase()?' ★ habitual':'')+'</option>').join('')
+  sel.innerHTML='<option value="">— A la dirección del cliente —</option>'+lista.map(n=>'<option value="'+esc(n)+'">'+esc(destEtiqueta(n))+(habitual&&n.toLowerCase()===habitual.toLowerCase()?' ★ habitual':'')+'</option>').join('')
   sel.value=lista.find(n=>valor&&n.toLowerCase()===valor.toLowerCase())||''
   npMarcarDestino()
 }
@@ -9514,10 +9570,15 @@ function npMarcarDestino(){
   const hab=cli?.destino_mercancia||''
   const v=sel.value
   sel.style.background=v&&hab&&v===hab?'var(--green-bg)':''
-  const zonaTxt=v&&destEsAlmacen(v)?'<div style="color:var(--text2)"><i class="ti ti-building-warehouse"></i> Almacén de '+tpEsc(destZona(v))+': el transporte se cobra al precio de '+tpEsc(destZona(v))+'</div>':''
-  nota.innerHTML=(!cli?'':!hab?'<span style="color:var(--orange-text)">El cliente no tiene destino habitual</span>':
+  const zonaTxt=v&&destSinCiudad(v)?'<div style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> Este destino no tiene ciudad: complétalo en Envíos → Destinos para calcular el transporte</div>':
+    v&&destEsAlmacen(v)?'<div style="color:var(--text2)"><i class="ti ti-map-pin"></i> '+tpEsc(v)+' está en '+tpEsc(destZona(v))+': transporte al precio de '+tpEsc(destZona(v))+'</div>':''
+  if(cli?.recoge_cliente){sel.style.background='';nota.innerHTML='<span style="color:var(--text2)"><i class="ti ti-truck-loading"></i> Este cliente <strong>recoge con su transporte propio</strong></span>';return}
+  const dirCli=[cli?.direccion,cli?.ciudad].filter(Boolean).join(', ')
+  const aDirTxt=cli&&!v?'<div style="color:var(--text2)"><i class="ti ti-home"></i> Se envía a la dirección del cliente'+(dirCli?': '+tpEsc(dirCli):'')+(cli.ciudad?'':' <span style="color:var(--orange-text)">(falta la ciudad en su ficha)</span>')+'</div>':''
+  const segTxt=v&&cli?.segundo_transporte?'<div style="color:var(--text2)"><i class="ti ti-truck-delivery"></i> Desde aquí, segundo transporte hasta el almacén del cliente'+(cli.segundo_transporte_notas?': '+tpEsc(cli.segundo_transporte_notas):'')+'</div>':''
+  nota.innerHTML=(!cli?'':!hab?'':
     (v===hab?'<span style="color:var(--green-text)"><i class="ti ti-star"></i> Destino habitual del cliente</span>':
-     v?'<span style="color:var(--orange-text)">Distinto del habitual ('+hab.replace(/</g,'&lt;')+') · <a href="#" onclick="event.preventDefault();document.getElementById(\'np-destino\').value=\''+hab.replace(/'/g,"\\'")+'\';npMarcarDestino();npActualizarCosteTransporte()">usar habitual</a></span>':''))+zonaTxt
+     v?'<span style="color:var(--orange-text)">Distinto del habitual ('+hab.replace(/</g,'&lt;')+') · <a href="#" onclick="event.preventDefault();document.getElementById(\'np-destino\').value=\''+hab.replace(/'/g,"\\'")+'\';npMarcarDestino();npActualizarCosteTransporte()">usar habitual</a></span>':''))+aDirTxt+zonaTxt+segTxt
 }
 async function npRecomendarDestino(clienteId,esNuevo){
   const cli=(clientes||[]).find(c=>c.id===clienteId)
@@ -9554,25 +9615,28 @@ function tpEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 
 // Coste de transporte de un pedido: palets × €/palet del transportista al destino del cliente.
 // Si ese transportista no tiene precio, usa el precio general (sin transportista) o el más barato del destino.
-// ── DESTINOS: ZONAS DE PRECIO Y ALMACENES ────────────────────
-// Un destino puede ser una ZONA DE PRECIO (Perpiñán, Alemania…) o un ALMACÉN dentro de una zona
-// (Escande, Socafna… son almacenes de Perpiñán). El transporte se cobra al precio de la zona.
-function destInfo(nombre){const n=(nombre||'').trim().toLowerCase();return (_destMerc||[]).find(d=>d.nombre.toLowerCase()===n)||null}
-function destZona(nombre){const d=destInfo(nombre);return d&&d.zona?d.zona:(nombre||'').trim()}
-function destEsAlmacen(nombre){return !!destInfo(nombre)?.zona}
-function destEtiqueta(nombre){const d=destInfo(nombre);return d&&d.zona?d.nombre+' · almacén '+d.zona:(d?d.nombre:nombre)}
-function destZonas(){return (_destMerc||[]).filter(d=>!d.zona)}
-function destAlmacenesDe(zona){return (_destMerc||[]).filter(d=>d.zona&&d.zona.toLowerCase()===(zona||'').toLowerCase())}
-// Lista ordenada: cada zona seguida de sus almacenes
-function destOrdenados(){
-  const out=[],usados=new Set()
-  destZonas().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).forEach(z=>{
-    out.push(z);usados.add(z.id)
-    destAlmacenesDe(z.nombre).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).forEach(a=>{out.push(a);usados.add(a.id)})
-  })
-  ;(_destMerc||[]).filter(d=>!usados.has(d.id)).forEach(d=>out.push(d)) // almacenes con zona inexistente
-  return out
+// ── DESTINOS DE MERCANCÍA ────────────────────
+// Cada destino (Escande, Socafna, Pujol…) tiene su dirección y su CIUDAD. Los transportes se valoran por CIUDAD:
+// todos los destinos de Perpignan usan el precio de Perpignan.
+function cn(s){return bselNorm(s).trim()}
+function destInfo(nombre){const n=cn(nombre);return n?(_destMerc||[]).find(d=>cn(d.nombre)===n)||null:null}
+// Nombre de ciudad "oficial" (la escritura más usada entre los destinos)
+function destCiudadCanon(c){
+  const k=cn(c);if(!k)return ''
+  const cuenta={};(_destMerc||[]).forEach(d=>{if(d.ciudad&&cn(d.ciudad)===k){const v=d.ciudad.trim();cuenta[v]=(cuenta[v]||0)+1}})
+  const best=Object.entries(cuenta).sort((a,b)=>b[1]-a[1])[0];return best?best[0]:String(c).trim()
 }
+// Lugar al que se valora el transporte de un destino: su ciudad (o el propio nombre si aún no tiene ciudad)
+function destZona(nombre){const d=destInfo(nombre);return d&&d.ciudad?destCiudadCanon(d.ciudad):(nombre||'').trim()}
+function destSinCiudad(nombre){const d=destInfo(nombre);return !!d&&!d.ciudad}
+function destEsAlmacen(nombre){const d=destInfo(nombre);return !!(d&&d.ciudad&&cn(d.ciudad)!==cn(d.nombre))}
+function destEtiqueta(nombre){const d=destInfo(nombre);return d?(d.ciudad&&cn(d.ciudad)!==cn(d.nombre)?d.nombre+' · '+destCiudadCanon(d.ciudad):d.nombre):nombre}
+function destCiudades(){const m={};(_destMerc||[]).forEach(d=>{if(d.ciudad){const c=destCiudadCanon(d.ciudad);m[cn(c)]=c}});return Object.values(m).sort((a,b)=>a.localeCompare(b,'es'))}
+function destZonas(){return destCiudades().map(c=>({nombre:c}))}
+function destAlmacenesDe(ciudad){return (_destMerc||[]).filter(d=>d.ciudad&&cn(d.ciudad)===cn(ciudad))}
+function destIncompleto(d){return !d.direccion||!d.ciudad||!d.pais}
+function destOrdenados(){return (_destMerc||[]).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'))}
+function tarifasDeZona(tarifas,zona){const k=cn(zona);return (tarifas||[]).filter(t=>cn(destZona(t.destino))===k)}
 
 // ── Formulario de destino (crear / editar) ──
 function tpAbrirDestino(id){
@@ -9581,51 +9645,34 @@ function tpAbrirDestino(id){
   document.getElementById('ds-titulo').childNodes[0].textContent=d?'Editar destino ':'Nuevo destino '
   document.getElementById('ds-nombre').value=d?.nombre||''
   document.getElementById('ds-pais').value=d?.pais||''
+  document.getElementById('ds-ciudad').value=d?.ciudad||''
   document.getElementById('ds-direccion').value=d?.direccion||''
-  const zonas=destZonas().filter(z=>!d||z.id!==d.id)
-  const sel=document.getElementById('ds-zona')
-  sel.innerHTML='<option value="">— Elige la zona —</option>'+zonas.map(z=>'<option value="'+tpEsc(z.nombre)+'">'+tpEsc(z.nombre)+'</option>').join('')
-  const esAlm=!!d?.zona
-  document.querySelector('input[name=ds-tipo][value='+(esAlm?'almacen':'zona')+']').checked=true
-  sel.value=d?.zona||''
-  // Una zona con almacenes no puede convertirse en almacén
-  const tieneAlm=d&&!d.zona&&destAlmacenesDe(d.nombre).length
-  document.querySelector('input[name=ds-tipo][value=almacen]').disabled=!!tieneAlm
-  document.getElementById('ds-aviso-alm').style.display=tieneAlm?'block':'none'
-  document.getElementById('ds-aviso-alm').textContent=tieneAlm?'Tiene '+tieneAlm+' almacén/es asignados, por eso no puede ser un almacén.':''
-  dsToggle()
   document.getElementById('ds-err').style.display='none'
   openModal('modal-destino')
-}
-function dsToggle(){
-  const alm=document.querySelector('input[name=ds-tipo]:checked')?.value==='almacen'
-  document.getElementById('ds-zona-wrap').style.display=alm?'block':'none'
 }
 async function tpGuardarDestino(){
   const err=document.getElementById('ds-err');err.style.display='none'
   const id=document.getElementById('ds-id').value
   const nombre=document.getElementById('ds-nombre').value.trim()
-  const alm=document.querySelector('input[name=ds-tipo]:checked')?.value==='almacen'
-  const zona=alm?document.getElementById('ds-zona').value:null
   if(!nombre){err.textContent='El nombre es obligatorio';err.style.display='block';return}
-  if(alm&&!zona){err.textContent='Elige a qué zona de precio pertenece el almacén';err.style.display='block';return}
+  if(!document.getElementById('ds-ciudad').value.trim()){err.textContent='La ciudad es obligatoria: el precio del transporte se busca por ciudad';err.style.display='block';return}
   if(_destMerc.some(x=>x.id!==id&&x.nombre.toLowerCase()===nombre.toLowerCase())){err.textContent='Ya existe un destino con ese nombre';err.style.display='block';return}
-  const datos={nombre,zona,pais:document.getElementById('ds-pais').value.trim()||null,direccion:document.getElementById('ds-direccion').value.trim()||null}
+  const datos={nombre,zona:null,pais:document.getElementById('ds-pais').value.trim()||null,ciudad:destCiudadCanon(document.getElementById('ds-ciudad').value.trim())||null,direccion:document.getElementById('ds-direccion').value.trim()||null}
   const nombreAnterior=id?(_destMerc.find(x=>x.id===id)?.nombre||null):null
   const {error}=id?await db.from('destinos').update(datos).eq('id',id):await db.from('destinos').insert(datos)
-  if(error){err.textContent='Error: '+error.message+(/zona|direccion/.test(error.message)?' — ¿has ejecutado el SQL de las columnas zona y direccion?':'');err.style.display='block';return}
-  // Renombrado: actualizar clientes, pedidos, precios y almacenes que apuntan a esta zona
+  if(error){err.textContent='Error: '+error.message+(/zona|direccion|ciudad/.test(error.message)?' — ¿has ejecutado el SQL de las columnas ciudad y direccion?':'');err.style.display='block';return}
+  // Renombrado: actualizar clientes, pedidos y precios que apuntan a este destino
   if(nombreAnterior&&nombreAnterior!==nombre){
     await db.from('clientes').update({destino_mercancia:nombre}).eq('destino_mercancia',nombreAnterior)
     await db.from('pedidos').update({destino_mercancia:nombre}).eq('destino_mercancia',nombreAnterior)
     await db.from('tarifas_transporte').update({destino:nombre}).eq('destino',nombreAnterior)
-    await db.from('destinos').update({zona:nombre}).eq('zona',nombreAnterior)
     await recargarClientesGlobal()
   }
-  toast(id?'Destino actualizado ✓':'Destino "'+nombre+'" creado ✓'+(alm?' (precio de '+zona+')':''))
+  toast(id?'Destino actualizado ✓':'Destino "'+nombre+'" creado ✓')
   closeModal('modal-destino')
   await cargarDestinosMercancia()
   if(document.getElementById('page-envios')?.classList.contains('active'))loadTransportes()
+  if(typeof clPoblarDestinos==='function'&&document.getElementById('modal-cliente')?.classList.contains('open'))clPoblarDestinos(nombre)
 }
 
 // Tipo de palet a efectos de transporte: americano (100×120) o europalet (resto)
@@ -9644,16 +9691,29 @@ function tpPrecioCamion(t){const v=parseFloat(t?.precio_camion);return isNaN(v)|
 // Coste de transporte de un pedido.
 // palets: número (se toman como europalet) o {euro, amer}.
 // Usa el precio del transportista del pedido a ese destino; si no tiene, el general o el más barato (y lo indica).
-function transpCoste(destino,transportistaId,palets,tarifas){
+// ¿A dónde va la mercancía y a qué ciudad se valora el transporte?
+// - Cliente con transporte propio: no hay coste de transporte para nosotros.
+// - Destino de mercancía relleno: ciudad de ese destino.
+// - Sin destino: se manda a la dirección del cliente → ciudad del cliente.
+function envioInfo(destino,cli){
+  destino=(destino||'').trim()
+  if(cli&&cli.recoge_cliente)return {tipo:'recoge'}
+  if(destino)return {tipo:'destino',destino,zona:destZona(destino),sinCiudad:destSinCiudad(destino)}
+  if(cli&&cli.ciudad)return {tipo:'cliente',destino:'',zona:destCiudadCanon(cli.ciudad)}
+  return {tipo:'ninguno'}
+}
+function transpCoste(destino,transportistaId,palets,tarifas,cli){
   destino=(destino||'').trim()
   const pal=typeof palets==='object'&&palets?{euro:palets.euro||0,amer:palets.amer||0}:{euro:parseInt(palets)||0,amer:0}
-  if(!destino)return {importe:0,motivo:'sin_destino'}
+  const env=envioInfo(destino,cli)
+  if(env.tipo==='recoge')return {importe:0,motivo:'recoge_cliente'}
+  if(env.tipo==='ninguno')return {importe:0,motivo:'sin_destino'}
+  if(env.tipo==='cliente'){destino=env.zona}
   const nomT=(transportistas||[]).find(t=>t.id===transportistaId)?.nombre
-  const de=n=>(tarifas||[]).filter(t=>(t.destino||'').trim().toLowerCase()===n.toLowerCase())
-  const zona=destZona(destino)
-  let filas=de(destino)
-  if(!filas.length&&zona.toLowerCase()!==destino.toLowerCase())filas=de(zona)
-  if(!filas.length)return {importe:0,motivo:'sin_precio',zona}
+  const zona=env.zona
+  if(env.sinCiudad)return {importe:0,motivo:'sin_ciudad',zona}
+  const filas=tarifasDeZona(tarifas,zona)
+  if(!filas.length)return {importe:0,motivo:'sin_precio',zona,aCliente:env.tipo==='cliente'}
   const e2=v=>Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})
   const calc=t=>{
     const pe=tpPrecioEuro(t),pa=tpPrecioAmer(t),pc=tpPrecioCamion(t)
@@ -9669,7 +9729,7 @@ function transpCoste(destino,transportistaId,palets,tarifas){
   if(!t){t=filas.slice().sort((a,b)=>calc(a).importe-calc(b).importe)[0];fuente='mas_barato'}
   const r=calc(t)
   if(r.falta==='todo')return {importe:0,motivo:'sin_precio'}
-  return {importe:r.importe,detalle:r.detalle,falta:r.falta,fuente,transportista:t.transportista||null,motivo:null,zona}
+  return {importe:r.importe,detalle:r.detalle,falta:r.falta,fuente,transportista:t.transportista||null,motivo:null,zona,aCliente:env.tipo==='cliente'}
 }
 
 async function loadTransportes(){
@@ -9677,7 +9737,7 @@ async function loadTransportes(){
   const [{data:t},{data:tar,error:eT},{data:cli}]=await Promise.all([
     db.from('transportistas').select('*').order('nombre'),
     db.from('tarifas_transporte').select('*'),
-    db.from('clientes').select('id,nombre,destino_mercancia,estado_comercial').order('nombre'),
+    db.from('clientes').select('*').order('nombre'),
     cargarDestinosMercancia()
   ])
   transportistas=t||[]
@@ -9685,7 +9745,7 @@ async function loadTransportes(){
   _tp.clientes=(cli||[]).filter(c=>c.estado_comercial!=='descartado')
   await tpCargarUso(cli||[])
   if(_destMerc._error){
-    document.getElementById('tp-avisos').innerHTML='<div class="card" style="background:var(--orange-bg);margin-bottom:14px;font-size:13px"><i class="ti ti-alert-triangle"></i> Falta la tabla <strong>destinos</strong> en Supabase. Ejecuta el SQL indicado para activar la lista única de destinos.<br><small>'+tpEsc(_destMerc._error.message)+'</small></div>'
+    document.getElementById('ds-avisos').innerHTML='<div class="card" style="background:var(--orange-bg);margin-bottom:14px;font-size:13px"><i class="ti ti-alert-triangle"></i> Falta la tabla <strong>destinos</strong> en Supabase. Ejecuta el SQL indicado para activar la lista única de destinos.<br><small>'+tpEsc(_destMerc._error.message)+'</small></div>'
   }
   tpRender()
 }
@@ -9699,11 +9759,13 @@ async function tpCargarUso(cli){
   if(!lista.length)return
   const lineas=await cmcEnTrozos(lista.map(p=>p.id),ids=>db.from('pedido_productos').select('pedido_id,tipo_palet,num_palets').in('pedido_id',ids))
   const porPed={};lineas.forEach(l=>(porPed[l.pedido_id]=porPed[l.pedido_id]||[]).push(l))
-  const destCli={};cli.forEach(c=>destCli[c.id]=c.destino_mercancia)
+  const cliId={};cli.forEach(c=>cliId[c.id]=c)
   lista.forEach(p=>{
-    const destReal=(p.destino_mercancia||destCli[p.cliente_id]||'').trim();if(!destReal)return
-    const dest=destZona(destReal)
-    const k=p.transportista_id+'|'+dest.toLowerCase()
+    const c=cliId[p.cliente_id]
+    const env=envioInfo(p.destino_mercancia||c?.destino_mercancia,c)
+    if(!env.zona||env.sinCiudad)return
+    const dest=env.zona
+    const k=p.transportista_id+'|'+cn(dest)
     const u=_tp.uso[k]=_tp.uso[k]||{tid:p.transportista_id,destino:dest,n:0,euro:0,amer:0,ultimo:''}
     const pt=paletsPorTipo(porPed[p.id],p.palets)
     u.n++;u.euro+=pt.euro;u.amer+=pt.amer;if(p.fecha_recogida>u.ultimo)u.ultimo=p.fecha_recogida
@@ -9711,9 +9773,9 @@ async function tpCargarUso(cli){
 }
 // ¿Qué le falta a un transportista en un destino que ha usado?
 function tpFaltaPrecio(tid,destino){
-  const u=(_tp.uso||{})[tid+'|'+destino.toLowerCase()];if(!u)return null
+  const u=(_tp.uso||{})[tid+'|'+cn(destino)];if(!u)return null
   const t=(transportistas||[]).find(x=>x.id===tid)
-  const fila=_tp.tarifas.find(x=>(x.destino||'').toLowerCase()===destino.toLowerCase()&&(x.transportista_id===tid||(!x.transportista_id&&t&&x.transportista===t.nombre)))
+  const fila=tarifasDeZona(_tp.tarifas,destino).find(x=>(x.transportista_id===tid||(!x.transportista_id&&t&&x.transportista===t.nombre)))
   const pe=tpPrecioEuro(fila),pa=tpPrecioAmer(fila),pc=tpPrecioCamion(fila)
   const faltan=[]
   if(!fila||(!pe&&!pa&&!pc))faltan.push('sin precio')
@@ -9731,7 +9793,7 @@ function tpRender(){
   const nombresDest=new Set(destinos.map(d=>d.nombre.toLowerCase()))
   const sueltos={}
   _tp.clientes.forEach(c=>{const d=(c.destino_mercancia||'').trim();if(d&&!nombresDest.has(d.toLowerCase()))(sueltos[d]=sueltos[d]||[]).push(c.nombre)})
-  const sinDest=_tp.clientes.filter(c=>!(c.destino_mercancia||'').trim())
+  const sinDest=_tp.clientes.filter(c=>envioInfo(c.destino_mercancia,c).tipo==='ninguno')
   let avisos=''
   if(!_destMerc._error&&Object.keys(sueltos).length){
     const opts='<option value="">Unificar con…</option>'+destinos.map(d=>'<option value="'+tpEsc(d.nombre)+'">'+tpEsc(d.nombre)+'</option>').join('')
@@ -9745,9 +9807,10 @@ function tpRender(){
   }
   if(!_destMerc._error&&sinDest.length&&destinos.length){
     const opts='<option value="">Asignar destino…</option>'+destinos.map(d=>'<option value="'+tpEsc(d.nombre)+'">'+tpEsc(d.nombre)+'</option>').join('')
-    avisos+='<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-map-pin-off"></i> '+sinDest.length+' cliente'+(sinDest.length>1?'s':'')+' sin destino de mercancía (su transporte no se puede calcular)</summary>'+
+    avisos+='<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-map-pin-off"></i> '+sinDest.length+' cliente'+(sinDest.length>1?'s':'')+' sin destino de mercancía ni ciudad (su transporte no se puede calcular). Asígnales un destino o pon la ciudad en su ficha</summary>'+
       '<div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">'+sinDest.map(c=>'<div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="flex:1">'+tpEsc(c.nombre)+'</span><select data-id="'+c.id+'" onchange="if(this.value)tpAsignarDestino(this.dataset.id,this.value)" style="padding:3px 5px;font-size:12px;max-width:140px">'+opts+'</select></div>').join('')+'</div></details>'
   }
+  const avisosDest=avisos
   const alertas=tpAlertas()
   if(alertas.length){
     const nomT=id=>(transportistas||[]).find(t=>t.id===id)?.nombre||'—'
@@ -9759,7 +9822,9 @@ function tpRender(){
         '<span style="color:var(--text2)">'+a.n+' pedido'+(a.n>1?'s':'')+' · '+[a.euro?a.euro+' europalet':null,a.amer?a.amer+' americano':null].filter(Boolean).join(', ')+' · último '+fmt(a.ultimo)+'</span>'+
         '<button class="btn btn-sm" style="margin-left:auto" onclick="tpIrA(\''+a.tid+'\')"><i class="ti ti-edit"></i>Valorar</button></div>').join('')+'</div>'+avisos
   }
-  if(!_destMerc._error||alertas.length)document.getElementById('tp-avisos').innerHTML=avisos
+  // Avisos de destinos (unificar, clientes sin destino) van a la pestaña Destinos; los de precios, a Transportes
+  document.getElementById('tp-avisos').innerHTML=alertas.length?avisos.slice(0,avisos.length-avisosDest.length):''
+  document.getElementById('ds-avisos').innerHTML=_destMerc._error?document.getElementById('ds-avisos').innerHTML:avisosDest
 
   // ── Transportistas ──
   const lista=(transportistas||[]).filter(t=>!buscar||(t.nombre||'').toLowerCase().includes(buscar))
@@ -9784,51 +9849,112 @@ function tpRender(){
   // ── Destinos ──
   const cont=document.getElementById('tp-destinos')
   if(_destMerc._error){cont.innerHTML='<div class="empty">Crea la tabla destinos para gestionar la lista</div>';return}
-  cont.innerHTML=destinos.length?'<table class="tabla-compacta"><thead><tr><th>Destino</th><th>Tipo</th><th>Dirección</th><th style="text-align:center">Clientes</th><th>Precios por transportista</th><th></th></tr></thead><tbody>'+
-    destOrdenados().map(d=>{
+  const qd=bselNorm(document.getElementById('ds-buscar')?.value||'')
+  const incompleto=destIncompleto
+  dsRenderCompletar()
+  const visibles=destOrdenados().filter(d=>{
+    if(_tp.dsFiltro==='incompletos'&&!incompleto(d))return false
+    return !qd||bselNorm([d.nombre,d.ciudad,d.pais,d.direccion].filter(Boolean).join(' ')).includes(qd)
+  })
+  const nInc=destinos.filter(incompleto).length
+  document.querySelectorAll('#ds-filtros .btn').forEach(b=>{const base=b.dataset.base||(b.dataset.base=b.innerHTML);b.innerHTML=base+(b.dataset.f==='incompletos'&&nInc?' ('+nInc+')':'');b.classList.toggle('btn-primary',b.dataset.f===(_tp.dsFiltro||'todos'))})
+  const datosCelda=d=>'<td>'+tpEsc(d.ciudad||'')+(d.ciudad?'':'<span style="color:var(--orange-text);font-size:11px">Falta</span>')+'</td><td>'+tpEsc(d.pais||'')+(d.pais?'':'<span style="color:var(--orange-text);font-size:11px">Falta</span>')+'</td>'+
+    '<td style="font-size:12px;max-width:220px;white-space:normal">'+(d.direccion?tpEsc(d.direccion):'<span style="color:var(--orange-text);font-size:11px">Falta dirección</span>')+'</td>'
+  cont.innerHTML=!destinos.length?'<div class="empty">Todavía no hay destinos. Pulsa <strong>Nuevo destino</strong> o añade los que ya usan tus clientes desde el aviso de arriba.</div>':
+    !visibles.length?'<div class="empty">Ningún destino con este filtro</div>':
+    '<table class="tabla-compacta"><thead><tr><th>Destino</th><th>Ciudad</th><th>País</th><th>Dirección</th><th style="text-align:center">Clientes</th><th>Precio de transporte (por ciudad)</th><th></th></tr></thead><tbody>'+
+    visibles.map(d=>{
       const nCli=_tp.clientes.filter(c=>(c.destino_mercancia||'').trim().toLowerCase()===d.nombre.toLowerCase()).length
       const acciones='<td style="white-space:nowrap"><button class="btn btn-sm" data-id="'+d.id+'" onclick="tpAbrirDestino(this.dataset.id)" title="Editar"><i class="ti ti-edit"></i></button> <button class="btn btn-sm btn-danger" data-id="'+d.id+'" onclick="tpEliminarDestino(this.dataset.id)" title="Eliminar"><i class="ti ti-trash"></i></button></td>'
-      if(d.zona){
-        const zExiste=destZonas().some(z=>z.nombre.toLowerCase()===d.zona.toLowerCase())
-        return '<tr><td style="padding-left:26px"><i class="ti ti-corner-down-right" style="color:var(--text3)"></i> '+tpEsc(d.nombre)+'</td>'+
-          '<td><span class="badge b-prep" style="font-size:10px">Almacén</span></td><td style="font-size:12px;max-width:200px;white-space:normal">'+tpEsc(d.direccion||'—')+'</td><td style="text-align:center">'+nCli+'</td>'+
-          '<td style="font-size:12px;color:var(--text2)">'+(zExiste?'Precio de <strong>'+tpEsc(d.zona)+'</strong>':'<span style="color:var(--red-text)">La zona "'+tpEsc(d.zona)+'" no existe</span>')+'</td>'+acciones+'</tr>'
-      }
-      const nAlm=destAlmacenesDe(d.nombre).length
-      const pr=_tp.tarifas.filter(x=>(x.destino||'').trim().toLowerCase()===d.nombre.toLowerCase())
+      const pr=d.ciudad?tarifasDeZona(_tp.tarifas,d.ciudad):[]
       const nom=x=>x.transportista_id?((transportistas||[]).find(t=>t.id===x.transportista_id)?.nombre||x.transportista||'—'):(x.transportista||'General')
       const f2=v=>Number(v).toLocaleString('es-ES',{minimumFractionDigits:2})
       const txt=x=>{const e=tpPrecioEuro(x),a=tpPrecioAmer(x),c=tpPrecioCamion(x);return [e?'EUR '+f2(e):null,a?'AME '+f2(a):null,!e&&!a&&c?'camión '+f2(c):null].filter(Boolean).join(' / ')+' €'}
-      const precios=pr.length?pr.slice().sort((a,b)=>(tpPrecioEuro(a)||9e9)-(tpPrecioEuro(b)||9e9)).map((x,i)=>'<span style="'+(i===0?'color:var(--green-text);font-weight:600':'')+'">'+tpEsc(nom(x))+': '+txt(x)+'</span>').join(' · '):'<span style="color:var(--orange-text)">Sin precios</span>'
-      const alD=tpAlertas().filter(a=>a.destino.toLowerCase()===d.nombre.toLowerCase())
-      return '<tr style="background:var(--bg3)"><td style="font-weight:700">'+tpEsc(d.nombre)+(d.pais?'<div style="font-size:10.5px;font-weight:400;color:var(--text3)">'+tpEsc(d.pais)+'</div>':'')+'</td><td><span class="badge b-ok" style="font-size:10px">Zona de precio</span>'+(nAlm?'<div style="font-size:10.5px;color:var(--text3);margin-top:2px">'+nAlm+' '+(nAlm>1?'almacenes':'almacén')+'</div>':'')+'</td><td style="font-size:12px;max-width:200px;white-space:normal">'+tpEsc(d.direccion||'—')+'</td><td style="text-align:center">'+nCli+'</td><td style="white-space:normal;max-width:420px;font-size:12px">'+precios+(alD.length?'<div style="margin-top:3px"><span class="badge b-low" style="font-size:10px"><i class="ti ti-alert-triangle"></i>'+alD.length+' transportista'+(alD.length>1?'s':'')+' usado'+(alD.length>1?'s':'')+' sin valorar</span></div>':'')+'</td>'+acciones+'</tr>'
-    }).join('')+'</tbody></table>':'<div class="empty">Todavía no hay destinos. Pulsa <strong>Nuevo destino</strong> o añade los que ya usan tus clientes desde el aviso de arriba.</div>'
+      const precios=pr.length?pr.slice().sort((a,b)=>(tpPrecioEuro(a)||9e9)-(tpPrecioEuro(b)||9e9)).map((x,i)=>'<span style="'+(i===0?'color:var(--green-text);font-weight:600':'')+'">'+tpEsc(nom(x))+': '+txt(x)+'</span>').join(' · '):(d.ciudad?'<span style="color:var(--orange-text)">Sin precios para '+tpEsc(destCiudadCanon(d.ciudad))+'</span>':'<span style="color:var(--orange-text)">Pon la ciudad para poder valorarlo</span>')
+      const alD=d.ciudad?tpAlertas().filter(a=>cn(a.destino)===cn(d.ciudad)):[]
+      return '<tr><td style="font-weight:700">'+tpEsc(d.nombre)+'</td>'+datosCelda(d)+'<td style="text-align:center">'+nCli+'</td><td style="white-space:normal;max-width:420px;font-size:12px">'+precios+(alD.length?'<div style="margin-top:3px"><span class="badge b-low" style="font-size:10px"><i class="ti ti-alert-triangle"></i>'+alD.length+' transportista'+(alD.length>1?'s':'')+' usado'+(alD.length>1?'s':'')+' sin valorar</span></div>':'')+'</td>'+acciones+'</tr>'
+    }).join('')+'</tbody></table>'
 }
+function dsFiltro(f){_tp.dsFiltro=f;tpRender()}
+// Apartado para completar dirección, ciudad y país de los destinos que no los tienen
+function dsRenderCompletar(){
+  const box=document.getElementById('ds-completar');if(!box)return
+  const uniq=a=>[...new Map(a.filter(Boolean).map(v=>[cn(v),v.trim()])).values()].sort((x,y)=>x.localeCompare(y,'es'))
+  document.getElementById('ds-ciudades-list').innerHTML=destCiudades().map(c=>'<option value="'+tpEsc(c)+'">').join('')
+  document.getElementById('ds-paises-list').innerHTML=uniq((_destMerc||[]).map(d=>d.pais).concat(['España','Francia','Alemania','Países Bajos','Bélgica','Italia','Reino Unido','Suiza','Austria','Polonia','Dinamarca','Suecia'])).map(c=>'<option value="'+tpEsc(c)+'">').join('')
+  const total=(_destMerc||[]).length
+  if(!total||_destMerc._error){box.innerHTML='';return}
+  const inc=(_destMerc||[]).filter(destIncompleto).sort((a,b)=>(a.ciudad?1:0)-(b.ciudad?1:0)||a.nombre.localeCompare(b.nombre,'es'))
+  // No volver a pintar (y perder lo que se está escribiendo) si los destinos no han cambiado
+  const firma=JSON.stringify((_destMerc||[]).map(d=>[d.id,d.nombre,d.direccion,d.ciudad,d.pais]))
+  if(box.dataset.firma===firma&&box.innerHTML)return
+  box.dataset.firma=firma
+  if(!inc.length){box.innerHTML='<div class="card" style="background:var(--green-bg);margin-bottom:14px;font-size:13px;color:var(--green-text)"><i class="ti ti-circle-check"></i> Los '+total+' destinos tienen dirección, ciudad y país. Ya puedes valorar los transportes por ciudad en la pestaña Transportes.</div>';return}
+  const sinC=inc.filter(d=>!d.ciudad).length
+  const st='padding:6px 8px;font-size:12.5px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg);color:var(--text);width:100%'
+  const rojo=';border:2px solid var(--orange);background:var(--orange-bg)'
+  const pct=Math.round((total-inc.length)/total*100)
+  box.innerHTML='<div class="card" style="margin-bottom:14px;border-color:var(--orange)">'+
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><div class="card-title" style="margin:0"><i class="ti ti-list-check"></i>Completar destinos</div>'+
+    '<span class="badge b-low">'+inc.length+' de '+total+' pendientes</span>'+(sinC?'<span class="badge b-warn">'+sinC+' sin ciudad</span>':'')+'</div>'+
+    '<div style="height:6px;background:var(--bg3);border-radius:99px;overflow:hidden;margin:6px 0 8px"><div style="height:100%;width:'+pct+'%;background:var(--green)"></div></div>'+
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">Rellena primero la <strong>ciudad</strong> de cada destino: el transporte se valora por ciudad (Escande, Socafna, Pujol… → Perpignan). Escribe la ciudad siempre igual; el desplegable te sugiere las que ya existen.</div>'+
+    '<div style="overflow-x:auto"><table class="tabla-compacta" id="ds-tabla-completar"><thead><tr><th>Destino</th><th style="min-width:200px">Dirección</th><th style="min-width:140px">Ciudad *</th><th style="min-width:120px">País</th><th></th></tr></thead><tbody>'+
+    inc.map(d=>'<tr data-id="'+d.id+'"><td style="font-weight:600">'+tpEsc(d.nombre)+'</td>'+
+      '<td><input type="text" class="dsc-dir" value="'+tpEsc(d.direccion||'')+'" placeholder="Calle, nº, CP" style="'+st+(d.direccion?'':rojo)+'"></td>'+
+      '<td><input type="text" class="dsc-ciu" list="ds-ciudades-list" autocomplete="off" value="'+tpEsc(d.ciudad||'')+'" placeholder="Ciudad" style="'+st+(d.ciudad?'':rojo)+'"></td>'+
+      '<td><input type="text" class="dsc-pais" list="ds-paises-list" autocomplete="off" value="'+tpEsc(d.pais||'')+'" placeholder="País" style="'+st+(d.pais?'':rojo)+'"></td>'+
+      '<td><button class="btn btn-sm" data-id="'+d.id+'" onclick="tpAbrirDestino(this.dataset.id)" title="Abrir ficha"><i class="ti ti-edit"></i></button></td></tr>').join('')+
+    '</tbody></table></div>'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-success btn-sm" onclick="dsGuardarCompletar()"><i class="ti ti-device-floppy"></i>Guardar datos de destinos</button></div></div>'
+}
+async function dsGuardarCompletar(){
+  const filas=[...document.querySelectorAll('#ds-tabla-completar tbody tr')]
+  const cambios=filas.map(tr=>{
+    const d=(_destMerc||[]).find(x=>x.id===tr.dataset.id);if(!d)return null
+    const v={direccion:tr.querySelector('.dsc-dir').value.trim()||null,ciudad:destCiudadCanon(tr.querySelector('.dsc-ciu').value.trim())||null,pais:tr.querySelector('.dsc-pais').value.trim()||null}
+    return (v.direccion!==(d.direccion||null)||v.ciudad!==(d.ciudad||null)||v.pais!==(d.pais||null))?{id:d.id,v}:null
+  }).filter(Boolean)
+  if(!cambios.length){toast('No has cambiado ningún dato','err');return}
+  for(const c of cambios){
+    const {error}=await db.from('destinos').update(c.v).eq('id',c.id)
+    if(error){toast('Error: '+error.message+(/ciudad/.test(error.message)?' — ejecuta el SQL de la columna ciudad':''),'err');return}
+  }
+  toast(cambios.length+' destino'+(cambios.length>1?'s':'')+' actualizado'+(cambios.length>1?'s':'')+' ✓')
+  await cargarDestinosMercancia()
+  loadTransportes()
+}
+function irADestinos(){const tab=[...document.querySelectorAll('#page-envios .tabs .tab')].find(t=>t.textContent.trim()==='Destinos');if(tab)switchTab(tab,'tab-envios-destinos')}
 
 function tpToggle(id){_tp.abiertos.has(id)?_tp.abiertos.delete(id):_tp.abiertos.add(id);tpRender()}
 
 function tpTablaPrecios(t,precios){
-  const destinos=destZonas().map(d=>d.nombre)
-  const anadir=n=>{n=destZona(n);if(n&&!destinos.some(x=>x.toLowerCase()===n.toLowerCase()))destinos.push(n)}
+  const destinos=destCiudades()
+  const anadir=n=>{n=destZona(n);if(n&&!destinos.some(x=>cn(x)===cn(n)))destinos.push(n)}
+  _tp.clientes.forEach(c=>{const e=envioInfo(c.destino_mercancia,c);if(e.tipo==='cliente')anadir(e.zona)})
   precios.forEach(x=>anadir(x.destino))
   Object.values(_tp.uso||{}).filter(u=>u.tid===t.id).forEach(u=>anadir(u.destino)) // destinos usados aunque no estén en la lista
-  if(!destinos.length)return '<div class="empty" style="padding:14px">Primero crea los destinos de mercancía (abajo).</div>'
+  const sinCiudad=(_destMerc||[]).filter(d=>!d.ciudad)
+  const avisoCiudad=sinCiudad.length?'<div style="margin:10px 12px 0;padding:8px 10px;border-radius:var(--radius);background:var(--orange-bg);font-size:12px;color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> '+sinCiudad.length+' destino'+(sinCiudad.length>1?'s':'')+' sin ciudad ('+tpEsc(sinCiudad.slice(0,6).map(d=>d.nombre).join(', '))+(sinCiudad.length>6?'…':'')+'): no se pueden valorar hasta que tengan ciudad. <a href="#" onclick="event.preventDefault();irADestinos()">Completar destinos →</a></div>':''
+  if(!destinos.length)return avisoCiudad+'<div class="empty" style="padding:14px">Primero rellena la ciudad de cada destino en la pestaña <a href="#" onclick="event.preventDefault();irADestinos()">Destinos</a>.</div>'
   const inp='padding:5px 7px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)'
   const rojo='border:2px solid var(--red);background:var(--red-bg)'
   // Primero los que faltan por valorar, después los usados y luego el resto
-  const orden=destinos.map(dn=>({dn,falta:tpFaltaPrecio(t.id,dn),uso:(_tp.uso||{})[t.id+'|'+dn.toLowerCase()]}))
+  const orden=destinos.map(dn=>({dn,falta:tpFaltaPrecio(t.id,dn),uso:(_tp.uso||{})[t.id+'|'+cn(dn)]}))
     .sort((a,b)=>(b.falta?1:0)-(a.falta?1:0)||(b.uso?.n||0)-(a.uso?.n||0)||a.dn.localeCompare(b.dn,'es'))
-  return '<div style="padding:10px 12px;overflow-x:auto"><table class="tabla-compacta" id="tp-tabla-'+t.id+'"><thead><tr><th>Destino</th><th style="text-align:center">Clientes</th><th>Uso (6 meses)</th><th>€ / europalet<br><span style="font-weight:400;font-size:10px">80×120</span></th><th>€ / palet americano<br><span style="font-weight:400;font-size:10px">100×120</span></th><th>€ / camión completo</th><th>Observaciones</th></tr></thead><tbody>'+
+  return avisoCiudad+'<div style="padding:10px 12px;overflow-x:auto"><table class="tabla-compacta" id="tp-tabla-'+t.id+'"><thead><tr><th>Ciudad</th><th style="text-align:center">Clientes</th><th>Uso (6 meses)</th><th>€ / europalet<br><span style="font-weight:400;font-size:10px">80×120</span></th><th>€ / palet americano<br><span style="font-weight:400;font-size:10px">100×120</span></th><th>€ / camión completo</th><th>Observaciones</th></tr></thead><tbody>'+
     orden.map(({dn,falta,uso})=>{
-      const x=precios.find(p=>(p.destino||'').toLowerCase()===dn.toLowerCase())||{}
-      const nCli=_tp.clientes.filter(c=>destZona(c.destino_mercancia).toLowerCase()===dn.toLowerCase()).length
-      const huerfano=!_destMerc.some(d=>d.nombre.toLowerCase()===dn.toLowerCase())
+      const x=tarifasDeZona(precios,dn)[0]||{}
+      const nCli=_tp.clientes.filter(c=>{const e=envioInfo(c.destino_mercancia,c);return e.zona&&cn(e.zona)===cn(dn)}).length
+      const cliDir=_tp.clientes.filter(c=>{const e=envioInfo(c.destino_mercancia,c);return e.tipo==='cliente'&&cn(e.zona)===cn(dn)}).map(c=>c.nombre)
+      const huerfano=!destCiudades().some(c=>cn(c)===cn(dn))&&!cliDir.length
       const alms=destAlmacenesDe(dn).map(a=>a.nombre)
       const faltaE=falta&&(falta.faltan.includes('europalet')||falta.faltan.includes('sin precio')&&uso.euro)
       const faltaA=falta&&(falta.faltan.includes('palet americano')||falta.faltan.includes('sin precio')&&uso.amer)
       const usoTxt=uso?uso.n+' ped. · '+[uso.euro?uso.euro+' EUR':null,uso.amer?uso.amer+' AME':null].filter(Boolean).join(' + '):'<span style="color:var(--text3)">—</span>'
-      return '<tr data-destino="'+tpEsc(dn)+'"'+(falta?' style="background:var(--red-bg)"':'')+'><td style="font-weight:600;white-space:normal;max-width:220px">'+tpEsc(dn)+(huerfano?' <span class="badge b-warn" style="font-size:10px">no está en la lista</span>':'')+
-          (alms.length?'<div style="font-size:10.5px;font-weight:400;color:var(--text2)">Incluye '+alms.length+' '+(alms.length>1?'almacenes':'almacén')+': '+tpEsc(alms.join(', '))+'</div>':'')+
+      return '<tr data-destino="'+tpEsc(dn)+'"'+(falta?' style="background:var(--red-bg)"':'')+'><td style="font-weight:600;white-space:normal;max-width:220px">'+tpEsc(dn)+(huerfano?' <span class="badge b-warn" style="font-size:10px">ningún destino en esta ciudad</span>':'')+
+          (alms.length?'<div style="font-size:10.5px;font-weight:400;color:var(--text2)">'+alms.length+' destino'+(alms.length>1?'s':'')+': '+tpEsc(alms.join(', '))+'</div>':'')+
+          (cliDir.length?'<div style="font-size:10.5px;font-weight:400;color:var(--text2)"><i class="ti ti-home"></i> A dirección del cliente: '+tpEsc(cliDir.slice(0,4).join(', '))+(cliDir.length>4?'…':'')+'</div>':'')+
           (falta?'<div><span class="badge b-low" style="font-size:10px"><i class="ti ti-alert-triangle"></i>'+tpFaltaTxt(falta)+'</span></div>':'')+'</td>'+
         '<td style="text-align:center;color:var(--text2)">'+nCli+'</td><td style="font-size:11px;white-space:nowrap">'+usoTxt+'</td>'+
         '<td><input type="number" step="0.01" min="0" class="tp-eur" value="'+(tpPrecioEuro(x)??'')+'" placeholder="—" style="width:85px;'+inp+(faltaE?';'+rojo:'')+'"></td>'+
@@ -9836,7 +9962,7 @@ function tpTablaPrecios(t,precios){
         '<td><input type="number" step="0.01" min="0" class="tp-cam" value="'+(tpPrecioCamion(x)??'')+'" placeholder="—" style="width:90px;'+inp+'"></td>'+
         '<td><input type="text" class="tp-obs" value="'+tpEsc(x.observaciones||'')+'" placeholder="Frigo, plazo, mínimo..." style="width:190px;'+inp+'"></td></tr>'
     }).join('')+'</tbody></table>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">Coste de cada pedido = europalets × €/europalet + americanos × €/palet americano (o el camión completo si no hay precio por palet). Deja vacío un destino si este transportista no va allí.</span>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">Coste de cada pedido = europalets × €/europalet + americanos × €/palet americano (o el camión completo si no hay precio por palet). Todos los destinos de una misma ciudad usan este precio. Deja vacía una ciudad si este transportista no va allí.</span>'+
     '<button class="btn btn-success btn-sm" onclick="tpGuardarPrecios(\''+t.id+'\')"><i class="ti ti-device-floppy"></i>Guardar precios de '+tpEsc(t.nombre)+'</button></div></div>'
 }
 
@@ -9886,7 +10012,7 @@ async function eliminarTransportista(){
 async function tpAnadirDestino(nombre,pais,zona){
   nombre=(nombre||'').trim();if(!nombre)return null
   if(_destMerc.some(d=>d.nombre.toLowerCase()===nombre.toLowerCase())){toast('Ese destino ya existe','err');return null}
-  const fila={nombre,pais:pais||null};if(zona)fila.zona=zona
+  const fila={nombre,pais:pais||null}
   const {data,error}=await db.from('destinos').insert(fila).select().single()
   if(error){toast('Error: '+error.message,'err');return null}
   toast('Destino "'+nombre+'" añadido ✓')
@@ -9915,8 +10041,6 @@ async function tpEliminarDestino(id){
   const d=_destMerc.find(x=>x.id===id);if(!d)return
   const nCli=_tp.clientes.filter(c=>(c.destino_mercancia||'').trim().toLowerCase()===d.nombre.toLowerCase()).length
   if(nCli){toast('No se puede eliminar: '+nCli+' cliente'+(nCli>1?'s tienen':' tiene')+' este destino. Unifícalo con otro antes.','err');return}
-  const nAlm=!d.zona?destAlmacenesDe(d.nombre).length:0
-  if(nAlm){toast('No se puede eliminar: la zona tiene '+nAlm+' '+(nAlm>1?'almacenes':'almacén')+'. Muévelos a otra zona antes.','err');return}
   if(!confirm('¿Eliminar el destino "'+d.nombre+'" y sus precios de transporte?'))return
   await db.from('tarifas_transporte').delete().eq('destino',d.nombre)
   const {error}=await db.from('destinos').delete().eq('id',id)
@@ -9953,21 +10077,22 @@ function clPoblarDestinos(valor){
   const v=(valor||'').trim()
   const lista=destOrdenados().map(d=>d.nombre)
   const fuera=v&&!lista.some(n=>n.toLowerCase()===v.toLowerCase())
-  sel.innerHTML='<option value="">— Sin destino —</option>'+
+  sel.innerHTML='<option value="">— A la dirección del cliente —</option>'+
     (fuera?'<option value="'+tpEsc(v)+'">'+tpEsc(v)+' (no está en la lista)</option>':'')+
     lista.map(n=>'<option value="'+tpEsc(n)+'">'+tpEsc(destEtiqueta(n))+'</option>').join('')+
     '<option value="__nuevo">+ Nuevo destino…</option>'
   sel.value=fuera?v:(lista.find(n=>n.toLowerCase()===v.toLowerCase())||'')
   sel.dataset.prev=sel.value
 }
+function clRecogeCambia(){
+  const r=document.getElementById('cl-recoge')?.checked
+  const w=document.getElementById('cl-envio-wrap');if(w){w.style.opacity=r?'.45':'';w.style.pointerEvents=r?'none':''}
+}
 async function clDestinoCambia(sel){
   if(sel.value!=='__nuevo'){sel.dataset.prev=sel.value;return}
-  const n=prompt('Nombre del nuevo destino (almacén o zona)');
+  const n=prompt('Nombre del nuevo destino (luego puedes completar dirección, ciudad y país en Envíos → Destinos)');
   if(!n||!n.trim()){sel.value=sel.dataset.prev||'';return}
-  const zonas=destZonas().map(z=>z.nombre)
-  let zona=(prompt('¿Es un almacén dentro de una zona de precio? Escribe la zona ('+zonas.join(', ')+') o déjalo vacío si es una zona nueva.')||'').trim()
-  if(zona){const z=zonas.find(x=>x.toLowerCase()===zona.toLowerCase());if(!z){toast('La zona "'+zona+'" no existe: créala antes en Envíos → Transportes','err');sel.value=sel.dataset.prev||'';return}zona=z}
-  const d=await tpAnadirDestino(n.trim(),null,zona||null)
+  const d=await tpAnadirDestino(n.trim(),null,null)
   clPoblarDestinos(d?d.nombre:(sel.dataset.prev||''))
 }
 
@@ -9981,11 +10106,14 @@ async function npActualizarCosteTransporte(){
   const lineasPal=[...document.querySelectorAll('#productos-container .producto-linea')].map(d=>{const id=d.id.replace('linea-','');return {num_palets:document.getElementById('lpa-'+id)?.value,tipo_palet:document.getElementById('ltp-'+id)?.value}})
   const pal=paletsPorTipo(lineasPal,document.getElementById('np-palets').value)
   const destPed=document.getElementById('np-destino')?.value||cli?.destino_mercancia
-  const r=transpCoste(destPed,tid,pal,_tp.tarifas)
+  const r=transpCoste(destPed,tid,pal,_tp.tarifas,cli)
   const nomT=(transportistas||[]).find(t=>t.id===tid)?.nombre
-  if(r.motivo==='sin_destino')box.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-map-pin-off"></i> Sin destino de mercancía: no se puede calcular el transporte</span>'
-  else if(r.motivo==='sin_precio')box.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> No hay precio de transporte a '+tpEsc(r.zona||destPed)+' (Envíos → Transportes)</span>'
-  else box.innerHTML='<i class="ti ti-truck"></i> Transporte a <strong>'+tpEsc(destPed)+'</strong>'+(r.zona&&r.zona.toLowerCase()!==String(destPed).toLowerCase()?' (precio de '+tpEsc(r.zona)+')':'')+': <strong>'+r.importe.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</strong> ('+r.detalle+')'+
+  const destTxt=r.aCliente?'dirección del cliente ('+tpEsc(r.zona)+')':tpEsc(destPed)
+  if(r.motivo==='recoge_cliente')box.innerHTML='<span style="color:var(--text2)"><i class="ti ti-truck-loading"></i> El cliente recoge con su <strong>transporte propio</strong>: sin coste de transporte para nosotros</span>'
+  else if(r.motivo==='sin_destino')box.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-map-pin-off"></i> Sin destino de mercancía y el cliente no tiene ciudad: rellena la ciudad del cliente para calcular el transporte</span>'
+  else if(r.motivo==='sin_ciudad')box.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> El destino '+tpEsc(destPed)+' no tiene ciudad: rellénala en Envíos → Destinos para valorar el transporte</span>'
+  else if(r.motivo==='sin_precio')box.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> No hay precio de transporte a '+tpEsc(r.zona||destPed)+(r.aCliente?' (dirección del cliente)':r.zona&&cn(r.zona)!==cn(destPed)?' (ciudad de '+tpEsc(destPed)+')':'')+' (Envíos → Transportes)</span>'
+  else box.innerHTML='<i class="ti ti-truck"></i> Transporte a <strong>'+destTxt+'</strong>'+(!r.aCliente&&r.zona&&r.zona.toLowerCase()!==String(destPed).toLowerCase()?' (precio de '+tpEsc(r.zona)+')':'')+': <strong>'+r.importe.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</strong> ('+r.detalle+')'+
     (r.fuente!=='transportista'&&nomT?' <span style="color:var(--orange-text)">· '+tpEsc(nomT)+' no tiene precio a este destino; se usa '+(r.fuente==='general'?'el precio general':'el de '+tpEsc(r.transportista||'otro transportista'))+'</span>':'')+
     (r.falta&&r.fuente==='transportista'?' <span style="color:var(--orange-text)">· falta el precio del '+(r.falta==='americano'?'palet americano':r.falta==='europalet'?'europalet':'tipo de palet')+' (se usa el otro)</span>':'')+
     (!tid?' <span style="color:var(--text3)">· sin transportista elegido</span>':'')
