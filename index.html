@@ -1370,11 +1370,11 @@ tr:hover td{background:var(--bg)}
     <input type="hidden" id="cr-id">
     <div id="cr-info" style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6"></div>
     <div class="fg" id="cr-base-wrap"><label>Importe del abono al cliente (€ sin IVA)</label><input type="number" id="cr-base" step="0.01" min="0"></div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:8px">¿El proveedor ha aceptado la reclamación?</div>
-    <label class="cr-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:2px solid var(--border2);border-radius:var(--radius);margin-bottom:8px;cursor:pointer"><input type="radio" name="cr-resp" value="aceptada" onchange="crToggle()" style="margin-top:3px"><span><strong style="color:var(--green-text)">Sí, la ha aceptado</strong><br><span style="font-size:12px;color:var(--text2)">El proveedor asume todo el abono. No es un coste para nosotros.</span></span></label>
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">¿El proveedor ha aceptado la reclamación? <span style="font-weight:400;color:var(--text2);font-size:12px">(al cerrar, por defecto: sí, manda el abono)</span></div>
+    <label class="cr-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:2px solid var(--border2);border-radius:var(--radius);margin-bottom:8px;cursor:pointer"><input type="radio" name="cr-resp" value="aceptada" onchange="crToggle()" style="margin-top:3px"><span><strong style="color:var(--green-text)">Sí, la ha aceptado</strong><br><span style="font-size:12px;color:var(--text2)">El proveedor nos manda el abono. No es un gasto para nosotros.</span></span></label>
     <label class="cr-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:2px solid var(--border2);border-radius:var(--radius);margin-bottom:8px;cursor:pointer"><input type="radio" name="cr-resp" value="parcial" onchange="crToggle()" style="margin-top:3px"><span><strong style="color:var(--orange-text)">En parte</strong><br><span style="font-size:12px;color:var(--text2)">El proveedor asume una parte; el resto es coste nuestro.</span>
       <div id="cr-parcial-wrap" style="display:none;margin-top:6px"><input type="number" id="cr-parcial" step="0.01" min="0" placeholder="€ que asume el proveedor (sin IVA)" style="width:240px"></div></span></label>
-    <label class="cr-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:2px solid var(--border2);border-radius:var(--radius);margin-bottom:8px;cursor:pointer"><input type="radio" name="cr-resp" value="rechazada" onchange="crToggle()" style="margin-top:3px"><span><strong style="color:var(--red-text)">No, la ha rechazado</strong><br><span style="font-size:12px;color:var(--text2)">El abono al cliente es un coste nuestro y resta margen.</span></span></label>
+    <label class="cr-opt" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:2px solid var(--border2);border-radius:var(--radius);margin-bottom:8px;cursor:pointer"><input type="radio" name="cr-resp" value="rechazada" onchange="crToggle()" style="margin-top:3px"><span><strong style="color:var(--red-text)">No la acepta</strong><br><span style="font-size:12px;color:var(--text2)">El proveedor no manda el abono: el abono al cliente es un gasto nuestro y resta margen.</span></span></label>
     <div class="err-box" id="cr-err"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
       <button class="btn" onclick="closeModal('modal-cerrar-reclamacion')">Cancelar</button>
@@ -1830,9 +1830,9 @@ tr:hover td{background:var(--bg)}
         <div class="fg"><label>Respuesta del proveedor</label>
           <select id="rc-respuesta-prov" onchange="rcToggleParcial()">
             <option value="">Pendiente de respuesta</option>
-            <option value="aceptada">Aceptada — el proveedor asume el abono</option>
+            <option value="aceptada">Aceptada — el proveedor manda el abono (sin gasto nuestro)</option>
             <option value="parcial">Aceptada en parte</option>
-            <option value="rechazada">Rechazada — el coste es nuestro</option>
+            <option value="rechazada">No la acepta — el abono es gasto nuestro</option>
           </select>
         </div>
         <div class="fg" id="rc-parcial-wrap" style="display:none"><label>Importe que asume el proveedor (€ sin IVA)</label><input type="number" id="rc-importe-prov" step="0.01" min="0"></div>
@@ -2663,7 +2663,7 @@ async function loadCMComercial(){
   const idsPed=_cmc.ped.map(p=>p.id)
   const [lineas,rcl,{data:stockCajas},{data:transp}]=await Promise.all([
     cmcEnTrozos(idsPed,ids=>db.from('pedido_productos').select('*').in('pedido_id',ids)),
-    cmcEnTrozos(idsPed,ids=>db.from('reclamaciones').select('*').in('pedido_id',ids)),
+    cmcEnTrozos(idsPed,ids=>db.from('reclamaciones').select('*,pedidos(proveedor)').in('pedido_id',ids)),
     db.from('stock').select('*').eq('categoria','caja'),
     db.from('tarifas_transporte').select('*')
   ])
@@ -2676,7 +2676,7 @@ async function loadCMComercial(){
     const nuestro=rcCosteNuestro(r)
     _cmc.abonos[r.pedido_id]=(_cmc.abonos[r.pedido_id]||0)+nuestro
     if(base>nuestro)_cmc.abonosRecuperados[r.pedido_id]=(_cmc.abonosRecuperados[r.pedido_id]||0)+(base-nuestro)
-    if(!r.respuesta_proveedor&&r.estado!=='cerrada')_cmc.abonosPendientes[r.pedido_id]=(_cmc.abonosPendientes[r.pedido_id]||0)+base
+    if(rcEsProveedor(r)&&!rcRespuesta(r)&&r.estado!=='cerrada')_cmc.abonosPendientes[r.pedido_id]=(_cmc.abonosPendientes[r.pedido_id]||0)+base
   })
   _cmc.kgCaja=kgCaja
   _cmc.transp=transp||[]
@@ -3107,7 +3107,7 @@ async function loadCuadroMandos(){
   ]=await Promise.all([
     db.from('pedidos').select('estado,palets,proveedor,cliente_id,clientes(nombre)'),
     db.from('clientes').select('*',{count:'exact',head:true}),
-    vePermiso?db.from('reclamaciones').select('*'):Promise.resolve({data:[]}),
+    vePermiso?db.from('reclamaciones').select('*,pedidos(proveedor)'):Promise.resolve({data:[]}),
     vePermiso?db.from('tarifas').select('semana').order('semana',{ascending:false}).limit(1):Promise.resolve({data:[]}),
     db.from('controles_calidad').select('resultado'),
     db.from('partidas_entrada').select('resultado'),
@@ -3160,7 +3160,7 @@ async function loadCuadroMandos(){
       miniStat(cerradas,'Cerradas','var(--green-text)')+miniStat(graves,'Graves','var(--red-text)')+
       '</div><div style="font-size:12px;color:var(--text2);line-height:1.7">Importe acumulado: <strong style="color:var(--text)">'+importeTotal.toFixed(2)+'€</strong>'+
       '<br>Coste real para nosotros (sin IVA): <strong style="color:var(--red-text)">'+rc.reduce((s,r)=>s+rcCosteNuestro(r),0).toFixed(2)+'€</strong>'+
-      (rc.some(r=>r.respuesta_proveedor==='aceptada'||r.respuesta_proveedor==='parcial')?' · asumido por proveedores: <strong style="color:var(--green-text)">'+rc.reduce((s,r)=>s+Math.max(0,(parseFloat(r.importe_base)||parseFloat(r.importe)||0)-rcCosteNuestro(r)),0).toFixed(2)+'€</strong>':'')+'</div>':
+      (rc.some(r=>rcEsProveedor(r)&&(rcRespuesta(r)==='aceptada'||rcRespuesta(r)==='parcial'))?' · asumido por proveedores: <strong style="color:var(--green-text)">'+rc.reduce((s,r)=>s+Math.max(0,(parseFloat(r.importe_base)||parseFloat(r.importe)||0)-rcCosteNuestro(r)),0).toFixed(2)+'€</strong>':'')+'</div>':
       '<div class="empty">Sin reclamaciones registradas</div>'
 
     const ult=(tarifasUlt||[])[0]
@@ -8211,7 +8211,7 @@ async function abrirModalReclamacion(reclamacionId=null){
       document.getElementById('rc-gravedad').value=rc.gravedad||'moderada'
       document.getElementById('rc-estado').value=rc.estado||'abierta'
       document.getElementById('rc-enviada-proveedor').checked=!!rc.enviada_proveedor
-      document.getElementById('rc-respuesta-prov').value=rc.respuesta_proveedor||''
+      document.getElementById('rc-respuesta-prov').value=rc.respuesta_proveedor||(rc.estado==='cerrada'?'aceptada':'')
       document.getElementById('rc-importe-prov').value=rc.importe_proveedor??''
       rcToggleParcial()
       document.getElementById('rc-pedido-erp').value=rc.numero_pedido_erp||''
@@ -8293,10 +8293,12 @@ function renderTablaReclamaciones(data){
     const p=r.pedidos
     const gc=gravColor[r.gravedad]||gravColor.moderada
     const ec=estColor[r.estado]||estColor.abierta
-    const respProv=r.respuesta_proveedor==='aceptada'?'<span class="badge b-ok" title="Sin coste para nosotros"><i class="ti ti-circle-check"></i> Aceptada por prov.</span>':
-      r.respuesta_proveedor==='parcial'?'<span class="badge b-warn" title="Coste nuestro: '+rcCosteNuestro(r).toFixed(2)+' €">Parcial: prov. '+(parseFloat(r.importe_proveedor)||0).toFixed(2)+' €</span>':
-      r.respuesta_proveedor==='rechazada'?'<span class="badge b-low"><i class="ti ti-x"></i> Rechazada por prov.</span>':''
-    const proveedorTick=p?.proveedor?(r.enviada_proveedor?'<span class="badge b-pass"><i class="ti ti-check"></i> Enviada a prov.</span>':'<span class="badge b-warn">Sin enviar a prov.</span>')+(respProv?' '+respProv:''):''
+    const _resp=rcRespuesta(r)
+    const respProv=_resp==='aceptada'?'<span class="badge b-ok" title="Sin coste para nosotros"><i class="ti ti-circle-check"></i> Aceptada por prov.</span>':
+      _resp==='parcial'?'<span class="badge b-warn" title="Coste nuestro: '+rcCosteNuestro(r).toFixed(2)+' €">Parcial: prov. '+(parseFloat(r.importe_proveedor)||0).toFixed(2)+' €</span>':
+      _resp==='rechazada'?'<span class="badge b-low" title="Gasto nuestro: '+rcCosteNuestro(r).toFixed(2)+' €"><i class="ti ti-x"></i> No aceptada por prov. · gasto nuestro</span>':''
+    const proveedorTick=p?.proveedor?(r.estado==='cerrada'?'':(r.enviada_proveedor?'<span class="badge b-pass"><i class="ti ti-check"></i> Enviada a prov.</span>':'<span class="badge b-warn">Sin enviar a prov.</span>'))+(respProv?' '+respProv:''):
+      '<span class="badge b-low" style="background:var(--bg3);color:var(--text2)" title="Mercancía propia: el abono es gasto nuestro">Gasto propio</span>'
     const numFotos=r._numFotos||0
     const importeStr=r.importe?parseFloat(r.importe).toFixed(2)+' €':'—'
     const puedeCerrar=r.estado!=='cerrada'
@@ -8327,12 +8329,12 @@ function renderTablaReclamaciones(data){
       '<div class="order-card-row"><span class="lbl">Abono</span><span style="font-weight:600;color:var(--red)">'+importeStr+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Gravedad</span><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:'+gc.bg+';color:'+gc.c+'">'+r.gravedad+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Fecha</span><span>'+fmt(r.fecha)+'</span></div>'+
-      (proveedorTick?'<div class="order-card-row"><span class="lbl">Proveedor</span><span>'+proveedorTick+'</span></div>':'')+
+      (proveedorTick?'<div class="order-card-row"><span class="lbl">Quién paga</span><span>'+proveedorTick+'</span></div>':'')+
       (numFotos?'<div class="order-card-row"><span class="lbl">Fotos</span><span>'+numFotos+'</span></div>':'')+
       '<div class="order-card-actions">'+btnCerrar+'<button class="btn btn-sm" data-id="'+r.id+'" onclick="abrirModalReclamacion(this.dataset.id)"><i class="ti ti-edit"></i>Editar</button><button class="btn btn-sm" data-id="'+r.id+'" onclick="generarPDFReclamacion(this.dataset.id)"><i class="ti ti-file-type-pdf"></i>PDF</button><button class="btn btn-sm btn-danger" data-id="'+r.id+'" onclick="eliminarReclamacion(this.dataset.id)"><i class="ti ti-trash"></i></button></div>'+
     '</div>'
   })
-  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Fecha</th><th>Ref. interna</th><th>Nº pedido</th><th>Cliente</th><th>Origen</th><th>Motivo</th><th>Abono (€)</th><th>Gravedad</th><th>Estado</th><th>Proveedor</th><th>Fotos</th><th></th></tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="12" class="empty">Sin reclamaciones</td></tr>')+'</tbody></table>'
+  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Fecha</th><th>Ref. interna</th><th>Nº pedido</th><th>Cliente</th><th>Origen</th><th>Motivo</th><th>Abono (€)</th><th>Gravedad</th><th>Estado</th><th>Quién paga</th><th>Fotos</th><th></th></tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="12" class="empty">Sin reclamaciones</td></tr>')+'</tbody></table>'
   const cardsWrap='<div class="mobile-cards">'+(cards||'<div class="empty">Sin reclamaciones</div>')+'</div>'
   return tabla+cardsWrap
 }
@@ -8371,7 +8373,7 @@ function abrirCierreProveedor(rc){
   document.getElementById('cr-info').innerHTML='Pedido <strong>'+(rc.pedidos?.referencia||'—')+'</strong> · proveedor <strong>'+(rc.pedidos?.proveedor||'')+'</strong>'+
     '<br>Abono al cliente: <strong>'+(base?base.toFixed(2)+' € sin IVA':'sin importe')+'</strong>'+(rc.importe?' ('+parseFloat(rc.importe).toFixed(2)+' € con IVA)':'')
   document.getElementById('cr-base-wrap').style.display=base?'none':'block'
-  document.querySelectorAll('input[name=cr-resp]').forEach(r=>r.checked=r.value===(rc.respuesta_proveedor||''))
+  document.querySelectorAll('input[name=cr-resp]').forEach(r=>r.checked=r.value===(rc.respuesta_proveedor||'aceptada'))
   document.getElementById('cr-parcial').value=rc.importe_proveedor??''
   crToggle()
   document.getElementById('cr-err').style.display='none'
@@ -8404,9 +8406,16 @@ async function confirmarCierreProveedor(){
 }
 
 // Coste real de una reclamación para nosotros (sin IVA)
+// - Mercancía propia: el abono siempre es gasto nuestro.
+// - Mercancía de proveedor: si se cierra, el proveedor la ha aceptado y manda el abono (sin gasto para nosotros),
+//   salvo que se marque "el proveedor no la acepta" (gasto nuestro) o "en parte".
+function rcEsProveedor(r){return !!(r.pedidos?.proveedor||r._proveedor)}
+function rcRespuesta(r){return r.respuesta_proveedor||(rcEsProveedor(r)&&r.estado==='cerrada'?'aceptada':null)}
 function rcCosteNuestro(r){
   const base=parseFloat(r.importe_base)||parseFloat(r.importe)||0
-  if(r.respuesta_proveedor==='aceptada')return 0
+  if(!rcEsProveedor(r))return base
+  const resp=rcRespuesta(r)
+  if(resp==='aceptada')return 0
   if(r.respuesta_proveedor==='parcial')return Math.max(0,base-(parseFloat(r.importe_proveedor)||0))
   return base
 }
