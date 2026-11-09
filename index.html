@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Naturfarms — Gestión</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -162,6 +162,52 @@ tr:hover td{background:var(--bg)}
   table{font-size:11px}th,td{padding:6px 5px}
   .card{padding:12px}
 }
+
+/* ── MÓVIL: formularios cómodos ─────────────────────────────── */
+@media(max-width:700px){
+  html,body{overflow-x:hidden;max-width:100%}
+  .main{max-width:100vw;overflow-x:hidden}
+  /* Letra de 16px en los campos: evita el zoom automático del iPhone al tocar un campo */
+  input,select,textarea,.fg input,.fg select,.fg textarea,.filter-row input,.filter-row select{font-size:16px!important}
+  .fg input,.fg select,.fg textarea{padding:10px 12px;min-height:44px}
+  .fg textarea{min-height:80px}
+  .fg label{font-size:12.5px}
+  /* Botones y pestañas más fáciles de pulsar */
+  .btn{min-height:40px;padding:8px 14px}
+  .btn-sm{min-height:34px;padding:6px 11px;font-size:13px}
+  .tabs{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;padding:11px 14px;flex-shrink:0}
+  .chk-btn{padding:9px 16px;font-size:13px;min-height:40px}
+  .chk-item{flex-wrap:wrap}
+  .idioma-tag{padding:7px 12px;font-size:13px}
+  .origen-opt{padding:11px 14px;flex:1;justify-content:center}
+  .ph{margin-bottom:14px}
+  .ph .pt{font-size:20px}
+  /* Formularios a pantalla completa, con el título fijo arriba y los botones fijos abajo */
+  .modal-bg{align-items:stretch}
+  .modal{width:100vw!important;max-width:100vw!important;height:100%;max-height:100%!important;border-radius:0;border:none;
+    padding:0 16px calc(16px + env(safe-area-inset-bottom));padding-top:0;overscroll-behavior:contain}
+  .modal>h3{position:sticky;top:0;z-index:20;background:var(--bg2);margin:0 -16px 6px;padding:calc(14px + env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid var(--border);align-items:center;font-size:17px}
+  .modal>h3 .close-btn{font-size:28px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;margin:-8px -8px -8px 4px}
+  .modal .modal-sub{margin-top:6px}
+  .modal-acciones{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom));z-index:20;background:var(--bg2);margin:16px -16px 0!important;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important;border-top:1px solid var(--border);flex-wrap:wrap}
+  .modal-acciones .btn{flex:1 1 auto;justify-content:center;min-height:46px;font-size:15px}
+  .modal-acciones .btn[style*="margin-right:auto"]{flex:0 0 auto}
+  body.modal-abierto{overflow:hidden}
+  body.modal-abierto .hamburger{display:none!important}
+  /* Líneas de producto: dos campos por fila en vez de uno */
+  .producto-linea{padding:12px 10px}
+  .producto-linea-fila{grid-template-columns:1fr 1fr!important}
+  .producto-linea-fila>:last-child:nth-child(odd){grid-column:1/-1}
+  .producto-linea-fila>.fg:only-child{grid-column:1/-1}
+  /* Listas y tablas: que nada se salga de la pantalla */
+  .card{overflow-x:auto}
+  .info-grid{grid-template-columns:1fr 1fr}
+  .toast{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));text-align:center;font-size:14px;padding:12px 16px}
+  .bsel>div{max-height:45vh!important}
+}
 </style>
 </head>
 <body>
@@ -228,13 +274,14 @@ tr:hover td{background:var(--bg)}
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <!-- CABECERA con fecha -->
-      <div class="ph" style="margin-bottom:0">
+      <div class="ph" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="cambiarFechaDash(-1)"><i class="ti ti-chevron-left"></i></button>
           <h1 class="pt" id="fecha-hoy" style="font-size:16px;min-width:220px;text-align:center"></h1>
           <button class="btn btn-sm" onclick="cambiarFechaDash(1)"><i class="ti ti-chevron-right"></i></button>
           <input type="date" id="dash-fecha-picker" onchange="setFechaDash(this.value)" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px">
         </div>
+        <button class="btn btn-primary" id="btn-dash-nuevo-pedido" onclick="abrirModalNuevoPedido()" style="padding:10px 18px;font-size:14px"><i class="ti ti-plus"></i>Nuevo pedido</button>
       </div>
 
       <!-- BLOQUE 1: RESUMEN DEL DÍA -->
@@ -624,15 +671,10 @@ tr:hover td{background:var(--bg)}
       </div>
 
       <div id="tab-tarifa-transporte" style="display:none">
-        <div class="ph" style="margin-top:0">
-          <div style="font-size:12px;color:var(--text2)">Precio del transporte a cada destino. Puedes tener varias líneas por destino si trabajas con distintos transportistas.</div>
-          <div style="display:flex;gap:8px">
-            <button class="btn" onclick="addLineaTransporte()"><i class="ti ti-plus"></i>Añadir destino</button>
-            <button class="btn btn-success" onclick="guardarTarifasTransporte()"><i class="ti ti-device-floppy"></i>Guardar precios de transporte</button>
-          </div>
-        </div>
-        <div class="card" style="overflow-x:auto">
-          <div id="tabla-tarifas-transporte"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        <div class="card" style="text-align:center;padding:30px">
+          <i class="ti ti-truck" style="font-size:32px;color:var(--accent)"></i>
+          <div style="font-size:14px;margin:8px 0 14px">Los precios de transporte se gestionan ahora por transportista y destino en <strong>Envíos → Transportes</strong>.</div>
+          <button class="btn btn-primary" onclick="irATransportes()"><i class="ti ti-arrow-right"></i>Ir a Transportes</button>
         </div>
       </div>
     </div>
@@ -835,11 +877,12 @@ tr:hover td{background:var(--bg)}
 
     <!-- ENVÍOS -->
     <div class="page" id="page-envios">
-      <div class="ph"><h1 class="pt">Envíos</h1><button class="btn" onclick="openModal('modal-transportista')"><i class="ti ti-plus"></i>Nuevo transportista</button></div>
+      <div class="ph"><h1 class="pt">Envíos</h1><button class="btn" onclick="tpAbrirTransportista()"><i class="ti ti-plus"></i>Nuevo transportista</button></div>
       <div class="tabs">
         <div class="tab active" onclick="switchTab(this,'tab-envios-hoy')">Hoy</div>
         <div class="tab" onclick="switchTab(this,'tab-envios-hist')">Histórico</div>
         <div class="tab" onclick="switchTab(this,'tab-envios-cmr')">CMR</div>
+        <div class="tab" onclick="switchTab(this,'tab-envios-transportes')"><i class="ti ti-truck"></i> Transportes</div>
       </div>
 
       <div id="tab-envios-hoy">
@@ -865,6 +908,25 @@ tr:hover td{background:var(--bg)}
           </div>
         </div>
         <div class="card" style="padding:0;overflow-x:auto"><div id="tabla-envios"></div></div>
+      </div>
+      <div id="tab-envios-transportes" style="display:none">
+        <div id="tp-avisos"></div>
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <div class="card-title" style="margin:0"><i class="ti ti-truck"></i>Transportistas y precios por destino</div>
+            <input type="text" id="tp-buscar" placeholder="Buscar transportista..." oninput="tpRender()" style="margin-left:auto;padding:6px 10px;font-size:13px;min-width:180px">
+            <button class="btn btn-primary btn-sm" onclick="tpAbrirTransportista()"><i class="ti ti-plus"></i>Nuevo transportista</button>
+          </div>
+          <div id="tp-lista"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <div class="card-title" style="margin:0"><i class="ti ti-map-pin"></i>Destinos de mercancía</div>
+            <span style="font-size:12px;color:var(--text2)">Zonas de precio y los almacenes de cada zona. El cliente tiene asignado el almacén o la zona a la que le mandamos la mercancía.</span>
+            <button class="btn btn-sm" style="margin-left:auto" onclick="tpAbrirDestino()"><i class="ti ti-plus"></i>Nuevo destino</button>
+          </div>
+          <div style="overflow-x:auto"><div id="tp-destinos"></div></div>
+        </div>
       </div>
       <div id="tab-envios-cmr" style="display:none">
         <div class="card" style="margin-bottom:14px">
@@ -1098,12 +1160,19 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="form-sec">Cliente y destino</div>
     <div class="frow">
-      <div class="fg"><label>Cliente *</label><select id="np-cliente" onchange="autoIdiomas();onClientePedidoCambia()"><option value="">— Seleccionar —</option></select></div>
+      <div class="fg" style="position:relative"><label>Cliente *</label>
+        <input type="text" id="np-cli-buscar" placeholder="Escribe para buscar cliente..." autocomplete="off" oninput="npClienteBuscar()" onfocus="this.select();npClienteBuscar()" onkeydown="npClienteTecla(event)" onblur="npClienteSalir()">
+        <div id="np-cli-lista" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;max-height:280px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.15)"></div>
+        <select id="np-cliente" style="display:none" onchange="autoIdiomas();onClientePedidoCambia();npRecomendarDestino(this.value,!document.getElementById('np-id').value);npActualizarCosteTransporte()"><option value="">— Seleccionar —</option></select>
+      </div>
       <div class="fg"><label>Idiomas etiqueta</label><input type="text" id="np-idiomas" readonly style="background:var(--bg)"></div>
     </div>
-    <div class="fg"><label>Destinatario *</label><input type="text" id="np-dest"></div>
     <div class="frow">
-      <div class="fg"><label>Transportista</label><select id="np-trans"><option value="">— Seleccionar —</option></select></div>
+      <div class="fg"><label>Destinatario *</label><input type="text" id="np-dest" list="np-dest-list" autocomplete="off" oninput="this.dataset.auto='';this.style.background='';document.getElementById('np-dest-nota').innerHTML=''"><datalist id="np-dest-list"></datalist><div id="np-dest-nota" style="font-size:11px;margin-top:3px"></div></div>
+      <div class="fg"><label>Destino de la mercancía</label><select id="np-destino" onchange="npMarcarDestino();npActualizarCosteTransporte()"><option value="">— Sin destino —</option></select><div id="np-destino-nota" style="font-size:11px;margin-top:3px"></div></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Transportista</label><select id="np-trans" onchange="npActualizarCosteTransporte()"><option value="">— Seleccionar —</option></select><div id="np-coste-transp" style="font-size:11.5px;margin-top:4px;color:var(--text2)"></div></div>
       <div class="fg"><label>Fecha de recogida</label><input type="date" id="np-fecha" onchange="checkFechaHistorica()"></div>
     </div>
     <div id="np-historico-bloque" style="display:none;margin-bottom:14px">
@@ -1158,7 +1227,7 @@ tr:hover td{background:var(--bg)}
     </div>
     <div class="fg"><label>Email</label><input type="email" id="cl-email"></div>
     <div class="fg"><label>Dirección (para CMR y documentos)</label><input type="text" id="cl-direccion" placeholder="Calle, nº, CP"></div>
-    <div class="fg"><label>Destino mercancía</label><input type="text" id="cl-destino-mercancia" placeholder="Ej: Perpiñán, Alemania, almacén del cliente..."></div>
+    <div class="fg"><label>Destino mercancía</label><select id="cl-destino-mercancia" onchange="clDestinoCambia(this)"><option value="">— Sin destino —</option></select></div>
     <div class="form-sec" style="margin-top:6px">Seguimiento comercial</div>
     <div class="frow">
       <div class="fg"><label>Comercial</label><select id="cl-comercial"></select></div>
@@ -1458,16 +1527,43 @@ tr:hover td{background:var(--bg)}
   </div>
 </div>
 
+<div class="modal-bg" id="modal-destino">
+  <div class="modal" style="width:480px">
+    <h3 id="ds-titulo">Nuevo destino <button class="close-btn" onclick="closeModal('modal-destino')">×</button></h3>
+    <input type="hidden" id="ds-id">
+    <div class="fg"><label>Nombre *</label><input type="text" id="ds-nombre" placeholder="Ej: Escande, Perpiñán, Hamburgo…"></div>
+    <div class="fg"><label>Tipo</label>
+      <label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;font-weight:400;color:var(--text)"><input type="radio" name="ds-tipo" value="zona" onchange="dsToggle()" style="width:auto;min-height:0;margin-top:2px"><span><strong>Zona de precio</strong><br><span style="font-size:12px;color:var(--text2)">Los transportistas tienen precio a esta zona (ej: Perpiñán, Alemania).</span></span></label>
+      <label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;font-weight:400;color:var(--text)"><input type="radio" name="ds-tipo" value="almacen" onchange="dsToggle()" style="width:auto;min-height:0;margin-top:2px"><span><strong>Almacén dentro de una zona</strong><br><span style="font-size:12px;color:var(--text2)">Se lleva aquí y el transporte se cobra al precio de su zona (ej: Escande → Perpiñán).</span></span></label>
+      <div id="ds-aviso-alm" style="display:none;font-size:11px;color:var(--orange-text);margin-top:4px"></div>
+    </div>
+    <div class="fg" id="ds-zona-wrap" style="display:none"><label>Zona de precio *</label><select id="ds-zona"></select></div>
+    <div class="frow">
+      <div class="fg"><label>País</label><input type="text" id="ds-pais"></div>
+      <div class="fg"><label>Dirección (para el CMR)</label><input type="text" id="ds-direccion" placeholder="Calle, CP, ciudad"></div>
+    </div>
+    <div class="err-box" id="ds-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="closeModal('modal-destino')">Cancelar</button>
+      <button class="btn btn-primary" onclick="tpGuardarDestino()"><i class="ti ti-check"></i>Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-transportista">
   <div class="modal" style="width:420px">
-    <h3>Nuevo transportista <button class="close-btn" onclick="closeModal('modal-transportista')">×</button></h3>
+    <h3 id="tr-titulo">Nuevo transportista <button class="close-btn" onclick="closeModal('modal-transportista')">×</button></h3>
+    <input type="hidden" id="tr-id">
     <div class="fg"><label>Nombre *</label><input type="text" id="tr-nombre"></div>
+    <div class="fg"><label>Persona de contacto</label><input type="text" id="tr-contacto"></div>
     <div class="frow">
       <div class="fg"><label>Teléfono</label><input type="text" id="tr-telefono"></div>
       <div class="fg"><label>Email</label><input type="email" id="tr-email"></div>
     </div>
+    <div class="fg"><label>Notas</label><input type="text" id="tr-notas" placeholder="Frigorífico, días de carga, condiciones..."></div>
     <div class="err-box" id="trans-err"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-danger" id="tr-eliminar" style="margin-right:auto;display:none" onclick="eliminarTransportista()"><i class="ti ti-trash"></i>Eliminar</button>
       <button class="btn" onclick="closeModal('modal-transportista')">Cancelar</button>
       <button class="btn btn-primary" onclick="crearTransportista()"><i class="ti ti-check"></i>Guardar</button>
     </div>
@@ -1929,9 +2025,19 @@ let dashFecha=new Date().toISOString().split('T')[0]
 
 // ── HELPERS ───────────────────────────────────────────────────
 function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type==='ok'?'ok':'err');setTimeout(()=>t.className='toast',3000)}
-function openModal(id){document.getElementById(id).classList.add('open')}
+function openModal(id){document.getElementById(id).classList.add('open');document.body.classList.add('modal-abierto')}
+function marcarAccionesModales(){
+  document.querySelectorAll('.modal').forEach(m=>{
+    if(m.querySelector(':scope > .modal-acciones'))return
+    const bloques=[...m.children].filter(el=>el.tagName==='DIV'&&el.querySelector(':scope > .btn')&&getComputedStyle(el).display==='flex')
+    const ult=bloques.filter(el=>el.querySelector(':scope > .btn-primary, :scope > .btn-success')).pop()||bloques.pop()
+    if(ult&&!ult.closest('.producto-linea'))ult.classList.add('modal-acciones')
+  })
+}
+document.addEventListener('DOMContentLoaded',marcarAccionesModales)
+function modalActualizarBody(){if(!document.querySelector('.modal-bg.open'))document.body.classList.remove('modal-abierto')}
 function closeModal(id){
-  document.getElementById(id).classList.remove('open')
+  document.getElementById(id).classList.remove('open');modalActualizarBody()
   // Al cerrar la edición abierta desde una ficha, se vuelve a la ficha
   if(id==='modal-cliente'&&_fichaReabrir){const c=_fichaReabrir;_fichaReabrir=null;verFichaCliente(c)}
 }
@@ -1962,6 +2068,7 @@ function switchTab(el,tabId){
   if(tabId==='tab-qc-informes')loadInformes()
   if(tabId==='tab-envios-hist')loadEnviosHistorico()
   if(tabId==='tab-envios-cmr')loadCMR()
+  if(tabId==='tab-envios-transportes')loadTransportes()
   if(tabId==='tab-partidas-hist')loadPartidasHistorico()
   if(tabId==='tab-resultados')loadResultados()
   if(tabId==='tab-pedprov-hist')loadPedProvHistorico()
@@ -1969,7 +2076,6 @@ function switchTab(el,tabId){
   if(tabId==='tab-reclam-hist')loadReclamacionesHistorico()
   if(tabId==='tab-tarifa-compra')loadTarifasCompra()
   if(tabId==='tab-tarifa-oferta')loadOfertas()
-  if(tabId==='tab-tarifa-transporte')loadTarifasTransporte()
   if(tabId==='tab-cli-listado')loadClientes()
   if(tabId==='tab-cli-feria')loadFeriaFruitAttraction()
   if(tabId==='tab-cli-nuevos')loadNuevosClientes()
@@ -2006,7 +2112,7 @@ async function initApp(user){
   // Usuarios añadidos al equipo comercial (aunque su rol sea otro) también ven "Mis clientes"
   if(perfil.es_comercial===true)document.getElementById('nav-mis-clientes').style.display='flex'
   initBadgeMisClientes()
-  if(!can('admin,comercial,calidad,operario'))document.getElementById('btn-nuevo-pedido').style.display='none'
+  if(!can('admin,comercial,calidad,operario')){document.getElementById('btn-nuevo-pedido').style.display='none';document.getElementById('btn-dash-nuevo-pedido').style.display='none'}
   document.getElementById('login-screen').style.display='none'
   document.getElementById('app-screen').style.display='flex'
   const [{data:c},{data:t},{data:pv}]=await Promise.all([
@@ -2015,6 +2121,7 @@ async function initApp(user){
     db.from('proveedores').select('*').order('nombre')
   ])
   clientes=c||[];transportistas=t||[];proveedoresList=pv||[]
+  cargarDestinosMercancia()
   poblarSelects()
   const hoy=new Date().toISOString().split('T')[0]
   const mesAtras=new Date(Date.now()-30*24*60*60*1000).toISOString().split('T')[0]
@@ -2031,6 +2138,8 @@ async function initApp(user){
   actualizarBadgeEquipo()
   loadDashboard()
 }
+function npBuscablesFijos(){['np-destino','np-trans','np-proveedor-select'].forEach(i=>hacerBuscable(document.getElementById(i)))}
+
 function poblarSelects(){
   const sc=document.getElementById('np-cliente')
   sc.innerHTML='<option value="">— Seleccionar —</option>'
@@ -2124,7 +2233,7 @@ function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet=
     '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Confección</label><select id="lc-'+id+'" onchange="npCalcPesoLinea('+id+')"><option value="">—</option>'+
     (_confecciones.length?_confecciones:['—']).map(x=>'<option'+(x===conf?' selected':'')+'>'+x+'</option>').join('')+
     '</select></div>'+
-    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Tipo de palet</label><select id="ltp-'+id+'" onchange="npCalcPesoLinea('+id+')"><option value="">—</option>'+
+    '<div class="fg"><label style="font-size:11px;color:var(--text2);font-weight:500">Tipo de palet</label><select id="ltp-'+id+'" onchange="npCalcPesoLinea('+id+');calcularTotalPalets()"><option value="">—</option>'+
     ['Europalet (80×120)','Palet americano (100×120)','Semipalet (80×60)','Palet de plástico','Otro'].map(t=>'<option'+(t===tipalet?' selected':'')+'>'+t+'</option>').join('')+
     '</select></div>'+
     '</div>'+
@@ -2139,6 +2248,7 @@ function addProductoLinea(fruta='',producto='',cajas='',conf='',peso='',tipalet=
     '</div>'
   div.insertAdjacentHTML('beforeend','<div id="lhab-'+id+'" style="display:none;font-size:11px;color:var(--green-text);margin-top:4px"></div>')
   document.getElementById('productos-container').appendChild(div)
+  ;['lf','lc','ltp'].forEach(k=>hacerBuscable(document.getElementById(k+'-'+id)))
 }
 function calcularTotalPalets(){
   let total=0
@@ -2149,6 +2259,7 @@ function calcularTotalPalets(){
   })
   const el=document.getElementById('np-palets')
   if(el&&total>0)el.value=total
+  if(typeof npActualizarCosteTransporte==='function')npActualizarCosteTransporte()
 }
 
 function getProductosForm(){
@@ -2262,7 +2373,7 @@ function aplicarHabitualALinea(id,fruta,ponerProducto){
   if(!P){if(nota)nota.style.display='none';calcularTotalPalets();return}
   const h=P.hab
   // Solo se rellenan los campos vacíos o los que se rellenaron automáticamente antes
-  const libre=el=>el&&(!el.value||el.dataset.auto==='1')
+  const libre=npLibre
   if(libre(get('lp')))npMarcarAuto(get('lp'),h.producto)
   if(libre(get('lca2')))npMarcarAuto(get('lca2'),h.calibre)
   if(libre(get('lc')))npMarcarAuto(get('lc'),h.confeccion)
@@ -2297,8 +2408,8 @@ function escalarLineaHabitual(id){
   const cajasPal=parseFloat(lineaEl.dataset.cajasPal)||0
   const pesoPal=parseFloat(lineaEl.dataset.pesoPal)||0
   const elC=document.getElementById('lca-'+id),elP=document.getElementById('lpb-'+id)
-  if(pal&&cajasPal&&elC&&(elC.dataset.auto==='1'||!elC.value))npMarcarAuto(elC,cajasPal*pal)
-  if(pal&&pesoPal&&elP&&(elP.dataset.auto==='1'||!elP.value))npMarcarAuto(elP,Math.round(pesoPal*pal*10)/10)
+  if(pal&&cajasPal&&npLibre(elC))npMarcarAuto(elC,cajasPal*pal)
+  if(pal&&pesoPal&&npLibre(elP))npMarcarAuto(elP,Math.round(pesoPal*pal*10)/10)
 }
 
 function anadirLineaHabitual(idx){
@@ -2332,14 +2443,30 @@ function repetirUltimoPedidoCliente(){
   toast('Líneas copiadas del último pedido ✓')
 }
 
-// Cuando el comercial toca un campo autorrellenado, deja de ser automático
+// Un campo se puede rellenar solo si está vacío o lo rellenó la app, y nunca si el comercial lo ha tocado
+function npLibre(el){return !!el&&el.dataset.manual!=='1'&&(!el.value||el.dataset.auto==='1')}
+
+// Cuando el comercial escribe en un campo de la línea, pasa a ser manual y la app ya no lo sobrescribe
+// (aunque lo deje vacío mientras escribe el número nuevo)
 ;['input','change'].forEach(ev=>document.addEventListener(ev,e=>{
   const el=e.target
-  if(!el||!el.dataset||el.dataset.auto!=='1'||!el.closest||!el.closest('#productos-container'))return
+  if(!el||!el.dataset||!el.closest||!el.closest('#productos-container'))return
   if(ev==='change'&&el.tagName!=='SELECT')return
+  if(el.id&&/^l(f|p)-/.test(el.id))return // producto y variedad: cambiar de producto vuelve a autorrellenar
+  el.dataset.manual='1'
   delete el.dataset.auto
   el.style.background=''
 },true))
+// Si el comercial deja un campo numérico vacío y sale de él, la app puede volver a calcularlo
+document.addEventListener('focusout',e=>{
+  const el=e.target
+  if(!el||!el.closest||!el.closest('#productos-container')||el.tagName!=='INPUT')return
+  if(!el.value&&el.dataset.manual==='1'){
+    delete el.dataset.manual
+    const id=(el.id||'').split('-').pop()
+    if(id&&typeof npCalcPesoLinea==='function')setTimeout(()=>{escalarLineaHabitual(id);npCalcPesoLinea(id);calcularTotalPalets()},0)
+  }
+},true)
 
 // ── DASHBOARD ─────────────────────────────────────────────────
 function cambiarFechaDash(delta){
@@ -2504,7 +2631,7 @@ async function loadCMComercial(){
   const [{data:com},{data:cli},{data:ped},{data:seg}]=await Promise.all([
     db.from('perfiles').select('id,nombre,rol,es_comercial,activo').or('rol.eq.comercial,es_comercial.eq.true').order('nombre'),
     db.from('clientes').select('*'),
-    db.from('pedidos').select('id,referencia,numero_pedido_erp,cliente_id,fecha_recogida,palets,estado,proveedor,transportista_id,precio_compra').gte('fecha_recogida',desdeQ).neq('estado','Anulado'),
+    db.from('pedidos').select('*').gte('fecha_recogida',desdeQ).neq('estado','Anulado'),
     db.from('clientes_seguimiento').select('*').gte('fecha',desdeQ).order('fecha',{ascending:false}).order('creado_en',{ascending:false})
   ])
   _cmc.com=(com||[]).filter(c=>c.activo!==false)
@@ -2597,6 +2724,9 @@ function mpAlertas(p){
   if(p._sinPrecio)a.push({t:'Sin precio de venta',c:'b-low',k:'inc'})
   if(p.proveedor&&p._coste===null&&p._bruta)a.push({t:'Pedido de proveedor sin precio de compra',c:'b-warn',k:'inc'})
   if(p._sinTransp)a.push({t:'Cliente sin destino: transporte no calculado',c:'b-prep',k:'inc'})
+  if(p._sinPrecioTransp)a.push({t:'Sin precio de transporte a este destino',c:'b-prep',k:'inc'})
+  if(p._transpFalta)a.push({t:'Transporte estimado: falta el precio del '+(p._transpFalta==='americano'?'palet americano':p._transpFalta==='europalet'?'europalet':'tipo de palet'),c:'b-prep',k:'inc'})
+  if(p._transpFuente&&p._transpFuente!=='transportista'&&p.transportista_id)a.push({t:'Transporte estimado: el transportista del pedido no tiene precio a este destino',c:'b-prep',k:'inc'})
   if(p._kgEstimado)a.push({t:'Kg estimados (caja sin kg en Stock)',c:'b-prep',k:'inc'})
   return a
 }
@@ -2727,14 +2857,10 @@ function cmcEconomia(p,cliente){
     if(pc&&k){coste+=pc*k;lineasCoste++}
   })
   // Transporte: €/palet del destino de mercancía del cliente (o €/camión si no hay precio por palet)
-  let transporte=0
-  const destino=(cliente?.destino_mercancia||'').trim()
-  if(destino){
-    const nomTrans=(transportistas||[]).find(t=>t.id===p.transportista_id)?.nombre
-    const filas=_cmc.transp.filter(t=>(t.destino||'').trim()===destino)
-    const t=filas.find(x=>nomTrans&&x.transportista===nomTrans)||filas.find(x=>!x.transportista)||filas[0]
-    if(t)transporte=t.precio_palet?(parseFloat(t.precio_palet)||0)*(p.palets||0):(parseFloat(t.precio_camion)||0)
-  }
+  const destino=(p.destino_mercancia||cliente?.destino_mercancia||'').trim()
+  const rT=transpCoste(destino,p.transportista_id,paletsPorTipo(lineas,p.palets),_cmc.transp)
+  const transporte=rT.importe
+  p._transpDetalle=rT.detalle||null;p._transpFuente=rT.fuente||null;p._sinPrecioTransp=rT.motivo==='sin_precio';p._transpFalta=rT.falta||null
   const abono=_cmc.abonos[p.id]||0
   const neta=bruta-transporte-abono
   p._abonoRecuperado=_cmc.abonosRecuperados[p.id]||0
@@ -2780,7 +2906,7 @@ function cmcRenderVentas(){
   if(t.sinPrecio)avisos.push('<span style="color:var(--orange-text)">'+t.sinPrecio+' pedido'+(t.sinPrecio>1?'s':'')+' sin precio de venta (no suman venta)</span>')
   if(t.sinTransp)avisos.push('<span style="color:var(--orange-text)">'+t.sinTransp+' pedido'+(t.sinTransp>1?'s':'')+' de clientes sin destino de mercancía (transporte 0)</span>')
   if(t.kgEst)avisos.push(t.kgEst+' pedido'+(t.kgEst>1?'s':'')+' con kg tomados del peso indicado porque la caja no tiene kg en Stock')
-  document.getElementById('cmv-nota').innerHTML='<strong>Cómo se calcula:</strong> kg = cajas × kg por caja (Stock) · venta bruta = kg × €/kg venta · transporte = palets × €/palet del destino del cliente (Tarifas → Transporte) · abonos = importe sin IVA de las reclamaciones del pedido, menos lo que asume el proveedor si la ha aceptado · venta neta = bruta − transporte − abonos · margen = venta neta − kg × €/kg compra, solo en pedidos con precio de compra en todas sus líneas · % de margen sobre la venta bruta.'+(avisos.length?'<br>'+avisos.join(' · '):'')
+  document.getElementById('cmv-nota').innerHTML='<strong>Cómo se calcula:</strong> kg = cajas × kg por caja (Stock) · venta bruta = kg × €/kg venta · transporte = palets × €/palet del transportista del pedido al destino del cliente (Envíos → Transportes) · abonos = importe sin IVA de las reclamaciones del pedido, menos lo que asume el proveedor si la ha aceptado · venta neta = bruta − transporte − abonos · margen = venta neta − kg × €/kg compra, solo en pedidos con precio de compra en todas sus líneas · % de margen sobre la venta bruta.'+(avisos.length?'<br>'+avisos.join(' · '):'')
 }
 
 function cmcMoverSemana(d){_cmc.semana=d===0?0:_cmc.semana+d;if(_cmc.cargado){cmcRenderSemana();cmcRenderDetalle()}}
@@ -3219,6 +3345,10 @@ function abrirModalNuevoPedido(){
   ;['np-lote','np-dest','np-obs','np-idiomas','np-erp'].forEach(id=>document.getElementById(id).value='')
   _npHab={clienteId:null,porProducto:{},ultimo:null,ranking:[]}
   document.getElementById('np-habituales').style.display='none'
+  _tp.cargadas=false;document.getElementById('np-coste-transp').innerHTML=''
+  npBuscablesFijos();npSyncClienteInput();npPoblarDestinos('','');document.getElementById('np-dest-nota').innerHTML='';document.getElementById('np-dest-list').innerHTML=''
+  const _d=document.getElementById('np-dest');_d.dataset.auto='';_d.style.background=''
+  setTimeout(()=>document.getElementById('np-cli-buscar').focus(),80)
   const spReset=document.getElementById('np-proveedor-select');if(spReset)spReset.value=''
   document.getElementById('np-palets').value='1'
   document.getElementById('np-fecha').value=new Date().toISOString().split('T')[0]
@@ -3231,6 +3361,7 @@ function abrirEditar(id){editarPedido(id)}
 function abrirAnular(id,ref){anularPedido(id,ref)}
 
 async function editarPedido(id){
+  npBuscablesFijos()
   const {data:p}=await db.from('pedidos').select('*').eq('id',id).single()
   if(!p)return
   const {data:prods}=await db.from('pedido_productos').select('*').eq('pedido_id',id).order('orden')
@@ -3238,7 +3369,9 @@ async function editarPedido(id){
   _editandoReferencia=p.referencia
   document.getElementById('pedido-modal-titulo').childNodes[0].textContent='Editar '+p.referencia+' '
   document.getElementById('btn-guardar-pedido').innerHTML='<i class="ti ti-check"></i>Guardar cambios'
-  document.getElementById('np-cliente').value=p.cliente_id||'';autoIdiomas()
+  document.getElementById('np-cliente').value=p.cliente_id||'';autoIdiomas();npSyncClienteInput()
+  {const _cli=(clientes||[]).find(c=>c.id===p.cliente_id);npPoblarDestinos(p.destino_mercancia||_cli?.destino_mercancia||'',_cli?.destino_mercancia||'')}
+  npRecomendarDestino(p.cliente_id,false)
   document.getElementById('np-idiomas').value=(p.idiomas_etiqueta||[]).join(', ')
   document.getElementById('np-palets').value=p.palets||1
   document.getElementById('np-lote').value=p.lote||''
@@ -3250,6 +3383,7 @@ async function editarPedido(id){
   document.getElementById('productos-container').innerHTML=''
   lineaCount=0
   cargarHabitualesCliente(p.cliente_id,p.id,false)
+  _tp.cargadas=false;npActualizarCosteTransporte()
   setOrigen(p.proveedor||'propio')
   if(prods&&prods.length)prods.forEach(pr=>{addProductoLinea(pr.fruta,pr.producto||'',pr.num_cajas||'',pr.confeccion||'',pr.peso_bruto||'',pr.tipo_palet||'',pr.num_palets||'',pr.calibre||'',pr.precio||'',pr.precio_compra||'');npCalcPesoLinea(lineaCount)})
   else addProductoLinea(p.fruta||'')
@@ -3277,7 +3411,7 @@ async function guardarPedido(){
   try{
     const idiomas=document.getElementById('np-idiomas').value.split(',').map(s=>s.trim()).filter(Boolean)
     const esExterno=origenActual!=='propio'
-    const datos={cliente_id:cid,palets,fruta:lineas[0].fruta,lote:document.getElementById('np-lote').value||null,numero_pedido_erp:document.getElementById('np-erp').value.trim()||null,destinatario:document.getElementById('np-dest').value||null,transportista_id:document.getElementById('np-trans').value||null,fecha_recogida:document.getElementById('np-fecha').value||null,observaciones:document.getElementById('np-obs').value||null,idiomas_etiqueta:idiomas,proveedor:esExterno?origenActual:null}
+    const datos={cliente_id:cid,palets,fruta:lineas[0].fruta,lote:document.getElementById('np-lote').value||null,destino_mercancia:document.getElementById('np-destino').value||null,numero_pedido_erp:document.getElementById('np-erp').value.trim()||null,destinatario:document.getElementById('np-dest').value||null,transportista_id:document.getElementById('np-trans').value||null,fecha_recogida:document.getElementById('np-fecha').value||null,observaciones:document.getElementById('np-obs').value||null,idiomas_etiqueta:idiomas,proveedor:esExterno?origenActual:null}
     let pedidoId=id
     if(id){
       // Comprobar si han cambiado cantidades (cajas, palets o peso) en alguna línea para reiniciar a Pendiente
@@ -3410,7 +3544,8 @@ async function loadClientes(){
 function abrirModalCliente(comercialPorDefecto){
   document.getElementById('cl-id').value=''
   document.getElementById('cliente-modal-titulo').childNodes[0].textContent='Nuevo cliente '
-  ;['cl-nombre','cl-pais','cl-ciudad','cl-direccion','cl-contacto','cl-telefono','cl-email','cl-destino-mercancia','cl-origen','cl-intereses'].forEach(id=>document.getElementById(id).value='')
+  ;['cl-nombre','cl-pais','cl-ciudad','cl-direccion','cl-contacto','cl-telefono','cl-email','cl-origen','cl-intereses'].forEach(id=>document.getElementById(id).value='')
+  clPoblarDestinos('');cargarDestinosMercancia().then(()=>clPoblarDestinos(document.getElementById('cl-destino-mercancia').value))
   document.getElementById('cliente-err').style.display='none'
   // Todo cliente nuevo entra como posible cliente hasta que empiece a pedir
   document.getElementById('cl-prospecto').checked=true
@@ -3436,7 +3571,7 @@ async function editarCliente(id){
   document.getElementById('cl-contacto').value=c.contacto||''
   document.getElementById('cl-telefono').value=c.telefono||''
   document.getElementById('cl-email').value=c.email||''
-  document.getElementById('cl-destino-mercancia').value=c.destino_mercancia||''
+  clPoblarDestinos(c.destino_mercancia);cargarDestinosMercancia().then(()=>clPoblarDestinos(c.destino_mercancia))
   document.getElementById('cl-origen').value=c.origen||''
   document.getElementById('cl-intereses').value=c.intereses||''
   document.getElementById('cl-fase').value=c.fase_prospecto||'nuevo'
@@ -3456,7 +3591,7 @@ async function guardarCliente(){
   const err=document.getElementById('cliente-err');err.style.display='none'
   if(!nombre){err.textContent='El nombre es obligatorio';err.style.display='block';return}
   if(!id&&clientes.some(c=>(c.nombre||'').trim().toLowerCase()===nombre.toLowerCase())){err.textContent='Ya existe un cliente llamado "'+nombre+'"';err.style.display='block';return}
-  const datos={nombre,pais:document.getElementById('cl-pais').value||null,ciudad:document.getElementById('cl-ciudad').value.trim()||null,direccion:document.getElementById('cl-direccion').value.trim()||null,idiomas:idiomasSeleccionados.length?idiomasSeleccionados:null,contacto:document.getElementById('cl-contacto').value||null,telefono:document.getElementById('cl-telefono').value||null,email:document.getElementById('cl-email').value||null,destino_mercancia:document.getElementById('cl-destino-mercancia').value.trim()||null,
+  const datos={nombre,pais:document.getElementById('cl-pais').value||null,ciudad:document.getElementById('cl-ciudad').value.trim()||null,direccion:document.getElementById('cl-direccion').value.trim()||null,idiomas:idiomasSeleccionados.length?idiomasSeleccionados:null,contacto:document.getElementById('cl-contacto').value||null,telefono:document.getElementById('cl-telefono').value||null,email:document.getElementById('cl-email').value||null,destino_mercancia:(v=>v&&v!=='__nuevo'?v:null)(document.getElementById('cl-destino-mercancia').value.trim()),
     origen:document.getElementById('cl-origen').value.trim()||null}
   const selCom=document.getElementById('cl-comercial')
   if(!selCom.disabled)datos.comercial_id=selCom.value||null
@@ -3897,7 +4032,9 @@ async function cmrCargarPedido(id){
   cmrSet('cmr-remitente',CMR_REMITENTE)
   cmrSet('cmr-destinatario',dirCli)
   document.getElementById('cmr-guardar-dir').checked=false
-  cmrSet('cmr-entrega',[p.destinatario,cli?.destino_mercancia&&cli.destino_mercancia!==p.destinatario?cli.destino_mercancia:null].filter(Boolean).join('\n')||[cli?.ciudad,cli?.pais].filter(Boolean).join(', '))
+  const _dm=p.destino_mercancia||cli?.destino_mercancia
+  const _di=destInfo(_dm)
+  cmrSet('cmr-entrega',[_di?.zona?_dm+(_di.direccion?' — '+_di.direccion:'')+' ('+_di.zona+')':null,p.destinatario,!_di?.zona&&_dm&&_dm!==p.destinatario?_dm:null].filter(Boolean).join('\n')||[cli?.ciudad,cli?.pais].filter(Boolean).join(', '))
   const ciudadRem=CMR_LUGAR
   cmrSet('cmr-carga','Brenes (Sevilla), España\n'+(p.fecha_recogida?fmt(p.fecha_recogida):''))
   cmrSet('cmr-docs',['Albarán'+(p.numero_pedido_erp?' nº '+p.numero_pedido_erp:' '+p.referencia),'Certificado ecológico'].join(' · '))
@@ -5469,7 +5606,8 @@ function qcInfoExtra(p,prods){
   const t=(transportistas||[]).find(x=>x.id===p.transportista_id)
   const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
   const cel=(lbl,val,full)=>'<div class="info-cell"'+(full?' style="grid-column:1/-1"':'')+'><div class="lbl">'+lbl+'</div><div class="val" style="font-size:13px;white-space:normal">'+val+'</div></div>'
-  const destino=[p.destinatario,c.destino_mercancia&&c.destino_mercancia!==p.destinatario?c.destino_mercancia:null,[c.ciudad,c.pais].filter(Boolean).join(', ')].filter(Boolean).map(esc).join('<br>')
+  const _dm=p.destino_mercancia||c.destino_mercancia
+  const destino=[p.destinatario,_dm&&_dm!==p.destinatario?_dm:null,[c.ciudad,c.pais].filter(Boolean).join(', ')].filter(Boolean).map(esc).join('<br>')
   const cajas=(prods||[]).reduce((a,x)=>a+(parseInt(x.num_cajas)||0),0)
   const peso=(prods||[]).reduce((a,x)=>a+(parseFloat(x.peso_bruto)||0),0)
   const tiposPal=[...new Set((prods||[]).map(x=>x.tipo_palet).filter(Boolean))].join(', ')
@@ -6145,12 +6283,18 @@ async function crearTransportista(){
   const nombre=document.getElementById('tr-nombre').value.trim()
   const err=document.getElementById('trans-err');err.style.display='none'
   if(!nombre){err.textContent='El nombre es obligatorio';err.style.display='block';return}
-  const {error}=await db.from('transportistas').insert({nombre,telefono:document.getElementById('tr-telefono').value||null,email:document.getElementById('tr-email').value||null})
+  const id=document.getElementById('tr-id').value
+  const datos={nombre,contacto:document.getElementById('tr-contacto').value.trim()||null,telefono:document.getElementById('tr-telefono').value||null,email:document.getElementById('tr-email').value||null,notas:document.getElementById('tr-notas').value.trim()||null}
+  const nombreAnterior=id?((transportistas||[]).find(t=>t.id===id)?.nombre||null):null
+  const {error}=id?await db.from('transportistas').update(datos).eq('id',id):await db.from('transportistas').insert(datos)
   if(error){err.textContent='Error: '+error.message;err.style.display='block';return}
-  toast('Transportista creado ✓');closeModal('modal-transportista')
-  ;['tr-nombre','tr-telefono','tr-email'].forEach(id=>document.getElementById(id).value='')
+  // Si cambia el nombre, mantener sus precios enlazados
+  if(nombreAnterior&&nombreAnterior!==nombre)await db.from('tarifas_transporte').update({transportista:nombre}).eq('transportista_id',id)
+  toast(id?'Transportista actualizado ✓':'Transportista creado ✓');closeModal('modal-transportista')
+  ;['tr-id','tr-nombre','tr-contacto','tr-telefono','tr-email','tr-notas'].forEach(i=>document.getElementById(i).value='')
   const {data:t}=await db.from('transportistas').select('*').order('nombre')
   transportistas=t||[];poblarSelects()
+  if(document.getElementById('tab-envios-transportes')?.style.display!=='none'&&document.getElementById('page-envios')?.classList.contains('active'))loadTransportes()
 }
 
 // ── STOCK ─────────────────────────────────────────────────────
@@ -7662,7 +7806,7 @@ function npCalcPesoLinea(id){
   if(!elC||!elP)return
   const pal=parseInt(elPal?.value)||0
   const cpp=npCajasPorPalet(id)
-  const libre=el=>!el.value||el.dataset.auto==='1'
+  const libre=npLibre
   if(cpp&&pal&&libre(elC))npMarcarAuto(elC,cpp*pal)
   const cajas=parseInt(elC.value)||0
   if(info&&info.kg&&cajas&&libre(elP))npMarcarAuto(elP,Math.round(cajas*info.kg*10)/10)
@@ -9223,6 +9367,634 @@ async function imprimirOfertaActual(){
   const lineas=_of.lineas.filter(l=>(l.producto||'').trim()).map(l=>({...l,precio_perp:l.precio_perpignan,precio_alem:l.precio_alemania}))
   if(!lineas.length){toast('La oferta no tiene líneas','err');return}
   imprimirOfertaDoc(lineas,meta)
+}
+
+// ── DESPLEGABLES CON BUSCADOR ────────────────────────────────
+// Convierte un <select> en un campo donde se escribe para filtrar. El select sigue existiendo (oculto):
+// el resto del código lee y escribe su valor como siempre y el buscador se mantiene sincronizado.
+const _bselValor=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')
+const _bselIndice=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'selectedIndex')
+function bselNorm(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()}
+
+function hacerBuscable(sel){
+  if(!sel||sel.dataset.buscable)return
+  sel.dataset.buscable='1'
+  const wrap=document.createElement('div');wrap.className='bsel';wrap.style.position='relative'
+  sel.parentNode.insertBefore(wrap,sel);wrap.appendChild(sel)
+  const inp=document.createElement('input');inp.type='text';inp.autocomplete='off';inp.className='bsel-input'
+  inp.style.paddingRight='26px'
+  const flecha=document.createElement('i');flecha.className='ti ti-chevron-down'
+  flecha.style.cssText='position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);font-size:13px'
+  const lista=document.createElement('div')
+  lista.style.cssText='display:none;position:absolute;left:0;right:0;top:100%;z-index:60;min-width:180px;max-height:260px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.15);margin-top:2px'
+  wrap.insertBefore(inp,sel);wrap.appendChild(flecha);wrap.appendChild(lista)
+  sel.style.display='none'
+  let items=[],idx=-1,abierto=false
+
+  const sync=()=>{
+    const o=sel.options[_bselIndice.get.call(sel)]
+    inp.value=o&&o.value!==''?o.text:''
+    const vacio=[...sel.options].find(x=>x.value==='')
+    inp.placeholder=vacio?vacio.text.replace(/[—-]/g,'').trim()||'Buscar...':'Buscar...'
+    inp.style.background=sel.style.background||''
+    inp.disabled=sel.disabled
+  }
+  Object.defineProperty(sel,'value',{configurable:true,get(){return _bselValor.get.call(this)},set(v){_bselValor.set.call(this,v);sync()}})
+  Object.defineProperty(sel,'selectedIndex',{configurable:true,get(){return _bselIndice.get.call(this)},set(v){_bselIndice.set.call(this,v);sync()}})
+  new MutationObserver(sync).observe(sel,{childList:true,subtree:true,attributes:true,attributeFilter:['style','disabled']})
+
+  const pintar=()=>{
+    const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    const actual=_bselValor.get.call(sel)
+    lista.innerHTML=items.length?items.map((o,i)=>'<div data-i="'+i+'" style="padding:7px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);'+
+      (i===idx?'background:var(--bg3);':'')+(o.value===''?'color:var(--text3);':'')+(o.value!==''&&o.value===actual?'font-weight:600;color:var(--accent);':'')+'">'+esc(o.text)+'</div>').join(''):
+      '<div style="padding:9px 10px;font-size:12px;color:var(--text3)">Sin resultados</div>'
+    lista.style.display='block';abierto=true
+    const a=lista.querySelector('[data-i="'+idx+'"]');if(a)a.scrollIntoView({block:'nearest'})
+  }
+  const filtrar=todo=>{
+    const q=todo?'':bselNorm(inp.value)
+    const pal=q.split(/\s+/).filter(Boolean)
+    items=[...sel.options].filter(o=>!o.disabled&&(o.value===''?!q:pal.every(w=>bselNorm(o.text).includes(w))))
+    if(q)items.sort((a,b)=>(bselNorm(a.text).startsWith(q)?0:1)-(bselNorm(b.text).startsWith(q)?0:1))
+    const actual=_bselValor.get.call(sel)
+    idx=Math.max(0,items.findIndex(o=>o.value===actual&&o.value!==''))
+    if(!items.length)idx=-1
+    pintar()
+  }
+  const elegir=i=>{
+    const o=items[i];if(!o)return
+    lista.style.display='none';abierto=false
+    if(_bselValor.get.call(sel)!==o.value){sel.value=o.value;sel.dispatchEvent(new Event('change',{bubbles:true}))}
+    else sync()
+  }
+  inp.addEventListener('focus',()=>{inp.select();filtrar(true)})
+  inp.addEventListener('input',()=>filtrar(false))
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(!abierto)filtrar(true);if(!items.length)return;idx=(idx+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;pintar()}
+    else if(e.key==='Enter'){if(abierto&&idx>=0){e.preventDefault();elegir(idx)}}
+    else if(e.key==='Escape'){if(abierto){e.stopPropagation();lista.style.display='none';abierto=false;sync()}}
+    else if(e.key==='Tab'&&abierto&&inp.value&&idx>=0&&bselNorm(inp.value)!==bselNorm(sel.options[_bselIndice.get.call(sel)]?.text)){elegir(idx)}
+  })
+  inp.addEventListener('blur',()=>setTimeout(()=>{lista.style.display='none';abierto=false;sync()},150))
+  lista.addEventListener('mousedown',e=>{e.preventDefault();const d=e.target.closest('[data-i]');if(d)elegir(+d.dataset.i)})
+  sync()
+}
+
+// ── PEDIDO: BUSCADOR DE CLIENTE Y DESTINO HABITUAL ───────────
+let _npCli={idx:-1,lista:[]}
+function npNorm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+
+function npClienteBuscar(abrir){
+  const q=npNorm(document.getElementById('np-cli-buscar').value)
+  const sel=document.getElementById('np-cliente').value
+  const actual=(clientes||[]).find(c=>c.id===sel)
+  // Si el texto es exactamente el cliente elegido, mostrar todos
+  const filtro=actual&&npNorm(actual.nombre)===q?'':q
+  const palabras=filtro.split(/\s+/).filter(Boolean)
+  _npCli.lista=(clientes||[]).filter(c=>c.estado_comercial!=='descartado').filter(c=>{
+    const txt=npNorm([c.nombre,c.ciudad,c.pais,c.destino_mercancia,c.contacto].filter(Boolean).join(' '))
+    return palabras.every(w=>txt.includes(w))
+  }).sort((a,b)=>{
+    if(filtro){const sa=npNorm(a.nombre).startsWith(filtro)?0:1,sb=npNorm(b.nombre).startsWith(filtro)?0:1;if(sa!==sb)return sa-sb}
+    return (a.nombre||'').localeCompare(b.nombre||'','es')
+  }).slice(0,40)
+  _npCli.idx=_npCli.lista.length?0:-1
+  if(abrir!==false)npClienteRender()
+}
+function npClienteRender(){
+  const box=document.getElementById('np-cli-lista')
+  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  box.innerHTML=_npCli.lista.length?_npCli.lista.map((c,i)=>
+    '<div class="np-cli-op" data-i="'+i+'" onmousedown="event.preventDefault();npClienteElegir('+i+')" style="padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border);'+(i===_npCli.idx?'background:var(--bg3)':'')+'">'+
+      '<div style="font-weight:600;font-size:13px">'+esc(c.nombre)+(c.estado_comercial==='prospecto'?' <span class="badge b-warn" style="font-size:9px">Posible cliente</span>':'')+'</div>'+
+      '<div style="font-size:11px;color:var(--text3)">'+[[c.ciudad,c.pais].filter(Boolean).join(', '),c.destino_mercancia?'Destino: '+c.destino_mercancia:null].filter(Boolean).map(esc).join(' · ')+'</div></div>').join(''):
+    '<div style="padding:10px;font-size:12px;color:var(--text3)">Ningún cliente coincide</div>'
+  box.style.display='block'
+  const act=box.querySelector('[data-i="'+_npCli.idx+'"]');if(act)act.scrollIntoView({block:'nearest'})
+}
+function npClienteTecla(e){
+  const box=document.getElementById('np-cli-lista')
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();if(box.style.display!=='block')npClienteBuscar()
+    if(!_npCli.lista.length)return
+    _npCli.idx=(_npCli.idx+(e.key==='ArrowDown'?1:-1)+_npCli.lista.length)%_npCli.lista.length;npClienteRender()
+  }else if(e.key==='Enter'){if(box.style.display==='block'&&_npCli.idx>=0){e.preventDefault();npClienteElegir(_npCli.idx)}}
+  else if(e.key==='Escape'){box.style.display='none';npSyncClienteInput()}
+}
+function npClienteElegir(i){
+  const c=_npCli.lista[i];if(!c)return
+  const sel=document.getElementById('np-cliente')
+  document.getElementById('np-cli-lista').style.display='none'
+  document.getElementById('np-cli-buscar').value=c.nombre
+  if(sel.value!==c.id){sel.value=c.id;sel.dispatchEvent(new Event('change'))}
+}
+function npClienteSalir(){
+  setTimeout(()=>{document.getElementById('np-cli-lista').style.display='none';npSyncClienteInput()},120)
+}
+// Muestra en el buscador el cliente que tenga el desplegable oculto
+function npSyncClienteInput(){
+  const c=(clientes||[]).find(x=>x.id===document.getElementById('np-cliente').value)
+  document.getElementById('np-cli-buscar').value=c?c.nombre:''
+}
+
+// Destino de la mercancía del pedido: se recomienda el habitual del cliente
+function npPoblarDestinos(valor,habitual){
+  const sel=document.getElementById('np-destino');if(!sel)return
+  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')
+  const lista=destOrdenados().map(d=>d.nombre)
+  ;[valor,habitual].forEach(v=>{if(v&&!lista.some(n=>n.toLowerCase()===v.toLowerCase()))lista.unshift(v)})
+  sel.innerHTML='<option value="">— Sin destino —</option>'+lista.map(n=>'<option value="'+esc(n)+'">'+esc(destEtiqueta(n))+(habitual&&n.toLowerCase()===habitual.toLowerCase()?' ★ habitual':'')+'</option>').join('')
+  sel.value=lista.find(n=>valor&&n.toLowerCase()===valor.toLowerCase())||''
+  npMarcarDestino()
+}
+function npMarcarDestino(){
+  const sel=document.getElementById('np-destino'),nota=document.getElementById('np-destino-nota');if(!sel||!nota)return
+  const cli=(clientes||[]).find(c=>c.id===document.getElementById('np-cliente').value)
+  const hab=cli?.destino_mercancia||''
+  const v=sel.value
+  sel.style.background=v&&hab&&v===hab?'var(--green-bg)':''
+  const zonaTxt=v&&destEsAlmacen(v)?'<div style="color:var(--text2)"><i class="ti ti-building-warehouse"></i> Almacén de '+tpEsc(destZona(v))+': el transporte se cobra al precio de '+tpEsc(destZona(v))+'</div>':''
+  nota.innerHTML=(!cli?'':!hab?'<span style="color:var(--orange-text)">El cliente no tiene destino habitual</span>':
+    (v===hab?'<span style="color:var(--green-text)"><i class="ti ti-star"></i> Destino habitual del cliente</span>':
+     v?'<span style="color:var(--orange-text)">Distinto del habitual ('+hab.replace(/</g,'&lt;')+') · <a href="#" onclick="event.preventDefault();document.getElementById(\'np-destino\').value=\''+hab.replace(/'/g,"\\'")+'\';npMarcarDestino();npActualizarCosteTransporte()">usar habitual</a></span>':''))+zonaTxt
+}
+async function npRecomendarDestino(clienteId,esNuevo){
+  const cli=(clientes||[]).find(c=>c.id===clienteId)
+  if(!_destMerc.length)await cargarDestinosMercancia()
+  if(esNuevo)npPoblarDestinos(cli?.destino_mercancia||'',cli?.destino_mercancia||'')
+  else npPoblarDestinos(document.getElementById('np-destino').value,cli?.destino_mercancia||'')
+  // Destinatarios usados antes con este cliente: el más repetido se propone
+  const dl=document.getElementById('np-dest-list')
+  dl.innerHTML=''
+  if(!clienteId)return
+  const {data}=await db.from('pedidos').select('destinatario,fecha_recogida').eq('cliente_id',clienteId).neq('estado','Anulado').order('fecha_recogida',{ascending:false}).limit(40)
+  if(document.getElementById('np-cliente').value!==clienteId)return
+  const cuenta={};(data||[]).forEach(p=>{const d=(p.destinatario||'').trim();if(d)cuenta[d]=(cuenta[d]||0)+1})
+  const orden=Object.entries(cuenta).sort((a,b)=>b[1]-a[1]).map(x=>x[0])
+  dl.innerHTML=orden.map(d=>'<option value="'+d.replace(/"/g,'&quot;')+'">').join('')
+  const el=document.getElementById('np-dest')
+  if(esNuevo&&orden.length&&(!el.value||el.dataset.auto==='1')){
+    el.value=orden[0];el.dataset.auto='1';el.style.background='var(--green-bg)'
+    document.getElementById('np-dest-nota').innerHTML='<span style="color:var(--green-text)"><i class="ti ti-star"></i> Destinatario habitual ('+cuenta[orden[0]]+' pedido'+(cuenta[orden[0]]>1?'s':'')+')'+(orden.length>1?' · hay '+(orden.length-1)+' más en la lista':'')+'</span>'
+  }else document.getElementById('np-dest-nota').innerHTML=orden.length>1?'<span style="color:var(--text3)">'+orden.length+' destinatarios usados con este cliente: despliega para elegir</span>':''
+}
+
+// ── DESTINOS DE MERCANCÍA Y TRANSPORTES ──────────────────────
+let _destMerc=[]           // [{id,nombre,pais}]
+let _tp={tarifas:[],abiertos:new Set()}
+
+async function cargarDestinosMercancia(){
+  const {data,error}=await db.from('destinos').select('*').order('nombre')
+  _destMerc=error?[]:(data||[])
+  _destMerc._error=error||null
+  return _destMerc
+}
+function tpEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// Coste de transporte de un pedido: palets × €/palet del transportista al destino del cliente.
+// Si ese transportista no tiene precio, usa el precio general (sin transportista) o el más barato del destino.
+// ── DESTINOS: ZONAS DE PRECIO Y ALMACENES ────────────────────
+// Un destino puede ser una ZONA DE PRECIO (Perpiñán, Alemania…) o un ALMACÉN dentro de una zona
+// (Escande, Socafna… son almacenes de Perpiñán). El transporte se cobra al precio de la zona.
+function destInfo(nombre){const n=(nombre||'').trim().toLowerCase();return (_destMerc||[]).find(d=>d.nombre.toLowerCase()===n)||null}
+function destZona(nombre){const d=destInfo(nombre);return d&&d.zona?d.zona:(nombre||'').trim()}
+function destEsAlmacen(nombre){return !!destInfo(nombre)?.zona}
+function destEtiqueta(nombre){const d=destInfo(nombre);return d&&d.zona?d.nombre+' · almacén '+d.zona:(d?d.nombre:nombre)}
+function destZonas(){return (_destMerc||[]).filter(d=>!d.zona)}
+function destAlmacenesDe(zona){return (_destMerc||[]).filter(d=>d.zona&&d.zona.toLowerCase()===(zona||'').toLowerCase())}
+// Lista ordenada: cada zona seguida de sus almacenes
+function destOrdenados(){
+  const out=[],usados=new Set()
+  destZonas().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).forEach(z=>{
+    out.push(z);usados.add(z.id)
+    destAlmacenesDe(z.nombre).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).forEach(a=>{out.push(a);usados.add(a.id)})
+  })
+  ;(_destMerc||[]).filter(d=>!usados.has(d.id)).forEach(d=>out.push(d)) // almacenes con zona inexistente
+  return out
+}
+
+// ── Formulario de destino (crear / editar) ──
+function tpAbrirDestino(id){
+  const d=id?(_destMerc||[]).find(x=>x.id===id):null
+  document.getElementById('ds-id').value=d?.id||''
+  document.getElementById('ds-titulo').childNodes[0].textContent=d?'Editar destino ':'Nuevo destino '
+  document.getElementById('ds-nombre').value=d?.nombre||''
+  document.getElementById('ds-pais').value=d?.pais||''
+  document.getElementById('ds-direccion').value=d?.direccion||''
+  const zonas=destZonas().filter(z=>!d||z.id!==d.id)
+  const sel=document.getElementById('ds-zona')
+  sel.innerHTML='<option value="">— Elige la zona —</option>'+zonas.map(z=>'<option value="'+tpEsc(z.nombre)+'">'+tpEsc(z.nombre)+'</option>').join('')
+  const esAlm=!!d?.zona
+  document.querySelector('input[name=ds-tipo][value='+(esAlm?'almacen':'zona')+']').checked=true
+  sel.value=d?.zona||''
+  // Una zona con almacenes no puede convertirse en almacén
+  const tieneAlm=d&&!d.zona&&destAlmacenesDe(d.nombre).length
+  document.querySelector('input[name=ds-tipo][value=almacen]').disabled=!!tieneAlm
+  document.getElementById('ds-aviso-alm').style.display=tieneAlm?'block':'none'
+  document.getElementById('ds-aviso-alm').textContent=tieneAlm?'Tiene '+tieneAlm+' almacén/es asignados, por eso no puede ser un almacén.':''
+  dsToggle()
+  document.getElementById('ds-err').style.display='none'
+  openModal('modal-destino')
+}
+function dsToggle(){
+  const alm=document.querySelector('input[name=ds-tipo]:checked')?.value==='almacen'
+  document.getElementById('ds-zona-wrap').style.display=alm?'block':'none'
+}
+async function tpGuardarDestino(){
+  const err=document.getElementById('ds-err');err.style.display='none'
+  const id=document.getElementById('ds-id').value
+  const nombre=document.getElementById('ds-nombre').value.trim()
+  const alm=document.querySelector('input[name=ds-tipo]:checked')?.value==='almacen'
+  const zona=alm?document.getElementById('ds-zona').value:null
+  if(!nombre){err.textContent='El nombre es obligatorio';err.style.display='block';return}
+  if(alm&&!zona){err.textContent='Elige a qué zona de precio pertenece el almacén';err.style.display='block';return}
+  if(_destMerc.some(x=>x.id!==id&&x.nombre.toLowerCase()===nombre.toLowerCase())){err.textContent='Ya existe un destino con ese nombre';err.style.display='block';return}
+  const datos={nombre,zona,pais:document.getElementById('ds-pais').value.trim()||null,direccion:document.getElementById('ds-direccion').value.trim()||null}
+  const nombreAnterior=id?(_destMerc.find(x=>x.id===id)?.nombre||null):null
+  const {error}=id?await db.from('destinos').update(datos).eq('id',id):await db.from('destinos').insert(datos)
+  if(error){err.textContent='Error: '+error.message+(/zona|direccion/.test(error.message)?' — ¿has ejecutado el SQL de las columnas zona y direccion?':'');err.style.display='block';return}
+  // Renombrado: actualizar clientes, pedidos, precios y almacenes que apuntan a esta zona
+  if(nombreAnterior&&nombreAnterior!==nombre){
+    await db.from('clientes').update({destino_mercancia:nombre}).eq('destino_mercancia',nombreAnterior)
+    await db.from('pedidos').update({destino_mercancia:nombre}).eq('destino_mercancia',nombreAnterior)
+    await db.from('tarifas_transporte').update({destino:nombre}).eq('destino',nombreAnterior)
+    await db.from('destinos').update({zona:nombre}).eq('zona',nombreAnterior)
+    await recargarClientesGlobal()
+  }
+  toast(id?'Destino actualizado ✓':'Destino "'+nombre+'" creado ✓'+(alm?' (precio de '+zona+')':''))
+  closeModal('modal-destino')
+  await cargarDestinosMercancia()
+  if(document.getElementById('page-envios')?.classList.contains('active'))loadTransportes()
+}
+
+// Tipo de palet a efectos de transporte: americano (100×120) o europalet (resto)
+function palTipo(t){return /americano|100\s*[×x]\s*120/i.test(t||'')?'amer':'euro'}
+// Palets de un pedido por tipo, a partir de sus líneas
+function paletsPorTipo(lineas,total){
+  const r={euro:0,amer:0}
+  ;(lineas||[]).forEach(l=>{const n=parseInt(l.num_palets)||0;if(n)r[palTipo(l.tipo_palet)]+=n})
+  if(!r.euro&&!r.amer)r.euro=parseInt(total)||0
+  return r
+}
+function tpPrecioEuro(t){const v=parseFloat(t?.precio_europalet??t?.precio_palet);return isNaN(v)||!v?null:v}
+function tpPrecioAmer(t){const v=parseFloat(t?.precio_americano);return isNaN(v)||!v?null:v}
+function tpPrecioCamion(t){const v=parseFloat(t?.precio_camion);return isNaN(v)||!v?null:v}
+
+// Coste de transporte de un pedido.
+// palets: número (se toman como europalet) o {euro, amer}.
+// Usa el precio del transportista del pedido a ese destino; si no tiene, el general o el más barato (y lo indica).
+function transpCoste(destino,transportistaId,palets,tarifas){
+  destino=(destino||'').trim()
+  const pal=typeof palets==='object'&&palets?{euro:palets.euro||0,amer:palets.amer||0}:{euro:parseInt(palets)||0,amer:0}
+  if(!destino)return {importe:0,motivo:'sin_destino'}
+  const nomT=(transportistas||[]).find(t=>t.id===transportistaId)?.nombre
+  const de=n=>(tarifas||[]).filter(t=>(t.destino||'').trim().toLowerCase()===n.toLowerCase())
+  const zona=destZona(destino)
+  let filas=de(destino)
+  if(!filas.length&&zona.toLowerCase()!==destino.toLowerCase())filas=de(zona)
+  if(!filas.length)return {importe:0,motivo:'sin_precio',zona}
+  const e2=v=>Number(v).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})
+  const calc=t=>{
+    const pe=tpPrecioEuro(t),pa=tpPrecioAmer(t),pc=tpPrecioCamion(t)
+    if(!pe&&!pa)return pc?{importe:pc,detalle:'camión completo '+e2(pc)+' €',falta:null}:{importe:0,detalle:'',falta:'todo'}
+    let importe=0;const partes=[];let falta=null
+    if(pal.euro){const p=pe||pa;importe+=pal.euro*p;partes.push(pal.euro+' europalet × '+e2(p)+' €');if(!pe)falta='europalet'}
+    if(pal.amer){const p=pa||pe;importe+=pal.amer*p;partes.push(pal.amer+' americano × '+e2(p)+' €');if(!pa)falta=falta?'ambos':'americano'}
+    return {importe,detalle:partes.join(' + ')||'0 palets',falta}
+  }
+  let t=filas.find(x=>transportistaId&&x.transportista_id===transportistaId)||filas.find(x=>nomT&&x.transportista===nomT)
+  let fuente='transportista'
+  if(!t){t=filas.find(x=>!x.transportista_id&&!x.transportista);fuente='general'}
+  if(!t){t=filas.slice().sort((a,b)=>calc(a).importe-calc(b).importe)[0];fuente='mas_barato'}
+  const r=calc(t)
+  if(r.falta==='todo')return {importe:0,motivo:'sin_precio'}
+  return {importe:r.importe,detalle:r.detalle,falta:r.falta,fuente,transportista:t.transportista||null,motivo:null,zona}
+}
+
+async function loadTransportes(){
+  document.getElementById('tp-lista').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
+  const [{data:t},{data:tar,error:eT},{data:cli}]=await Promise.all([
+    db.from('transportistas').select('*').order('nombre'),
+    db.from('tarifas_transporte').select('*'),
+    db.from('clientes').select('id,nombre,destino_mercancia,estado_comercial').order('nombre'),
+    cargarDestinosMercancia()
+  ])
+  transportistas=t||[]
+  _tp.tarifas=tar||[]
+  _tp.clientes=(cli||[]).filter(c=>c.estado_comercial!=='descartado')
+  await tpCargarUso(cli||[])
+  if(_destMerc._error){
+    document.getElementById('tp-avisos').innerHTML='<div class="card" style="background:var(--orange-bg);margin-bottom:14px;font-size:13px"><i class="ti ti-alert-triangle"></i> Falta la tabla <strong>destinos</strong> en Supabase. Ejecuta el SQL indicado para activar la lista única de destinos.<br><small>'+tpEsc(_destMerc._error.message)+'</small></div>'
+  }
+  tpRender()
+}
+
+// Combinaciones transportista + destino usadas en pedidos de los últimos 6 meses, con sus tipos de palet
+async function tpCargarUso(cli){
+  _tp.uso={}
+  const desde=new Date();desde.setMonth(desde.getMonth()-6)
+  const {data:peds}=await db.from('pedidos').select('id,referencia,transportista_id,cliente_id,destino_mercancia,fecha_recogida,palets,estado').gte('fecha_recogida',desde.toLocaleDateString('sv-SE')).not('transportista_id','is',null)
+  const lista=(peds||[]).filter(p=>p.estado!=='Anulado'&&p.transportista_id)
+  if(!lista.length)return
+  const lineas=await cmcEnTrozos(lista.map(p=>p.id),ids=>db.from('pedido_productos').select('pedido_id,tipo_palet,num_palets').in('pedido_id',ids))
+  const porPed={};lineas.forEach(l=>(porPed[l.pedido_id]=porPed[l.pedido_id]||[]).push(l))
+  const destCli={};cli.forEach(c=>destCli[c.id]=c.destino_mercancia)
+  lista.forEach(p=>{
+    const destReal=(p.destino_mercancia||destCli[p.cliente_id]||'').trim();if(!destReal)return
+    const dest=destZona(destReal)
+    const k=p.transportista_id+'|'+dest.toLowerCase()
+    const u=_tp.uso[k]=_tp.uso[k]||{tid:p.transportista_id,destino:dest,n:0,euro:0,amer:0,ultimo:''}
+    const pt=paletsPorTipo(porPed[p.id],p.palets)
+    u.n++;u.euro+=pt.euro;u.amer+=pt.amer;if(p.fecha_recogida>u.ultimo)u.ultimo=p.fecha_recogida
+  })
+}
+// ¿Qué le falta a un transportista en un destino que ha usado?
+function tpFaltaPrecio(tid,destino){
+  const u=(_tp.uso||{})[tid+'|'+destino.toLowerCase()];if(!u)return null
+  const t=(transportistas||[]).find(x=>x.id===tid)
+  const fila=_tp.tarifas.find(x=>(x.destino||'').toLowerCase()===destino.toLowerCase()&&(x.transportista_id===tid||(!x.transportista_id&&t&&x.transportista===t.nombre)))
+  const pe=tpPrecioEuro(fila),pa=tpPrecioAmer(fila),pc=tpPrecioCamion(fila)
+  const faltan=[]
+  if(!fila||(!pe&&!pa&&!pc))faltan.push('sin precio')
+  else{if(u.euro&&!pe)faltan.push('europalet');if(u.amer&&!pa)faltan.push('palet americano')}
+  return faltan.length?{...u,faltan}:null
+}
+function tpFaltaTxt(f){return f.faltan.includes('sin precio')?'Sin precio':'Falta precio '+f.faltan.join(' y ')}
+function tpAlertas(){return Object.values(_tp.uso||{}).map(u=>tpFaltaPrecio(u.tid,u.destino)).filter(Boolean)}
+function tpIrA(tid){_tp.abiertos.add(tid);tpRender();setTimeout(()=>document.getElementById('tp-tabla-'+tid)?.scrollIntoView({behavior:'smooth',block:'center'}),50)}
+
+function tpRender(){
+  const buscar=(document.getElementById('tp-buscar')?.value||'').toLowerCase()
+  const destinos=_destMerc
+  // ── Avisos de unificación ──
+  const nombresDest=new Set(destinos.map(d=>d.nombre.toLowerCase()))
+  const sueltos={}
+  _tp.clientes.forEach(c=>{const d=(c.destino_mercancia||'').trim();if(d&&!nombresDest.has(d.toLowerCase()))(sueltos[d]=sueltos[d]||[]).push(c.nombre)})
+  const sinDest=_tp.clientes.filter(c=>!(c.destino_mercancia||'').trim())
+  let avisos=''
+  if(!_destMerc._error&&Object.keys(sueltos).length){
+    const opts='<option value="">Unificar con…</option>'+destinos.map(d=>'<option value="'+tpEsc(d.nombre)+'">'+tpEsc(d.nombre)+'</option>').join('')
+    avisos+='<div class="card" style="background:var(--orange-bg);margin-bottom:14px"><div style="font-weight:600;font-size:13px;margin-bottom:6px"><i class="ti ti-arrows-join"></i> Destinos escritos en clientes que no están en la lista</div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Añádelos a la lista o unifícalos con uno existente (se actualizan todos sus clientes y precios).</div>'+
+      Object.entries(sueltos).map(([d,cl])=>'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">'+
+        '<strong>'+tpEsc(d)+'</strong><span style="font-size:11px;color:var(--text2)">'+cl.length+' cliente'+(cl.length>1?'s':'')+': '+tpEsc(cl.slice(0,4).join(', '))+(cl.length>4?'…':'')+'</span>'+
+        '<span style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-sm" data-d="'+tpEsc(d)+'" onclick="tpAnadirDestino(this.dataset.d)"><i class="ti ti-plus"></i>Añadir a la lista</button>'+
+        '<select data-d="'+tpEsc(d)+'" onchange="if(this.value)tpUnificar(this.dataset.d,this.value)" style="padding:4px 6px;font-size:12px">'+opts+'</select></span></div>').join('')+
+    '</div>'
+  }
+  if(!_destMerc._error&&sinDest.length&&destinos.length){
+    const opts='<option value="">Asignar destino…</option>'+destinos.map(d=>'<option value="'+tpEsc(d.nombre)+'">'+tpEsc(d.nombre)+'</option>').join('')
+    avisos+='<details class="card" style="margin-bottom:14px"><summary style="cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-map-pin-off"></i> '+sinDest.length+' cliente'+(sinDest.length>1?'s':'')+' sin destino de mercancía (su transporte no se puede calcular)</summary>'+
+      '<div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">'+sinDest.map(c=>'<div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="flex:1">'+tpEsc(c.nombre)+'</span><select data-id="'+c.id+'" onchange="if(this.value)tpAsignarDestino(this.dataset.id,this.value)" style="padding:3px 5px;font-size:12px;max-width:140px">'+opts+'</select></div>').join('')+'</div></details>'
+  }
+  const alertas=tpAlertas()
+  if(alertas.length){
+    const nomT=id=>(transportistas||[]).find(t=>t.id===id)?.nombre||'—'
+    avisos='<div class="card" style="background:var(--red-bg);border-color:#F7C1C1;margin-bottom:14px"><div style="font-weight:600;font-size:13px;color:var(--red-text);margin-bottom:4px"><i class="ti ti-alert-octagon"></i> '+alertas.length+' transporte'+(alertas.length>1?'s':'')+' usado'+(alertas.length>1?'s':'')+' sin valorar</div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">Pedidos de los últimos 6 meses con transportista y destino sin precio para ese tipo de palet: su coste de transporte no es exacto.</div>'+
+      alertas.sort((a,b)=>b.n-a.n).map(a=>'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid #F7C1C1;font-size:12.5px">'+
+        '<strong>'+tpEsc(nomT(a.tid))+'</strong> → <strong>'+tpEsc(a.destino)+'</strong>'+
+        '<span class="badge b-low">'+tpFaltaTxt(a)+'</span>'+
+        '<span style="color:var(--text2)">'+a.n+' pedido'+(a.n>1?'s':'')+' · '+[a.euro?a.euro+' europalet':null,a.amer?a.amer+' americano':null].filter(Boolean).join(', ')+' · último '+fmt(a.ultimo)+'</span>'+
+        '<button class="btn btn-sm" style="margin-left:auto" onclick="tpIrA(\''+a.tid+'\')"><i class="ti ti-edit"></i>Valorar</button></div>').join('')+'</div>'+avisos
+  }
+  if(!_destMerc._error||alertas.length)document.getElementById('tp-avisos').innerHTML=avisos
+
+  // ── Transportistas ──
+  const lista=(transportistas||[]).filter(t=>!buscar||(t.nombre||'').toLowerCase().includes(buscar))
+  document.getElementById('tp-lista').innerHTML=lista.length?lista.map(t=>{
+    const precios=_tp.tarifas.filter(x=>x.transportista_id===t.id||(!x.transportista_id&&x.transportista===t.nombre))
+    const abierto=_tp.abiertos.has(t.id)
+    const pr=x=>{const e=tpPrecioEuro(x),a=tpPrecioAmer(x),c=tpPrecioCamion(x);return [e?'EUR '+e.toFixed(0):null,a?'AME '+a.toFixed(0):null,!e&&!a&&c?'camión '+c.toFixed(0):null].filter(Boolean).join(' / ')+' €'}
+    const resumen=precios.length?precios.slice(0,4).map(x=>tpEsc(x.destino)+' <strong>'+pr(x)+'</strong>').join(' · ')+(precios.length>4?' …':''):'<span style="color:var(--orange-text)">Sin precios</span>'
+    const sinValorar=tpAlertas().filter(a=>a.tid===t.id).length
+    let html='<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden">'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;flex-wrap:wrap;background:'+(abierto?'var(--bg3)':'var(--bg2)')+'" onclick="tpToggle(\''+t.id+'\')">'+
+        '<i class="ti ti-chevron-'+(abierto?'down':'right')+'" style="color:var(--text3)"></i>'+
+        '<div style="min-width:180px"><div style="font-weight:600">'+tpEsc(t.nombre)+'</div><div style="font-size:11px;color:var(--text2)">'+[t.contacto,t.telefono,t.email].filter(Boolean).map(tpEsc).join(' · ')+'</div></div>'+
+        '<div style="flex:1;font-size:12px;color:var(--text2);min-width:200px">'+precios.length+' destino'+(precios.length!==1?'s':'')+' con precio · '+resumen+'</div>'+
+        (sinValorar?'<span class="badge b-low"><i class="ti ti-alert-triangle"></i>'+sinValorar+' sin valorar</span>':'')+
+        '<button class="btn btn-sm" onclick="event.stopPropagation();tpAbrirTransportista(\''+t.id+'\')" title="Editar datos"><i class="ti ti-edit"></i></button>'+
+      '</div>'
+    if(abierto)html+=tpTablaPrecios(t,precios)
+    return html+'</div>'
+  }).join(''):'<div class="empty">No hay transportistas'+(buscar?' con ese nombre':'')+'</div>'
+
+  // ── Destinos ──
+  const cont=document.getElementById('tp-destinos')
+  if(_destMerc._error){cont.innerHTML='<div class="empty">Crea la tabla destinos para gestionar la lista</div>';return}
+  cont.innerHTML=destinos.length?'<table class="tabla-compacta"><thead><tr><th>Destino</th><th>Tipo</th><th>Dirección</th><th style="text-align:center">Clientes</th><th>Precios por transportista</th><th></th></tr></thead><tbody>'+
+    destOrdenados().map(d=>{
+      const nCli=_tp.clientes.filter(c=>(c.destino_mercancia||'').trim().toLowerCase()===d.nombre.toLowerCase()).length
+      const acciones='<td style="white-space:nowrap"><button class="btn btn-sm" data-id="'+d.id+'" onclick="tpAbrirDestino(this.dataset.id)" title="Editar"><i class="ti ti-edit"></i></button> <button class="btn btn-sm btn-danger" data-id="'+d.id+'" onclick="tpEliminarDestino(this.dataset.id)" title="Eliminar"><i class="ti ti-trash"></i></button></td>'
+      if(d.zona){
+        const zExiste=destZonas().some(z=>z.nombre.toLowerCase()===d.zona.toLowerCase())
+        return '<tr><td style="padding-left:26px"><i class="ti ti-corner-down-right" style="color:var(--text3)"></i> '+tpEsc(d.nombre)+'</td>'+
+          '<td><span class="badge b-prep" style="font-size:10px">Almacén</span></td><td style="font-size:12px;max-width:200px;white-space:normal">'+tpEsc(d.direccion||'—')+'</td><td style="text-align:center">'+nCli+'</td>'+
+          '<td style="font-size:12px;color:var(--text2)">'+(zExiste?'Precio de <strong>'+tpEsc(d.zona)+'</strong>':'<span style="color:var(--red-text)">La zona "'+tpEsc(d.zona)+'" no existe</span>')+'</td>'+acciones+'</tr>'
+      }
+      const nAlm=destAlmacenesDe(d.nombre).length
+      const pr=_tp.tarifas.filter(x=>(x.destino||'').trim().toLowerCase()===d.nombre.toLowerCase())
+      const nom=x=>x.transportista_id?((transportistas||[]).find(t=>t.id===x.transportista_id)?.nombre||x.transportista||'—'):(x.transportista||'General')
+      const f2=v=>Number(v).toLocaleString('es-ES',{minimumFractionDigits:2})
+      const txt=x=>{const e=tpPrecioEuro(x),a=tpPrecioAmer(x),c=tpPrecioCamion(x);return [e?'EUR '+f2(e):null,a?'AME '+f2(a):null,!e&&!a&&c?'camión '+f2(c):null].filter(Boolean).join(' / ')+' €'}
+      const precios=pr.length?pr.slice().sort((a,b)=>(tpPrecioEuro(a)||9e9)-(tpPrecioEuro(b)||9e9)).map((x,i)=>'<span style="'+(i===0?'color:var(--green-text);font-weight:600':'')+'">'+tpEsc(nom(x))+': '+txt(x)+'</span>').join(' · '):'<span style="color:var(--orange-text)">Sin precios</span>'
+      const alD=tpAlertas().filter(a=>a.destino.toLowerCase()===d.nombre.toLowerCase())
+      return '<tr style="background:var(--bg3)"><td style="font-weight:700">'+tpEsc(d.nombre)+(d.pais?'<div style="font-size:10.5px;font-weight:400;color:var(--text3)">'+tpEsc(d.pais)+'</div>':'')+'</td><td><span class="badge b-ok" style="font-size:10px">Zona de precio</span>'+(nAlm?'<div style="font-size:10.5px;color:var(--text3);margin-top:2px">'+nAlm+' '+(nAlm>1?'almacenes':'almacén')+'</div>':'')+'</td><td style="font-size:12px;max-width:200px;white-space:normal">'+tpEsc(d.direccion||'—')+'</td><td style="text-align:center">'+nCli+'</td><td style="white-space:normal;max-width:420px;font-size:12px">'+precios+(alD.length?'<div style="margin-top:3px"><span class="badge b-low" style="font-size:10px"><i class="ti ti-alert-triangle"></i>'+alD.length+' transportista'+(alD.length>1?'s':'')+' usado'+(alD.length>1?'s':'')+' sin valorar</span></div>':'')+'</td>'+acciones+'</tr>'
+    }).join('')+'</tbody></table>':'<div class="empty">Todavía no hay destinos. Pulsa <strong>Nuevo destino</strong> o añade los que ya usan tus clientes desde el aviso de arriba.</div>'
+}
+
+function tpToggle(id){_tp.abiertos.has(id)?_tp.abiertos.delete(id):_tp.abiertos.add(id);tpRender()}
+
+function tpTablaPrecios(t,precios){
+  const destinos=destZonas().map(d=>d.nombre)
+  const anadir=n=>{n=destZona(n);if(n&&!destinos.some(x=>x.toLowerCase()===n.toLowerCase()))destinos.push(n)}
+  precios.forEach(x=>anadir(x.destino))
+  Object.values(_tp.uso||{}).filter(u=>u.tid===t.id).forEach(u=>anadir(u.destino)) // destinos usados aunque no estén en la lista
+  if(!destinos.length)return '<div class="empty" style="padding:14px">Primero crea los destinos de mercancía (abajo).</div>'
+  const inp='padding:5px 7px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2)'
+  const rojo='border:2px solid var(--red);background:var(--red-bg)'
+  // Primero los que faltan por valorar, después los usados y luego el resto
+  const orden=destinos.map(dn=>({dn,falta:tpFaltaPrecio(t.id,dn),uso:(_tp.uso||{})[t.id+'|'+dn.toLowerCase()]}))
+    .sort((a,b)=>(b.falta?1:0)-(a.falta?1:0)||(b.uso?.n||0)-(a.uso?.n||0)||a.dn.localeCompare(b.dn,'es'))
+  return '<div style="padding:10px 12px;overflow-x:auto"><table class="tabla-compacta" id="tp-tabla-'+t.id+'"><thead><tr><th>Destino</th><th style="text-align:center">Clientes</th><th>Uso (6 meses)</th><th>€ / europalet<br><span style="font-weight:400;font-size:10px">80×120</span></th><th>€ / palet americano<br><span style="font-weight:400;font-size:10px">100×120</span></th><th>€ / camión completo</th><th>Observaciones</th></tr></thead><tbody>'+
+    orden.map(({dn,falta,uso})=>{
+      const x=precios.find(p=>(p.destino||'').toLowerCase()===dn.toLowerCase())||{}
+      const nCli=_tp.clientes.filter(c=>destZona(c.destino_mercancia).toLowerCase()===dn.toLowerCase()).length
+      const huerfano=!_destMerc.some(d=>d.nombre.toLowerCase()===dn.toLowerCase())
+      const alms=destAlmacenesDe(dn).map(a=>a.nombre)
+      const faltaE=falta&&(falta.faltan.includes('europalet')||falta.faltan.includes('sin precio')&&uso.euro)
+      const faltaA=falta&&(falta.faltan.includes('palet americano')||falta.faltan.includes('sin precio')&&uso.amer)
+      const usoTxt=uso?uso.n+' ped. · '+[uso.euro?uso.euro+' EUR':null,uso.amer?uso.amer+' AME':null].filter(Boolean).join(' + '):'<span style="color:var(--text3)">—</span>'
+      return '<tr data-destino="'+tpEsc(dn)+'"'+(falta?' style="background:var(--red-bg)"':'')+'><td style="font-weight:600;white-space:normal;max-width:220px">'+tpEsc(dn)+(huerfano?' <span class="badge b-warn" style="font-size:10px">no está en la lista</span>':'')+
+          (alms.length?'<div style="font-size:10.5px;font-weight:400;color:var(--text2)">Incluye '+alms.length+' '+(alms.length>1?'almacenes':'almacén')+': '+tpEsc(alms.join(', '))+'</div>':'')+
+          (falta?'<div><span class="badge b-low" style="font-size:10px"><i class="ti ti-alert-triangle"></i>'+tpFaltaTxt(falta)+'</span></div>':'')+'</td>'+
+        '<td style="text-align:center;color:var(--text2)">'+nCli+'</td><td style="font-size:11px;white-space:nowrap">'+usoTxt+'</td>'+
+        '<td><input type="number" step="0.01" min="0" class="tp-eur" value="'+(tpPrecioEuro(x)??'')+'" placeholder="—" style="width:85px;'+inp+(faltaE?';'+rojo:'')+'"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="tp-ame" value="'+(tpPrecioAmer(x)??'')+'" placeholder="—" style="width:85px;'+inp+(faltaA?';'+rojo:'')+'"></td>'+
+        '<td><input type="number" step="0.01" min="0" class="tp-cam" value="'+(tpPrecioCamion(x)??'')+'" placeholder="—" style="width:90px;'+inp+'"></td>'+
+        '<td><input type="text" class="tp-obs" value="'+tpEsc(x.observaciones||'')+'" placeholder="Frigo, plazo, mínimo..." style="width:190px;'+inp+'"></td></tr>'
+    }).join('')+'</tbody></table>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text3)">Coste de cada pedido = europalets × €/europalet + americanos × €/palet americano (o el camión completo si no hay precio por palet). Deja vacío un destino si este transportista no va allí.</span>'+
+    '<button class="btn btn-success btn-sm" onclick="tpGuardarPrecios(\''+t.id+'\')"><i class="ti ti-device-floppy"></i>Guardar precios de '+tpEsc(t.nombre)+'</button></div></div>'
+}
+
+async function tpGuardarPrecios(tid){
+  const t=(transportistas||[]).find(x=>x.id===tid);if(!t)return
+  const filas=[...document.querySelectorAll('#tp-tabla-'+tid+' tbody tr')].map(tr=>({
+    destino:tr.dataset.destino,transportista_id:tid,transportista:t.nombre,
+    precio_europalet:parseFloat(tr.querySelector('.tp-eur').value)||null,precio_americano:parseFloat(tr.querySelector('.tp-ame').value)||null,
+    precio_palet:parseFloat(tr.querySelector('.tp-eur').value)||null,precio_camion:parseFloat(tr.querySelector('.tp-cam').value)||null,
+    observaciones:tr.querySelector('.tp-obs').value.trim()||null,actualizado_en:new Date().toISOString(),actualizado_por:currentPerfil?.nombre||null
+  })).filter(f=>f.precio_europalet||f.precio_americano||f.precio_camion)
+  // Sustituir los precios de este transportista
+  const viejos=_tp.tarifas.filter(x=>x.transportista_id===tid||(!x.transportista_id&&x.transportista===t.nombre)).map(x=>x.id).filter(Boolean)
+  if(viejos.length){const {error}=await db.from('tarifas_transporte').delete().in('id',viejos);if(error){toast('Error: '+error.message,'err');return}}
+  if(filas.length){const {error}=await db.from('tarifas_transporte').insert(filas);if(error){toast('Error guardando: '+error.message,'err');return}}
+  toast('Precios de '+t.nombre+' guardados ✓ ('+filas.length+' destino'+(filas.length!==1?'s':'')+')')
+  loadTransportes()
+}
+
+// ── Alta / edición de transportistas ──
+function tpAbrirTransportista(id){
+  const t=id?(transportistas||[]).find(x=>x.id===id):null
+  document.getElementById('tr-id').value=t?.id||''
+  document.getElementById('tr-titulo').childNodes[0].textContent=t?'Editar transportista ':'Nuevo transportista '
+  document.getElementById('tr-nombre').value=t?.nombre||''
+  document.getElementById('tr-contacto').value=t?.contacto||''
+  document.getElementById('tr-telefono').value=t?.telefono||''
+  document.getElementById('tr-email').value=t?.email||''
+  document.getElementById('tr-notas').value=t?.notas||''
+  document.getElementById('tr-eliminar').style.display=t?'':'none'
+  document.getElementById('trans-err').style.display='none'
+  openModal('modal-transportista')
+}
+async function eliminarTransportista(){
+  const id=document.getElementById('tr-id').value;if(!id)return
+  const t=transportistas.find(x=>x.id===id)
+  if(!confirm('¿Eliminar el transportista "'+(t?.nombre||'')+'" y sus precios?'))return
+  const {error}=await db.from('transportistas').delete().eq('id',id)
+  if(error){const e=document.getElementById('trans-err');e.textContent=/foreign key|violates/i.test(error.message)?'No se puede eliminar: tiene pedidos asignados.':'Error: '+error.message;e.style.display='block';return}
+  await db.from('tarifas_transporte').delete().eq('transportista_id',id)
+  toast('Transportista eliminado');closeModal('modal-transportista')
+  const {data}=await db.from('transportistas').select('*').order('nombre');transportistas=data||[];poblarSelects()
+  if(document.getElementById('tab-envios-transportes')?.style.display!=='none')loadTransportes()
+}
+
+// ── Gestión de destinos ──
+async function tpAnadirDestino(nombre,pais,zona){
+  nombre=(nombre||'').trim();if(!nombre)return null
+  if(_destMerc.some(d=>d.nombre.toLowerCase()===nombre.toLowerCase())){toast('Ese destino ya existe','err');return null}
+  const fila={nombre,pais:pais||null};if(zona)fila.zona=zona
+  const {data,error}=await db.from('destinos').insert(fila).select().single()
+  if(error){toast('Error: '+error.message,'err');return null}
+  toast('Destino "'+nombre+'" añadido ✓')
+  await cargarDestinosMercancia()
+  if(document.getElementById('tab-envios-transportes')?.style.display!=='none')loadTransportes()
+  return data
+}
+function tpNuevoDestino(){
+  const n=prompt('Nombre del nuevo destino (ej: Perpiñán, Hamburgo, Rungis…)');if(!n)return
+  const pais=prompt('País (opcional)')||''
+  tpAnadirDestino(n,pais.trim())
+}
+async function tpRenombrarDestino(id){
+  const d=_destMerc.find(x=>x.id===id);if(!d)return
+  const n=(prompt('Nuevo nombre para "'+d.nombre+'"',d.nombre)||'').trim()
+  if(!n||n===d.nombre)return
+  if(_destMerc.some(x=>x.id!==id&&x.nombre.toLowerCase()===n.toLowerCase())){toast('Ya existe un destino con ese nombre: usa "Unificar"','err');return}
+  const {error}=await db.from('destinos').update({nombre:n}).eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  await db.from('clientes').update({destino_mercancia:n}).eq('destino_mercancia',d.nombre)
+  await db.from('tarifas_transporte').update({destino:n}).eq('destino',d.nombre)
+  toast('Destino renombrado ✓ (clientes y precios actualizados)')
+  await recargarClientesGlobal();loadTransportes()
+}
+async function tpEliminarDestino(id){
+  const d=_destMerc.find(x=>x.id===id);if(!d)return
+  const nCli=_tp.clientes.filter(c=>(c.destino_mercancia||'').trim().toLowerCase()===d.nombre.toLowerCase()).length
+  if(nCli){toast('No se puede eliminar: '+nCli+' cliente'+(nCli>1?'s tienen':' tiene')+' este destino. Unifícalo con otro antes.','err');return}
+  const nAlm=!d.zona?destAlmacenesDe(d.nombre).length:0
+  if(nAlm){toast('No se puede eliminar: la zona tiene '+nAlm+' '+(nAlm>1?'almacenes':'almacén')+'. Muévelos a otra zona antes.','err');return}
+  if(!confirm('¿Eliminar el destino "'+d.nombre+'" y sus precios de transporte?'))return
+  await db.from('tarifas_transporte').delete().eq('destino',d.nombre)
+  const {error}=await db.from('destinos').delete().eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Destino eliminado');await cargarDestinosMercancia();loadTransportes()
+}
+// Unifica un destino escrito a mano con uno de la lista
+async function tpUnificar(origen,destino){
+  if(!confirm('Todos los clientes con destino "'+origen+'" pasarán a "'+destino+'". ¿Continuar?')){tpRender();return}
+  const {error}=await db.from('clientes').update({destino_mercancia:destino}).eq('destino_mercancia',origen)
+  if(error){toast('Error: '+error.message,'err');return}
+  // Precios del destino antiguo: se pasan al nuevo si ese transportista aún no tiene precio allí
+  const viejos=_tp.tarifas.filter(x=>x.destino===origen)
+  for(const v of viejos){
+    const ya=_tp.tarifas.some(x=>x.destino===destino&&((v.transportista_id&&x.transportista_id===v.transportista_id)||(!v.transportista_id&&x.transportista===v.transportista)))
+    if(ya)await db.from('tarifas_transporte').delete().eq('id',v.id)
+    else await db.from('tarifas_transporte').update({destino}).eq('id',v.id)
+  }
+  toast('Unificado: "'+origen+'" → "'+destino+'" ✓')
+  await recargarClientesGlobal();loadTransportes()
+}
+async function tpAsignarDestino(clienteId,destino){
+  const {error}=await db.from('clientes').update({destino_mercancia:destino}).eq('id',clienteId)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Destino asignado ✓');await recargarClientesGlobal();loadTransportes()
+}
+async function recargarClientesGlobal(){
+  const {data}=await db.from('clientes').select('*').order('nombre');clientes=data||[];poblarSelects()
+}
+
+// ── Formulario de cliente: destino desde la lista ──
+function clPoblarDestinos(valor){
+  const sel=document.getElementById('cl-destino-mercancia')
+  const v=(valor||'').trim()
+  const lista=destOrdenados().map(d=>d.nombre)
+  const fuera=v&&!lista.some(n=>n.toLowerCase()===v.toLowerCase())
+  sel.innerHTML='<option value="">— Sin destino —</option>'+
+    (fuera?'<option value="'+tpEsc(v)+'">'+tpEsc(v)+' (no está en la lista)</option>':'')+
+    lista.map(n=>'<option value="'+tpEsc(n)+'">'+tpEsc(destEtiqueta(n))+'</option>').join('')+
+    '<option value="__nuevo">+ Nuevo destino…</option>'
+  sel.value=fuera?v:(lista.find(n=>n.toLowerCase()===v.toLowerCase())||'')
+  sel.dataset.prev=sel.value
+}
+async function clDestinoCambia(sel){
+  if(sel.value!=='__nuevo'){sel.dataset.prev=sel.value;return}
+  const n=prompt('Nombre del nuevo destino (almacén o zona)');
+  if(!n||!n.trim()){sel.value=sel.dataset.prev||'';return}
+  const zonas=destZonas().map(z=>z.nombre)
+  let zona=(prompt('¿Es un almacén dentro de una zona de precio? Escribe la zona ('+zonas.join(', ')+') o déjalo vacío si es una zona nueva.')||'').trim()
+  if(zona){const z=zonas.find(x=>x.toLowerCase()===zona.toLowerCase());if(!z){toast('La zona "'+zona+'" no existe: créala antes en Envíos → Transportes','err');sel.value=sel.dataset.prev||'';return}zona=z}
+  const d=await tpAnadirDestino(n.trim(),null,zona||null)
+  clPoblarDestinos(d?d.nombre:(sel.dataset.prev||''))
+}
+
+// ── Formulario de pedido: coste de transporte estimado ──
+async function npActualizarCosteTransporte(){
+  const box=document.getElementById('np-coste-transp');if(!box)return
+  const cid=document.getElementById('np-cliente').value,tid=document.getElementById('np-trans').value
+  const cli=(clientes||[]).find(c=>c.id===cid)
+  if(!cid){box.innerHTML='';return}
+  if(!_tp.cargadas){const {data}=await db.from('tarifas_transporte').select('*');_tp.tarifas=data||[];_tp.cargadas=true}
+  const lineasPal=[...document.querySelectorAll('#productos-container .producto-linea')].map(d=>{const id=d.id.replace('linea-','');return {num_palets:document.getElementById('lpa-'+id)?.value,tipo_palet:document.getElementById('ltp-'+id)?.value}})
+  const pal=paletsPorTipo(lineasPal,document.getElementById('np-palets').value)
+  const destPed=document.getElementById('np-destino')?.value||cli?.destino_mercancia
+  const r=transpCoste(destPed,tid,pal,_tp.tarifas)
+  const nomT=(transportistas||[]).find(t=>t.id===tid)?.nombre
+  if(r.motivo==='sin_destino')box.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-map-pin-off"></i> Sin destino de mercancía: no se puede calcular el transporte</span>'
+  else if(r.motivo==='sin_precio')box.innerHTML='<span style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> No hay precio de transporte a '+tpEsc(r.zona||destPed)+' (Envíos → Transportes)</span>'
+  else box.innerHTML='<i class="ti ti-truck"></i> Transporte a <strong>'+tpEsc(destPed)+'</strong>'+(r.zona&&r.zona.toLowerCase()!==String(destPed).toLowerCase()?' (precio de '+tpEsc(r.zona)+')':'')+': <strong>'+r.importe.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</strong> ('+r.detalle+')'+
+    (r.fuente!=='transportista'&&nomT?' <span style="color:var(--orange-text)">· '+tpEsc(nomT)+' no tiene precio a este destino; se usa '+(r.fuente==='general'?'el precio general':'el de '+tpEsc(r.transportista||'otro transportista'))+'</span>':'')+
+    (r.falta&&r.fuente==='transportista'?' <span style="color:var(--orange-text)">· falta el precio del '+(r.falta==='americano'?'palet americano':r.falta==='europalet'?'europalet':'tipo de palet')+' (se usa el otro)</span>':'')+
+    (!tid?' <span style="color:var(--text3)">· sin transportista elegido</span>':'')
+}
+
+function irATransportes(){
+  showPage('envios',document.querySelector('.nav-item[onclick*="showPage(\'envios\'"]'))
+  const tab=[...document.querySelectorAll('#page-envios .tabs .tab')].find(t=>t.textContent.trim()==='Transportes')
+  if(tab)switchTab(tab,'tab-envios-transportes')
 }
 
 // ── PRECIOS DE TRANSPORTE POR DESTINO ────────────────────────
