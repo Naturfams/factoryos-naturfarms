@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Naturfarms — Gestión</title>
+<!-- App instalable en el móvil -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2d7a3a">
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Naturfarms">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -216,7 +225,7 @@ tr:hover td{background:var(--bg)}
 .cl-tabla .cl-trunc a{color:inherit;text-decoration:none}
 .cl-tabla .cl-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px}
 .cl-tabla .cl-movil{display:none}
-@media(max-width:900px){.cl-tabla .cl-col-con{display:none}}
+@media(max-width:900px){.cl-tabla .cl-col-con{display:none}.dash-plan-grid{grid-template-columns:1fr!important}.dash-plan-grid>div:last-child{order:-1}}
 @media(max-width:640px){.cl-tabla{table-layout:auto}.cl-tabla col{width:auto!important}.cl-tabla .cl-col-env,.cl-tabla .cl-col-dir{display:none}.cl-tabla .cl-movil{display:block;margin-top:4px;font-size:12px}.cl-tabla .cl-movil a{color:var(--accent);text-decoration:none}.cl-tabla td:last-child{width:84px}}
 </style>
 </head>
@@ -275,6 +284,7 @@ tr:hover td{background:var(--bg)}
     <div class="nav-sec">Administración</div>
     <div class="nav-item" onclick="showPage('usuarios',this)" data-roles="admin"><i class="ti ti-shield-lock"></i>Usuarios</div>
     <div class="sidebar-footer">
+      <button class="btn btn-primary" id="btn-instalar" style="width:100%;justify-content:center;margin-bottom:8px;display:none" onclick="appInstalar()"><i class="ti ti-device-mobile-down"></i>Instalar app en el móvil</button>
       <button class="btn" style="width:100%;justify-content:center" onclick="doLogout()"><i class="ti ti-logout"></i>Cerrar sesión</button>
     </div>
   </aside>
@@ -321,24 +331,17 @@ tr:hover td{background:var(--bg)}
         </div>
       </div>
 
-      <!-- BLOQUE COMERCIAL: solo para comerciales -->
-      <div class="card" id="dash-comercial" style="margin-bottom:16px;display:none">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <div class="card-title" style="margin:0"><i class="ti ti-address-book"></i>Mis recordatorios comerciales</div>
-          <div id="dash-com-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-          <button class="btn btn-sm" style="margin-left:auto" onclick="showPage('mis-clientes',document.getElementById('nav-mis-clientes'))">Ver todo en Mis clientes<i class="ti ti-arrow-right"></i></button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px"><i class="ti ti-calendar-event"></i> Agenda: llamadas y correos</div>
-            <div id="dash-com-agenda"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
-          </div>
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px"><i class="ti ti-alert-triangle"></i> Clientes habituales que no están cargando</div>
-            <div id="dash-com-avisos"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
-          </div>
+      <div id="aviso-instalar" class="card" style="display:none;margin-bottom:14px;background:var(--green-bg);border-color:var(--accent)">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <i class="ti ti-device-mobile-down" style="font-size:24px;color:var(--accent)"></i>
+          <div style="flex:1;min-width:180px;font-size:13px"><strong>Instala Naturfarms en tu móvil</strong><br><span style="color:var(--text2)">Se abre como una app, a pantalla completa y desde su icono.</span></div>
+          <button class="btn btn-primary btn-sm" onclick="appInstalar()">Instalar</button>
+          <button class="btn btn-sm" onclick="appAvisoCerrar()" title="No volver a mostrar"><i class="ti ti-x"></i></button>
         </div>
       </div>
+
+      <!-- BLOQUE COMERCIAL: Mi plan de hoy (mismo recuadro que en Mis clientes) -->
+      <div class="card" id="dash-comercial" style="margin-bottom:16px;display:none"></div>
 
       <!-- BLOQUE 2: ESTADÍSTICA SEMANAL -->
       <div class="card" style="margin-bottom:16px">
@@ -836,30 +839,21 @@ tr:hover td{background:var(--bg)}
 
       <div class="metrics dash-metrics-grid" id="mc-kpis" style="grid-template-columns:repeat(5,1fr)"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
 
+      <!-- Mi plan de hoy + agenda (mismo recuadro que en el Resumen) -->
+      <div class="card" id="mc-plan-card" style="margin-bottom:14px"></div>
+
       <div class="card" id="mc-nuevos-card" style="margin-bottom:14px;display:none">
         <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><i class="ti ti-seeding"></i>Nuevos clientes en seguimiento
           <span style="font-size:12px;font-weight:400;color:var(--text2)">· seguimiento especial hasta su <span id="mc-umbral-hab">3</span>º pedido</span></div>
         <div id="mc-pipeline"></div>
       </div>
 
-      <div class="dash-two-col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="card">
-          <div class="card-title"><i class="ti ti-calendar-event"></i>Agenda · pendientes</div>
-          <div id="mc-agenda"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
-        </div>
-        <div class="card">
-          <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><i class="ti ti-alert-triangle"></i>Llevan tiempo sin pedir
-            <span style="margin-left:auto;font-size:12px;font-weight:400;color:var(--text2)">más de
-              <select id="mc-umbral" onchange="cambiarUmbralMisClientes()" style="padding:3px 6px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
-                <option value="15">15 días</option><option value="21">21 días</option><option value="30">30 días</option><option value="45">45 días</option><option value="60">60 días</option><option value="90">90 días</option>
-              </select></span>
-          </div>
-          <div id="mc-avisos"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div>
-        </div>
-      </div>
-
       <div class="filter-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
         <input type="text" id="mc-buscar" placeholder="Buscar cliente..." oninput="renderMisClientes()" style="min-width:200px">
+        <span style="font-size:12px;color:var(--text2)">"Sin pedir" = más de
+          <select id="mc-umbral" onchange="cambiarUmbralMisClientes()" style="padding:3px 6px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text)">
+            <option value="15">15 días</option><option value="21">21 días</option><option value="30">30 días</option><option value="45">45 días</option><option value="60">60 días</option><option value="90">90 días</option>
+          </select></span>
         <div style="display:flex;gap:6px;flex-wrap:wrap" id="mc-filtros">
           <button class="btn btn-sm btn-primary mc-filtro" data-f="todos" onclick="setFiltroMisClientes('todos')">Todos</button>
           <button class="btn btn-sm mc-filtro" data-f="posibles" onclick="setFiltroMisClientes('posibles')"><i class="ti ti-seeding"></i>Nuevos clientes</button>
@@ -1350,7 +1344,7 @@ tr:hover td{background:var(--bg)}
     </label>
     <div id="cl-prospecto-bloque" style="display:none">
       <div class="frow">
-        <div class="fg"><label>Fase</label><select id="cl-fase"><option value="nuevo">Nuevo contacto</option><option value="contactado">Contactado</option><option value="muestras">Muestras enviadas</option><option value="oferta">Oferta enviada</option></select></div>
+        <div class="fg"><label>Fase</label><select id="cl-fase"><option value="nuevo">Nuevo contacto</option><option value="contactado">Contactado</option><option value="oferta">Oferta enviada</option></select></div>
         <div class="fg"><label>Interesado en</label><input type="text" id="cl-intereses" placeholder="Productos, volumen, temporada..."></div>
       </div>
       <div class="frow" id="cl-primera-accion">
@@ -1847,6 +1841,59 @@ tr:hover td{background:var(--bg)}
 
 
 <!-- MODAL RECLAMACIÓN -->
+<div class="modal-bg" id="modal-instalar">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><div class="modal-title"><i class="ti ti-device-mobile-down"></i> Instalar la app</div><button class="modal-close" onclick="closeModal('modal-instalar')"><i class="ti ti-x"></i></button></div>
+    <div id="inst-ios" style="font-size:14px;line-height:1.7">
+      <div style="font-weight:700;margin-bottom:6px"><i class="ti ti-brand-apple"></i> iPhone / iPad (con Safari)</div>
+      <ol style="padding-left:20px;margin:0 0 14px">
+        <li>Abre esta página en <strong>Safari</strong>.</li>
+        <li>Pulsa el botón <strong>Compartir</strong> <i class="ti ti-share-2"></i> (el cuadrado con la flecha hacia arriba).</li>
+        <li>Baja y elige <strong>«Añadir a pantalla de inicio»</strong>.</li>
+        <li>Pulsa <strong>Añadir</strong>. Aparecerá el icono de Naturfarms.</li>
+      </ol>
+    </div>
+    <div id="inst-android" style="font-size:14px;line-height:1.7">
+      <div style="font-weight:700;margin-bottom:6px"><i class="ti ti-brand-android"></i> Android (con Chrome)</div>
+      <ol style="padding-left:20px;margin:0 0 10px">
+        <li>Abre esta página en <strong>Chrome</strong>.</li>
+        <li>Pulsa el menú <strong>⋮</strong> (arriba a la derecha).</li>
+        <li>Elige <strong>«Instalar aplicación»</strong> o <strong>«Añadir a pantalla de inicio»</strong>.</li>
+      </ol>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:8px">La primera vez que abras la app instalada tendrás que iniciar sesión. Las actualizaciones que se suban se ven solas al abrirla.</div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('modal-instalar')">Entendido</button></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-tarea">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><div class="modal-title" id="tt-titulo-modal">Nueva tarea</div><button class="modal-close" onclick="closeModal('modal-tarea')"><i class="ti ti-x"></i></button></div>
+    <input type="hidden" id="tt-id"><input type="hidden" id="tt-usuario">
+    <div class="fg"><label>¿Qué hay que hacer? *</label><input type="text" id="tt-titulo" placeholder="Ej: Mandar oferta de batata a Mercabarna"></div>
+    <div class="frow">
+      <div class="fg"><label>Tipo</label><select id="tt-tipo">
+        <option value="llamada">📞 Llamada</option><option value="email">✉️ Correo</option><option value="whatsapp">💬 WhatsApp</option><option value="visita">🤝 Visita</option><option value="oferta">💶 Oferta / precios</option><option value="tarea">📝 Otra tarea</option></select></div>
+      <div class="fg"><label>Cliente (opcional)</label><select id="tt-cliente"><option value="">— Sin cliente —</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Fecha *</label><input type="date" id="tt-fecha"></div>
+      <div class="fg"><label>Hora (opcional)</label><input type="time" id="tt-hora"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px">
+      <button type="button" class="btn btn-sm" onclick="document.getElementById('tt-fecha').value=mcSumarDias(0)">Hoy</button>
+      <button type="button" class="btn btn-sm" onclick="document.getElementById('tt-fecha').value=mcSumarDias(1)">Mañana</button>
+      <button type="button" class="btn btn-sm" onclick="document.getElementById('tt-fecha').value=mcSumarDias(7)">En una semana</button>
+    </div>
+    <div class="fg"><label>Notas</label><textarea id="tt-notas" rows="2" placeholder="Detalles, teléfono, lo que hay que preguntar..."></textarea></div>
+    <div class="err-msg" id="tt-err" style="display:none"></div>
+    <div class="modal-footer" style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
+      <button class="btn btn-danger btn-sm" id="tt-borrar" style="display:none" onclick="ttBorrar()"><i class="ti ti-trash"></i>Borrar</button>
+      <div style="display:flex;gap:8px;margin-left:auto"><button class="btn" onclick="closeModal('modal-tarea')">Cancelar</button><button class="btn btn-primary" onclick="ttGuardar()"><i class="ti ti-device-floppy"></i>Guardar tarea</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-reclamacion">
   <div class="modal" style="width:600px">
     <h3>Nueva reclamación <button class="close-btn" onclick="closeModal('modal-reclamacion')">×</button></h3>
@@ -2082,6 +2129,34 @@ tr:hover td{background:var(--bg)}
 <script>
 // ── CONFIG ────────────────────────────────────────────────────
 const LOGO_B64='/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAPoA+gDASIAAhEBAxEB/8QAHQABAAIBBQEAAAAAAAAAAAAAAAcIBgECAwUJBP/EAFsQAQABAwMBBAYCDAcJDgcBAQABAgMEBQYRBwgSITETIkFRYXE3gRQVMjNCUnJ1kbGz0SM0YnSCobIWGCQ2c5KTtMEXJzVERUZTVWOVosLD0jhDZYOFo/BU4f/EABsBAQEBAAMBAQAAAAAAAAAAAAABAgMEBQYH/8QAMhEBAQACAQMCAwYFBAMAAAAAAAECEQMEITESQQVRYRMiMnGB8AaRobHRFMHh8UJDgv/aAAwDAQACEQMRAD8AuWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADr9zZdzT9u6jn2a6KLmNi3L1NVcc0xNNMz4/DwEt1N12Ax/p3unB3ps/T9x4ETRay7XeqtzPM264mYqpn5TEwyATHKZ4zKeKADQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADp956xGh7dys+OJuxT3LMT7a58I/R5/Uxy8mPFhc8vE7plZJuuu03cdOfv/N0e3XMWMLG48PK5dmqO9/mx4fpZSrrt7VcnSNcs6rbma7lFc1XImfvkT91E/OJnxT/AKPqOLqun2s7DuRXauU8x74n2xPxh4/wb4jerxymf4pd/pfH8vDg6fm+0l35fWA9t2AAAAAABFnaf3Za210tzcOi7FOfrMThY9MT492qP4Wr5RRzHPvqpZ9uzcWj7W0O/rOuZtvEw7MeNVU+NU+ymmPOqqfZEKL9Xd+Z/UPeF3WcqiqxiWom1g43PPobXPt99U+cz7/DyiGM8tR5Pxbrcen4bhL96/vaS+x7vX7Wbnydn5t2qMbU49LiRM+rRfop9aP6VMfpoj3rZPNrT8zK07UMbUMG9VYysa7Tes3KfOmumeYn9MPQrYe4MfdWztL3BjR3aM3HpuVUc89yvyqp+qqJj6meK9tOt8B6r7TjvDfOPj8ndgOV74AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAinrdqM3NQwtKoqnuWrc3q458JqqniP0RE/pSsgnqfdqu741DmfCiaKY+UUUvE/iDluHSanvZP9/wDZ1ury1x6+bG4d1tbcmo7dzPTYlffsVT/C49c+pX8fhPxdbp961avxGTb9Jj3I7t2mI9bu8+dPuqjziX067pN7S8miJqi9jXqfSY9+n7m7RPlPz98ex8ZxfacU+247rX9P+K86erH70TVtbdmk7gtRGNd9FlRHr49yeK4+X40fGPr4d+rNRVXbrpuW66qK6Z5pqpniYn4SkDZ3UfIxKqMPX+9kY/hTTlRHNdH5UfhR8fP5vqeg/iDHPWHUdr8/b9fl+/DvcXVS9s0sjjx79nJsUX7F2i7ariKqK6J5iqPfEuR9JLLNx3AHSb03ZoOztGr1bcGoW8THjwoifGu7V+LRT51T/wD0qzllMJ6srqO7Rj1W607U2NRdw7d6nVtap8Iwsevwon/tK/GKfl41fD2oE6qdf9zbpqu6ftz0ug6TMTTM0V/4Rej+VXH3MfCn65lDnHjzMzVPtmXFlyfJ871vx2Y7x4P5/wCGT9Rd97k37rH2w17Mmq3RM/Y+Lb9WzYifZTT/ALZ5mePGWMeHhTHt8I+LSZ5nj2syydDu7N25iaxq38Freq25q0zCqoiarOPPhVk3InymeZiiPPn1vZDitfO65OfK55Xfvaw3zha7sW7hrzdpatty9XNU6bk03rPPst3efCPlXTVP9JVGI4iPdCZux5qNWJ1ZrwpuTFGbp12iaefuqqZprj+qmprC6ydz4Ty3j6vH69v5rjgOw+6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEDdSqJo3xqMT7a6Zj66KU8oi606bVY1vH1Kmn+DyLXdqn+XT/AP8AOP0PC/iHjufS+qe1n+HV6ubw2wKPJlO0dSwsvFnbWuT/AIHeq5xr8+eNdn28+ymWK8nPsfHdPz5cOfqnee89rPlXQwzuNdluHR8zRNTuYWZRxNPjRXEercp9lUT7nWs/2zn4e7NKp21rdcU5tuJ+wMufuuePCmff8vbHxiJYdremZejandwM23NFy3Pn+DVHsqifbEubqumxwxnNxd8L/S/K/vuueEn3sfH77Mq6U7lu6dqlGj5VznCyquLfen71cny4+E+Xz4TGrLTXVbrproq7tVM96J90wsfo2XGfpGHmx4ens0XOPdzES+k/h3qss+PLhy/8fH5X2dzpM943G+zoup+9tK2DtO/ruqT35ifR42PTPFV+7MerRH6OZn2REyoxv3d2t743Fd1vXcmblyqeLVqnwt2KPZRRHsiP0z5z4s17Tu87u7OpWTg2L/f0vRaqsTHpj7mbkcelr+MzVHd591MIte7nlu6fL/F/iGXPyXjxv3Z/UaTPsjxkmU6dBek2JlYP932++5i7exaJv2bN/wAIyIp8fSV/9nHsj8L5eeJN9nndN02fUZ+jD/p83SbY+k7b2tX1S3/Zj7XWIirTMC5HrZlz8CZifZM+Ue3iZn1Y8Ys3puLUd27oztwarX3snLud7ux9zbpiOKaKfhEREQyrrj1JyeoW5Iqx6a8fQ8LmjT8eY49X/pKo/Gnj6o4j3zMfLdezm6rlwxn2PD+Ge/zvz/wSkzst8/7umhcfiZPP+guIzTF2QNMjN6u/ZtVuqYwMC9dirnwpqq4t/qrkx/FGfh+NvU4SfOLlAOy/QQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB0289Et69oV7CniLsevZqn8GuPL931u5GOTjx5cLhl4qWTKaqs+Vj3sTJu42Rbqt3bdc0V01ecTHm4009QtmUa7RObg921n0U8ePhF2I8on4/H/APohzOxMrAyqsXMx7li9RPFVFdPEvz34h8P5Oj5NZfh9r+/d5HNxXivfw46K67ddNduuqiumeaaoniYn2TCTcK7j9Qtt14eTNu1r2FRzRc449JHv+U+U+6eJ+CMI4l9ui6jk6RqljUcSqIvWauYifKqOOJifhMTMMdF1U4crjnN4ZdrP9/zhx5zG6vi+XzZWPexsi5jZFuq3dtVzRXTVHExMeEwmDRdZq0jo1d1ur1qsDTsi9ET7fRxXMR/VEOj6j6fja3oWNvDS6fCaIjJpiPHiPDmfjTPqz8OPc+HqLdnTuy7qFU97m5hUUeH/AGt+mn9VT3fg/TZdN12eG94+ncvzls05pLwTPL5S2Kb11V3Ltdy7VNVyue9XVPnMz5y2VS1mfBKHZ86XXt/7g+zNRtV0bewa4nKr8Y9PV5xapn9EzMeUfGYfQzvXxXBw58/JMMJ3rvOzr0dq3Xet7q3PZm3t6zV3rNmrwnNqpn2+63Ex4z7fL3uPtJdVY3TnTtPbl2KNu4NcRXVa8Iy7lPlMf9nT+DHlMxz7uMs7TnU+zpeJ/ub7Qrox6LVuLOo3bHhFqiI4jHp4+H3XHs9X3q1xHENXU7R6fWcuHS8f+l4f/q/P6fkeQNGXjE+S1/Yx2xd0/aepbnyKYidVvU2sf3+itd6Jn66pqj+irZsPbOfvHdmBt7To/hcm5xXXMcxatx93XPwiOfn5PQHbej4OgaDhaLptmLWJh2abVqmPdEec++Z85n3t8c3dvoPgPS3LkvNfE8fm7ABzvrQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB12uaHpetY/odSw7d+I+5qmOK6PlV5w7EYz48eTG45zcSyWaqKNwdLsqz3ruiZkZFPn6G/MU1/VVHhP18MD1LAzdNyZxtQxbuNej8Gunjn5T5THyWTfJq2mYOq4lWLqGNbyLVXsqjy+MT5xPxh4HV/w9w8nfhvpv85+/3p1OTo8b3x7Iw6OarbqycvbuXEXLGVRNdFFXjHPHrR9cf2XP2lMW3h9AtbxcaiKbVmnGpopiPKIyLbrdx7cyNl69haziV13dPoyKZiufurc8/cVfCY5jlm/WPTLut9Ldw6fjetduYNddEcc96afX4j4+r4OT4NeXDjz6fmmssP7Xxr6OPLHLLps+Ozvq/wBlH+nu1NQ3ru7B27p3NFeTVzdu93mLNuPGquflH6Z4j2rUdWNz6T0X6X4e29sU27WpXrc2cGjzqpj/AOZkVfHmefHzqn3RL4ezLtjB2R00yt763xj386xORduVx42cajmYp9/jx3vjzEexWrqXu3M3xvTO3DlzXTTer7uNaqnn0NmPuKP0eM/GZn2vXk9OP1eDjZ8O6WZf+zP+k/f77Meu3Lt69Xfv3Krl25VNVddU8zVVPjMzPtltlrLbMsPA8jn07Cy9Sz7GBgY13Kyr9cUWrNqnvVV1T5REMh2BsDdO+M+MbQdMuXLUTxcy7sTTYtflV8cc/COZ+C3nRzpDoPT7HjL5jUdbuU8Xc25Rx3Inzptx+DH9c/1LjjcnpdD8M5equ/GPz/w+bs+dLLXT7Q68vUIt3dfzqY+ya48Ys0+cWqZ90ecz7Z+EQlIHYk1NPtuHhw4MJhhO0AFcoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACL+r3WnQumuv4ej6ppGp5t3KxfsmmvGiju0096aeJ71UePNMglAV8jtV7Rn/m1rv1+i/wDc1/vqdoxHM7c136vRf+5NxNrBDEule/8AReom2vt1o8XbPo7s2cjGvcRcs1x7J4mY4mJiYmPf74llqqAAAhPevaN2ztXdup7bzNA1m/kade9DXctRb7lc8RPMc1RPt9wJsFfI7Ve0Z/5t67/+r/3E9qvZ/NMf3N6/MzMR4U2v/em4m1gxpRV3qKauOOY54aqoAAAAAAAAAAAD5tUwcbUtPv4OXbi5ZvUTTVEx/X82/Cs1WcKzYuTFU26IomffxHDmGfTPV6vc0r32xd1farbOm7K06um1VqE+myaaPDu2Lcx3aflVX/YlVfy8I+pJ3Vn7b9R+vOqYGiWa82/9kfYWNRH3NFu16s1TPsp70VVc/FYXpF0P25syzZ1DVLdrWddjiqci7RzasVe63TPlx+NPj7uPJw3eeXZ8hy9Ny/E+qyyx7Yztv27K4bA6M763h3L9nTftZgVcT9l58TbpmPfTTx3qvDymI4+KwOw+zrs3Qu5k65Xe3BmU8TxfjuWIn4W4nx/pTMfBM45JxyPa6b4P03B3s9V+v+HDg4mLg4lvEwsazjY9qnu27VmiKKKI90RHhEOYHI9WTQAAAAAAAA+LV9W0rR8b7J1bUsPT7HPHpMq/Tap5+dUxCD+0b10q2jlXNqbSqtXdcimPsrLqiKqMPnypiJ8KrnHjxPhHhzz5RUvWdT1TXNQr1HWtRys/LuTzVdv3Jrqn658vklqW6eglvqb06uXPR075253vjqNqP6+8yTTdR0/U8WMrTc7Fzceryu492m5RP10zMPM3u0zHHEPp0nUdS0bOpztH1HM07Kp+5vYt+q3VH10zCeo29MhBnZR6jb031hari7msWsqxpvo6KNTij0dd25VzM26qY9WZiIieY4845805tS7UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU/7cP0k6J4f8kR+2uLgKgduD6StF/NFP7a4l8JfCA4a+fg0hqyykDoH1Cu9O99Wc29Xcq0fNmnH1G1TPh3Jnwu8e2aJmZ+MTMe1ffHvWsjHt5GPdou2blMV0V0Vc01UzHMTE+2HmPMcwth2O+pE6jplewdYyecvBpm5plddXjcsR52/jNHnH8mfdSsrUqxYDSjz86/+PWrdk8f8fmP/DS9A3n51++mjdf5wq/s0pUvhg8NtXnR+VDc21edP5UMsvTqx94t/kx+pvbbP3mj8mG5tuAAAAAAANl+ubdmu5EczTTM/ogG8VBp7Vu8aqYn+5jQfH+Xd8v0t09qveEf819C/wA+7+9NxNreCCOz71t3B1H3nlaJqmi6bg2LODVkxcx665qmqK6aeOKp449ZO6qOLMv0Y2JeybtXdt2rdVdU+6IjmXK4NQxbebhXcS93vRXae5XETxzTPnH1x4CXwizs17Ep23tKNwajZq+3mtx9k5NVyPWt0VT3qbfw8J5n4z8IS00piIiIiOIhqkmppx8PFjw4TDHxABXKAAAAAAAAMS6wbuo2P071bcURTVkWbXo8Wiryqv1z3bcfGOZiZ+ESy1Wztz6vXRo22tAoq9W/kXsy5Hxt000U/tav0JRVvKyMjMy72ZmX67+TfuVXb12ueaq66p5qqmfbMzLY0hpXPgyw15+DdZt3cjIt42Naru37tUUW7dEczXVM8RTEe+ZW26C9DNoXun+na5uzSadU1LU7MZMU3rlXo7NqvxopppiYjmaZiZmfbPgzfS+hvTvSd4abuXSdIrwr+BVVXTj0Xqq7NdcxxTVVTXz40+ccTEcrpdO76N7MtbE6e6boEdyrKpo9Lm3aY++X6/GuefbEfcx8KYZiDTQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqB24PpJ0X80R+2uLfqgduD6SdF/NEftriVL4QHHk1aQ1ZZH2aFquoaFreFrWl5FWPm4V6m9ZuU+yafHiffE+Ux7YmYfGSD0T6Xby0/fmy8LcWn8UTep7mRY73M2L0fd0T8p8Y98TE+1k6jnZl6jzsXe1OBqN7u6Dq9VNrK73lZu+VF34R7KvhPPsheOJiYiYnmJajcHn71++mjdf5wq/s0vQJ5+9fvpp3X+cKv7NJUvhgzbV50flQ3NtX3VH5UMsvTuz95o/JhubbP3mj8mG5tuAAAAAADizP4pe/ydX6nK4sz+J3v8nV+oHmLZ+90fkw5G21H8HRx+JDdLDHunTsSfSnqP5muftrS46nHYkj/fT1L8zXP21pcdqNTwAKoAAAAAAAAAAAAqP247szvvQLP4NGmVVR/Su1R/5YW4VD7cH0h6J+aY/bVpfCVAENlyeI+pyOK/4W6p90Syy9KNkW6bOzNDs0xxTRp2PTEfCLdMO3dZtOONraTHuwrMf+CHZttgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACoHbg+knRPzRH7a4t+qB24PpJ0T80R+2uJfCXwgMnyI8ifKWWWbbp2FlaT002vvjG9Pew9Wpu2srmImMe9Tcrijy/Bqpp9vtp+MMK+K73Rvb2nbq7NGk7f1W338TOw7tFfHnRPpq5prj+VTPEx8YhTzfu2NS2bu7UNu6rTxfxLs001x9zdtz40XI+FVPE/Dy84NaWx0dUc0zHEeMLk9krqR/dPtf+5PVcjvaxo9qItVVz62RjRxFNXxmnwpn+jPjzKm7t9lbk1LZ+6sDcek18ZWFc70U1T6tyifCqifhVEzH1kuiV6RvP3r/9NO6/zhV/ZpXp2RuTTd3bVwNxaVXNWLm2oriJ+6oq8qqKvjTMTE/JRbtAfTRuv+f1f2aWqt8MGbavuqPyobm2vzpn3SyzHp1Y+80fkx+pg/VrqptjpxgRXqt6cnUb1E1Y2n2Zj0t32cz+JTz+FPx45nwbes3ULD6cbFnVLlNF/Ub8eg0/Gqn77dmPOf5NPnM/KPOYUM17VtT3BrWVrWs5lzMz8uua7125PjM+6I9lMeURHhENWtb1Enb37QvUTcd65Rp2dRt/Cq5imzhRHpOPZzdmO9z8ae78kfZO6N05V30uVubWr1z8avPu1T+manTwcxDLO2U6P1G3/o1+i9p28tbtzRPMUXMuu7b+uiuZpmPnCZ+mPafzrN61gdQMK3fs1TFM6lh2+7XR8a7UeFUfk8ce6Vb+Ya+EmzayfXTrhuzRN8xjbL3Dpl/RbuFZv2a7Nm1fjmrnvc1TE+Ph5MD/AL4nqr/11if932v3IoiOA2u0sf3xHVWfCNbxI/8Ax9r9zS72heqVy1Xbr1nD4qiY5jBtxMc/UimnzbeY54Npst092mKY48I4az5kNQd/sPeW4dj6vd1XbeXRjZV2z6C5VXZpuRNE1RVxxVE+2I/Qzie0T1W4/wCGsKP/AMfa/cieWnMBtK9rtD9V4oiKtdxap986fZ/9rdPaJ6qx/wAtYf8A3fa/cidpPPwN02tN2aerW+d79RLmj7j1HFyMKnT7l6KLeJRbnv01UxE8xHumfBZVTDsXePV298NJvf27a57UagjrtF7q1vZvS/L13b+Rbx8+3kWLdNdy1FyIpqriJ8J8PJIqH+2DP+8pmR783Gj/APZCqr5HaJ6rTPjrWHHy0+1+4ntE9VYjw1rD+vT7X7kT0lXkxtja0+ndWd83uzVrm97moYs63iavRjWbsYtHdi1NdmOO5xxM+vV4ow/vieq0/wDLWHHy0+1+53GjePYt3JP/ANftftsdB8cqtSxPaJ6rRHhrWHPz0+1+5YTs99RNT3B0v1Xde+dVw7dGFnXaKsn0dNmi3apt258ePDnmqfjPgpG7a9uDV7m1sfbMZldvSrORXlTj0TxTdu1cetX+NxEREe42Spu6rdpfWs/Lu6dsG3Gm4NFU0/bC9biq/e+NNNUTFFPziZ8vLyQvqG8N36jkTkZ+6dbv3Znmaqs+5/V63EfU6PmGsTCbTbMdv9U+o2gVROm7w1TuxHEW8i79kUcfk3O9Dr9+b13HvnUsbUdy5lvKycexFi3VRZpt+r3pq8Yjw55mWOzMNYnkNjbXTFdM0z5THi3tJBKmJ2geqOLjW8ezrGHFu1RFFETgWpmIiIiPZ8GTdMOufUvX+o+gaJqGq4dzDzc+1ZvUU4NumaqJn1oiYjmPDnxQJzD7tD1TUNE1axqul5NeLm481TZvUcd6iZpmnmOfbxMrtdro9Zeuu3dhXLmlYNuNZ12mOKsa3Xxbx/8AKV+Pj/Jjx9/HMSrLuzrf1M3Jdrm5uK9pmNVVzTj6d/g8U/DvU+vMfOqUdVc1VzXXVVVXVM1VVTPM1VT5zM+2Zn2hstdtO5Ny1XvTVbj1mbvPPf8As67z+nvO/wBv9WepOgXvS6fvDU7keEejzLv2Tb493duc8fVxLCuYg5hEWy6TdpbT9XybGkb5xcfScqv1adQs1T9jV1c/h0zzNv58zH5MMC3/ANeepGl721nTdM1zTasHHzbtvGqs4tq7RVZir1Jirjx9Xj6+UF+EkRx5LtdpY/viOqv/AF1if932f3Ms6Odbuou5Op+haFq2qYt7BzMmbd6inDt0TNPcqnwmI5jxiFe2fdnOOeuO1f51X+xuG6RK3X/rJv8A2j1U1TQdC1PGsYGPbsTaorxLdcx3rVFVXjMcz4zLA/74jqr/ANd4n/d9r9zi7V/0565+Rjf6vbRX4lLUz7d6/wDVPP3FpmDc1jBm3kZlmzXE4FuOYqrimY5iPDzWQ6zdWtv9NtPppyf8P1i/R3sbT7dfFVUeXfrnx7lHhPjPnx4RPjxRHTcu7gajjZ1ju+mxr1F+33o5jv0TFVPMfOIcuvatqWvazl6zrOZdzc/Lr7969cnxmfKI90UxHEREeEQbJdM23p1s6j7qyK/S69e0vEmrmnF06qbFNMe7vR69X1zLFMbdW68W96fG3Rrdm7P4dGfdif7TpuY97WZ8ETaSdK68dVdPxqMejdFd+3RHFP2Ri2btX11VU96frl9/98R1U/66xf8Au+z+5HORo2fjbcw9cyLFVvEz79yziV1f/M9Fx6SY+ETVEc+/l1ou6lj++I6qzPEa1h+U/wDELX7k+z1q07bHSHb2v7oyadQ3BqmDF63h48RRXeqn8KYiOLdPlzPHyiZ8FKuC5VNVffrqmqrjjmZ58Pd8l2SpL3x106jbpyK4t6xXouFNXNGNp1XouI+NyPXq/Tx8IYTRuPclF709O4tYpu889+nOuRPPz7zqeYaxKJtI20uuHUzbd2j0e4bmq41M81Y+px9kRV8O/Prx9VS0XRbrTt/qLROBXb+1Wu26e9XhXLnei7EedVqrw70e+OImPjHiovLn0vNzdL1PF1PTcmvFzMS7TesXaJ8aK6Z5if0+wlWV6M703Toez9Bva3uDOoxMS14RM+NVyr2UUU+dVU+6FTOpPaQ3hr2Vdxtq8bf03xpprpimvJuR75qmOKJ+FPjHvlH3VPqDr/UPcFOp61dot2bNHcxcOzMxasU+2YifOqZ86p8/CPKIhiUTC2lvydxk7o3Tl3/sjK3LrN69+PXn3Jq/T3nd7e6q9R9v3ouadu/VKojw9Fl3pybfH5NzmI+rhhsS1RFtujvaQwNezLGib1x8fSc+7MUWs61MxjXavKIqifG3M+/mY+SwceMcw8xKoiqJhczshb7ydzbJvbe1O7Vez9C7lum7VPM3Mern0fMz5zT3Zp+UUrK1Klrdm4tG2rod/WtezreFg2I9a5X4zMz5U0xHjVVPsiPFVvqF2oNwZ+RdxdlYFnSsSJ4oy8miLt+r492fUp+U975sS7T2+sreHUbL063fqjSNFvV4uNaifVquUzxcuz75mqJiJ/FiPfKK4jiC1LWT6v1E3/q92q7qO8tcuTVMzNFGZXbo8fdRRMUx9UOttbl3Lauekt7k1uiv8anPuxP9p1dui5duU2rNuu5cqnimiimaqqp90RHjLsMrb+4cWx6fJ0DV7Nrjma7mFcppiPnMIjJtC6udTNErirC3lqd2I8O5mVxk08fK5FXH1cJm6SdpDX9Y3Dp229xbcs52RnZNGPaytOmbc0d6YjvV26pmJ485mJjw58FYJrju/wD9ysl2LNizk6lmb91DHqi3ixViabNVPEVVzH8Lcj5R6kTH41Uewlqza1UANtAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACoHbg+knRPzRH7a4t+qB24PpJ0T80R+2uJUvhAceRV5SR5E+U/Jllfbs0/Qbtj+b1/ta2Mdq/pvG7Np/3S6XjzXrej25qmKI5qyMaOZqo+M0+NUf0o86mT9mj6Ddsfzev9rWkVrXZt5iUz7Gspd7UHTedk7znVtNsRRoWr11XLEUU8U2L3nXa+EfhU/CZiPuZRFHjHLLCbuyb1H/uW3TO1tVyIo0bWLseiquVerj5M+FMx7or8KZ+MUz4eLCev300brj/6hV/Zplg8xzx5++Pg+vWNSz9Y1XI1TU8mvJzMiqKrt2vjmuYpimJnj4RC7Xb5G2qPGn5txxz5okSr2pd03dy9UcjFt3u/gaPbpw8emJ9XvcRVcq+c1T3flRCKn0all3tQ1HIzr8xN3Iu1Xa5iOOaqp5n+uXzyDSqeIS10U6G671BxadZzcj7TaFMzFrIqt967k8TxPo6eY9XzjvT9UT4sC6e6BG6t+aJt2qqqm3n5luzdmnzi3zzcmPj3Yl6MYOLjYOFYwsOzRYx7Fum3at0RxTRTTHEREe6IWTayIXx+zH04t43o7t3XL9zj77VmxTP1RFMR/Ui3q/2ctR2zpt7XNo5mRrODYia7+Jepj7JtUREzNVM0xEXOPdERPzXAF01p5iUzzDWUl9pvauNtPq3n42BZos4Wfboz7FuiOKaIrmYrpiPZ69NcxHsiYj2I0ZYbrFHpcmza8eK7lNPh8Z4XUyezl0wjGuXaNO1GmqLczHGfc8J481LsH/hHE/y9H9p6X5f8Qvf5Kr9SxY8yLVXNFM++OW5stfcU/kw3yiVKHZo2ToG/N95ek7jx8m9i2tOrv0U2r02/Xi5bp5mY8fKqViv727pb4zGm6hzxxH+H3PD+tDPYj8eqWpfme5+2tLjrGo8w6fCZp93Pn82stPw5+v8AW1lGU2diz6Xb/wCab37S2ueph2LPpdv/AJpvftLa57U8NQQ/2wfoUzP57jftITAh7tgz/vKZce/Oxo//AGQtVSWCrykhpV5SwwnLQ/8A4KNyT/8AXrX7fGQcnLQ//gn3H+fbX+sY6Df3i1q+7bujaruPXcXQ9Ew68vUMuvuWbVPhz4czMz7IiImZn2RD4JniOVouw7tixGDrm779FFy/VejAxqp87dNNMV3OPypqo/zRI+javZW0mjCor3PuTOvZVURNdrT4pt26J48YiqqKpq+fEfJz7g7Km372NV9od0aph5ER4fZlFF+ifh6sUTHz5lYoa1G9Kx9JezVRRXqs9R7NN3uXKbeBTg5tUU10Rz3q54iJ8Z7vET7p5Rv2ndi7d2Bu/StN23j5FnHycCb92L1+bvNfpKo858Y8IXkVD7cX0haD+av/AFa0sSoAbbszFEzHPPHhw3Q2Xp4omfgjK5mi9n7pbc2zh6rm4WfT38G3fvVVZ9yKY9SKqqvCfD2qgardwb2q5l7TMavFwbl+urGs11zXVbtTPq0zVPjMxHHivR1FzqtO7OWoZNue7VVt+izE+6blum3/AOZQ7yWrRtrq4huSh2W9qY26+reJGfaov4OmWas+7arjmmuqmYptxMe31qqauP5KIy3pL2btT3DptnWd3517R8S9Hes4dmiPsiumfKqqauYo+XEz7+EoX+zH03rxpt27uu2bnHHpqc2Jq+fE0zT/AFJtGtN6Ub619Edc6d2p1bFyPtvoE1RTVlRR3buPMzxEXKY8OJ8I70eHPnxzCKYl6ZalhYmpafkafn49vJxMm1VavWrkc010VRxNMx7piXnNvvRKts711nb9VU1RgZt2xRVPnVRTV6lU/OnifrSxmx0zP+zh9Oe1f51X+xuMAZ/2cPp02r/Obn7G4hHa9q/6ctc/Jxv9XtorSp2r/py1z8nG/wBXtorWpfLSZ4Sb0W6M691I7+f9kU6VoluvuVZldvv1Xao86bdPMc8e2Z8I+PkjfDxr2bm4+Hjxzdv3abVEfyqp4j9b0i2joWBtnbOn6BptuLeLg2KbNEccTVxHjVPxmeZn4zJJtZEM2eyzsamx3but7iru8eNdN+1THPy9HLBN9dlvW8G3ORtDWrerUzVxONl0xZuUxPtiuJ7tXHyp+HK2oumlTu1pt3A2nsnYO3tNiqMfAt5dqmap5qr8LM1VT8ZmZmfmrtHktH26/wCJbTn+Xl/qsqtx5JWaVTxCdOzX0Wxt741e6N0emjRLd6beNjW6ponLqp+6mqY8YoifDw8ZmJ8Y48YKn3L/APZ5sW8bortW3ap7tM4MVzHxqqmqf65kkI+fJ6HdKcjD+xatmYNFPHEV26q6a4/pRVz/AFqx9ojpFc6c6hj6jpd+7lbfzrk0WqrvjXj3OOfR1THhMTETMT8J93M3hRd2qcW1k9DNeruUU1VWJx7tuZjnu1RftxzH1TMfWti6UWjyJaU/7SryZZZ50P6c5nUrds6dTerxNNxaPS5+VRHrW6Z8KaaefDvVTzxz5REz48cLcYHQzpXiYMYn9yGHkR3Yiq7frrruVTx5zVM+E/LhHnYZx7VO1NyZVNPF25n26Kp98U2+Y/tSsU1I1FV+0F0C03Q9Ayd1bHt3bOPh0TczdOqrquUxbjxquW5nmr1fOYmZ8OZjjjhW2PJ6a5mPay8S9i5FFNyzeoqt3KKo5iqmY4mJ+p5lV0+ju1W+ee7Mx+jwSxLBOXYryqrPVTMx4qnu5GlXImPZMxcoqif1/pQambscTx1ioj36ffj9SQiIdSqu3NQyLl/n01V2qbnPn3pmef63zpV7S/T/ADNm7+zNRs49X2l1a/XkYt2mPVorqnvV2p93EzPEe7j48RVExIiXeynuzae0t95uRumu1i1ZWLFnDzrtPNNirvetTM8er3omPW8Iju/FdfBy8TPxLeXg5NnKx7tPet3bNyK6K498THhMPMuY8HZ7d3FuDbmT9k6BrWoaZc55n7Gv1URX8KqYniqPhMSsqyr7b56Y7H3nZrjXNBxq8iqJiMuxT6K/TPv79PEzx7quY+Dudlbc03aO18HbmkU3IwsK3NFv0lXernmZqmap4jmZmZn61X+nHad3Bp961h74wber4kzEVZmLRFrIoj3zRHFFfyjuz8ZWj2puPRd1aLZ1nQNQs52Fej1blufKfbTVHnTVHtieJWaadqAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKgduD6SdF/NEftri36oHbg+krRfzPT+2uJUvhAcE/cz8iPIq8p+TLK+3Zo+g3bH83r/a1pFR12aPoN2x/N7n7WtIrbbHOpW0NN3zs7O25qUd2nIo5s3op5qsXY+4uU/GJ9ntjmPa899yaPqG3dfzdD1WxNnNwr02r1E++PbHviY4mJ9sTEvStXvtgdN51jRad9aRjRVn6bb7moU0U+tdxo8Yr8POaPH+jM+PqwzYlipTRpT8WqMhM8RyNKomqO7HnPgDfXTVRXVRVTNNVM8TExxMS2sz627fubZ6mavp1duqm3XcpyLEz+FRcpiqJj4czMfUwwGY9DNTsaN1i2vqGTVFFmnPptVVT5U+libfM+6I7/L0JeYddPMcfWtn0J7QmkZmlYu39+ZsYGpWKItWtRvT/A5UR4RNdX4FfHnNXhPnzHksqyrEjrMfcOgZGL9l4+t6Zdx+OfS0ZVFVHHv5ieEXdXOv209q6bexdu52Lr+uVxNNq3jXO/YszMfdXLlPhxH4tMzPsnjzaaQf2ydTs6h1hjGs1RV9rtOs413j2VzNV3j/ADblKGH0ajm5mpajk6jqGRXk5mVdqvX7tc+tXXVPMzP1uBhiuXA/4RxP8vR/ael2Z/EL3+Sq/U80cH/hDF/y9H63pjcp7+PVR+NRMf1LFjzGtfcUfkw3S1miq1XNqqOKqPVmPjAie6c+xH4dVNSif+prn7a0uOoH2f8AeuJsLqbh6xqVVdOm37VeJl1UUzVNFFcxMV8R4zEVU0zPHs5Wv3B136Y6Th03aNyWdQvXI/g7GHTVcrqn3TxHFP8ASmFnhqKI1RMXaon2TMf1juN56bXo+7dW0y5HE42bftR8Yi5Pdn9HEuolGUwdjvMoxetNixXPE5en5Fqj4zHdr/VRK7Tzb2XuHL2nu3S9y4NHfv6fkU3e5NXdi5R4xXRz7O9TNVP1vQLYO9Nvb40K1q+38+jIt1RHpbUzxdsVe2iunziY/RPnHMNYtRkSEu2hl04/SGzYmfWydVsW6Y+VNdf/AJU0ZeTjYmNcycrItY9i3TNVdy7XFNNMR5zMz4RCmHao6l4G+Ny4mkaFfi/o+k9+PTx9zkX6uIqqp99NMRxE+3mqY8OJKtQxBV5S1aVT4SywnHRuaexPuD+Vr9vj/T46D5WEu6bXp/Yamu5TMV5+oW8riY9lWZTFP/hpifrV7Va2V/cyuV2J/omzfzxe/Z2lNq/KVyOxN9Eub+eL37O0QidAGmhUPtxfSFoX5q/9WtbxUPtw/SFoX5q/9atL4S+EAR5OO/8Ae5+Tljycd77ifkyyvZ1ax68js151qiJmadHx7k/Kj0dU/wBVMqMT5vRbG0uzrfTSzo+R95ztHpx6590V2e7P63nlrOBlaVrGZpebam1k4l+uxeon8Guie7MfphauT5ZTZ2L9Ux8Hq1kYF+qKa9Q0y5bs8/hV0V0V8f5tNU/UhPh9Okajn6Nq2Jq+lZNeNnYd6m9Yu0edNVM8xz7Jj2TE+cIkemIh/pP182huzTbNnXc/E0DW6Y7t7Hybvcs1z+NbuVcRMT+LM96PHz85k7I3BoGNiTl5GuaZZx4jn0tzLopo49/Mzw227J549ZdVsa31X3NqeLXTXj3tRuRarpnmKqaOKIqj4T3efrT/ANfO0FpVrSMnbews2M3OyKZtZGp2vvWPRPhMW6vw65jyqjwjnmJmVU6Y4iIj2RwzalEgdnD6dNq/zm5+xuMA4Z/2cPpz2r/Obn7G4jMdr2r/AKctc/Jxv9XtoqlKvav+nLXPycb/AFe2iuVpfLtdlf456JPu1HH/AGlL0lebOzP8cdF/OGP+0pekxi1ABpVaO3X/ABDaf5eX+qyq3C0vbq/iG0/y8v8AVZVajyZrNaT5vQPoF9DO1fzdR/tefk+b0D6A/QztX830f7TFYzlG3ad+gzcn5Fj/AFi2klG3ac+gzcn5Fj/WLTSqGx7fm0q8pax7fmVeUsMLa9hv/EvcH5yp/ZwsMrz2HP8AE3cP5xp/ZwsM1PDUHmRl/wAcu/lT+t6bvMnL/jl38qf1lK4pTN2N/pio/N9//wAqGkzdjWOescfDTb8/10fvZiRcLcuhaRuTRsjR9cwbOdg5FPduWrkeHzifOJj2THjCq3VHs0a9pV65n7Hv/bnBmZq+w71dNGTaj3Uz4U3I/RPwlKXVHr9pOx+o+LtavSrmfjW6YnVMm3d4qxpqiJpimnj15imYmfGPOPbEpQ2hurb27tLp1LburY2o40+FU2qvWon3V0z40z8JiGu1Xy86NV07UtIzq8HVtPy8DKtzxVZybNVquPqq8Xy+cPSTdG2tB3Rp1Wn6/pOJqOPMTxTetxM0c+2mrzpn4xMSoZ1o2zpuz+pmsbe0jIrvYeLXR6P0lcVV0d+3TX3JmPd3uPkzZpLGHT7pSF0A6gZfT/fmNdryK/tLqF2mxqVnn1eJniLvHvo558POOY9qPW2vyEenkTExzHkOo2TcvXdm6JdyJmb1enY9Vznz7026ef63bttgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACoHbg+knRfzPT+2uLfqgdt6i9X1J0b0ePkXIjSKfWotTVT9+ueHMR5/vS+EvhAjSrylv9DkR4TjX/APRVfubarWTxP+C5Hl/0VX7mGYvr2afoN2x/N7n7WtIqOuzTFUdDtsRXRVRV9j1801RxMfwtfsSK5Gxtu27d21Xau0U1266ZpqpqjmKonziYbgFC+0J07r6e75uWMS3X9ps/vZGn1zzMU08+ta599Ezx+TNM+2Ucw9B+smxMPqDsjJ0S96O3mUfw2BkVR95vRE8T8piZpn4TPt4UC1PStU0vUcjT9Q07MxsnHuVW7lu5ZqiYmPq8Y+LFjNj5SPu6Y98tfR3/AGY9+f8A7VX7mnosma6IjFyJmaojj0VX7hFyO1L01vbu2jjbj0XGm7rOk2fXtUU815OPxzNMe2aqZ5qiPbzVHnMKbUzy9OLH3ij8mP1K9deez3b17Kydy7GpsYupXZm5k6dVMUWcirzmqifKiufbE+E/D22xqxU5pVTEvt17R9Y2/qNem65pmXp2XR52sm1NuZ+Mc+ce6Y8Hw975Iy2TZtzPjTT+hviKaY4iIiCqriPOP0pK6T9Ft3b+v2smce7pGiTV/CZ+Tbmma6f+ypnia/dz5R7/AGBraNomOfMlKHaR2hpOzd7YG3tt6Xk28PG0u137s0VV1Xrk1VzVXVX7avLnjiI8oiEYzZyI8Jxr/wDoqv3BrTfg/wDCGL/lqP1vTSn7iPk8zMK1k/Z+L/guRP8AD0R96q/G+T00jyhcWo8+OuG3Lm1eqeu6XVR3bVWXXkY/h4Tauz36OPlE935xLDIXe7SHSf8A3QtFtajpHo7W4MCmYsTVMU05Fvzm1VPs8fGJ9k8+/mKW65pOq6Dqd3TNZ0/JwMy1PFdnItzRV84584n2THmlSx8kw07tPPjHMRDSKoOefCJjn4THIjPOpmnZOfomg7/ppmuxrViLOZXT4xRmWY9HXE+7v00RXHzq9zBPNaXsvbRz9c6bbj2zvPb+VRt7Ov0XsKcm3NuquuaZiqu3z4xx3aJiqPajvqh2fN5bXzL2ToGNe3DpHM1UV49PeyaI91dqPGZ+NPPv4jyNLYh7iJa2qrlm9F6xduWblPlXbrmmqPrieS/Rdx79djJtXLN6ie7Xbu09yqmfdMT4xLb3hH0ZudqGdFMZuo5mVFPlF+/VXEfplwREQ073y/S0qriI5maY/pQDdMu02dt7Ud2bmwdvaTa9JlZlzuU+6in8KufhTHM/U7rYnTLe+9b1uNE0PI+xq/PMyqJs40R7+/Met8qeZXB6HdItH6a6fXf9JGoa5k0RTk5tVHHdp/6O3H4NPP1z7fZEJNrI6HtNaXiaJ2c7mjYNHcxcKrCsWaf5NFyiI/UpbC8Ha6iueh+pzRbruVRk408UUzM/fafcpDFnJimJnFyI+dqr9y0rbX5SuP2Jvomzfzxe/Z2lOa7WRx4Y2R/oqv3Lj9iqmujpXnUV2rluY1e793TNPP8AB2vGOUx8kTmA20Kh9uL6QtC/NX/q1reKiduGi9X1C0L0eNfuR9qvuqLc1R99r8OYS+EvhAEOO/8AcT8nN6LIjwnGyP8ARVfubLlnJmmY+xcj/RVfuYZelG0v8VdI/mNn+xCtXbD6aXrOfPULR7FVePeimjVbdEc+jqjwpvfKY4pn3TET7Z4srtL/ABV0jmJj/AbPhPn97pffk2LGVjXMbJs271i7RNFy3cpiqmumY4mJifCYmPY3Y28yaZarC9a+znqWnZV/W+n9mrNwK5mu5pfPN6x7Z9F+PT7qfuo+KvmVZycPJuYuZj3cbItVd25avUTRXTPummfGJZY0466YqjiY5bPQW+eZopn6m/vQR3q6ootxNVUzxFNPjVM+6IjzQPCPY1iU29HOz1r26L1nU93WsrRNF8Kos1R3MrIj3d2fvdPxnx90e2I86t6ZY07qhuPTtJ0i/h4OLn12ce1TZr7tNFHFMTE8eMTxzz7eVNaYqkDs4/TntX+c1/sbjAZtZEf8Xv8A+iq/cz/s4UXqeuO1qq8e/FMZNfMzbmIj+BuR7j3WOz7V304658sb/VrSK5Sp2q7d6vrpr0UWL1cRTjTzTbmY/i1r3It9FkeX2Nkf6Kr9xUvl2Wzf8cdF/OGP+0pekzzc2XbyI3jos1YuTNP2xx4nizV4R6Snn2PSNcWoANKrT26v4htT8vL/AFWVW48lpO3RTdrwtqU27V25/CZXPcomrjwte5V30ORT4TjZH+iq/czWa2S9AugP0M7V/N9H+15/+iyOf4rke2fvVX7noD0DiY6NbViqiuiftdb5prp4mJ8efAxWM4Rv2m/oN3H+RY/1i2khG3ad709DdxxRRXXV3LHhTHMz/D2/Y0qhsec/Mq8pb4s5NMczjZEfO1V+5pVayOPDGyP9FV+5isLZ9hz/ABM3D+cqf2cLDK9dh6munZu4IuWbtuftlTx36Jp5j0dPlz9awrU8NQeZWZ/HLv5U/remlX3M/J5mZdnJnKvVfYuTEd+fO1V7/kUycTPOiG8LWwtxajui5ZjIrsaZds2LPe4m5euVUdyJ/k+EzM+6GBzbyP8A/Nfn/wC1V+5m/RnYlO/903dvZd3UNNm5h3L1jKox+9RTdomOIriYjwmJq9sexlIw7UMvJ1LOyNQz71V/Lyrtd6/dq8666pmqqZ+uZb9J1HUtGzqc/SNRy9PyqPub2Neqt1x9dMwzDqB0k35squ7c1LRbuVgUeMZ2FTN6z3ffVMRzR/SiGBxXE+79IiSP93Pqx9ifYk7vvej7vd732LY9Jx+X3O9z8eeUe5N+/lZV3Kyr1y/fvVzcu3LlU1VV1TPM1TM+czPtcUVR8Cao486f86AazLutg7by94by0vbeFTM15uRTRcqj8C1Hjcr+qmJl9GyNh7u3rk0Wdu6Hl5VFU8VZNVE0Y9H5VyfVj5efuhcToJ0e0/pvgV5uXct5+4MmiKb+VEepap8/R2+Y57vPnM+M8R5eRJtZEpWbdFmzRZtUxTbopimmmPKIjwiG4G2gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AA4gAI8AAAAAAOI9xMRPnAAAA+PV9J0rWMb7F1bTcPULHn6PJsU3af0VRMMNzOjPS7Kuzdu7L0ymqf+ipqtx+imYhnwDE9C6a7B0O7Te0zaOkWL1M803Jxqa66Z98VVczDLAAAA4j3AAOu17QdE17HjH1vR8DUrVP3NGVj03Yp+Md6J4+p2ICPrvRXpbcuzdq2Zp0VT7KZrpj9EVcO+29sPZm37lN3Rtr6ThXqfubtvFp9JH9KY739bIxNBERHkAo63Wtv6DrdMU6zounajERxEZWLRd4/zoli2X0d6YZVc1XNlaTTM/wDR2pt/2ZhnYaEfW+inSy3V3qdmafM/yqq6o/rqd7o+wtk6PXTc0zaei4tynxpuUYVvvx/S45ZIJoIjjyAUJjnzOAA4IiI8gAAAOAAJiAAjwjgAB1Ov7a27uCiKNc0LTdTiI4j7KxqLk0/KZjmPqdsAj650U6WXLvpKtmadE+6ma6Y/RFXDIdt7I2hty5F3Q9taVgXYjiLtnGpi5x+Vx3v62QCaABQOIADiPcABxAAAAHEcgAcAAExyAAAHAABERHsADg4j3AAxrXdg7I1y5Vd1baejZd2vxqu14dHpJ/pRHP8AWyUBH1PRTpZFfejZmn8/lV8fo7ztdK6a9P8AS6orwdm6HbrjxiqcOiuqPrqiZZYJqDbboot0RRbopoopjiKaY4iIbgUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaVczTMR4TwDUQ10N0bq7p+8NZyd/Z9y7ply3PoKK8qi7FdzvxxVRFMz3Y7vPhPHnHgmVJdzbh4eW8uPquNn5gCuYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABsv3bdizXevXKbdu3TNVddU8RTEeczKuu/O0RnZOuVaB040arU73fminKqtVXKrkx5+jtU+Mx8Z/QyDth7lytG6e4ujYdybdes5M2btUT4+hojvVR9czTHymXednLYOn7R2JhZ1WPbr1bUrNORlX6qfWiKo71NuJ9kUxMRx7Z8XHlcrl6Y8vqOTm5+e9PxX0yTdvv+URLkdUOvu3qI1LXNu3asGPWrjI0uaLcU/GqjiafrTN0d6taH1Exa7NqidP1ezT3r2FcriqZj8air8Kn6omPbHlzIlVFNdM01UxVTMcTEx4SqR130SnpN1c0Pdu2uMXGzrk3YsUxxTRXExF2iI/Fqpqjw/lT8E+9h33uOLknP0OuT13PD3l8/nFsNTvzi6dk5NMRM2rNVcc+XhEyrXtXtJZ1vZ2tZ24cbDv6vRkUW9Kxce3XRF7vR4xVPjxFPHPPt54WJ1y7Td2rnX6J5pqwrlUT/QmVUOx5tDB3BvHP13UbVN63osUzZtVRE0zeuc92uff3Ypnj4zE+xc7dyRvr+TnnPx8fDdb3/wB/okToh1N6g7l33a0zdGm1WNPysW5csz9rq7MRVTxMTFU+cccx5+2Ep9T9+aJsDb86pq9yaq65mjGx6Pu71fuj3R759jK+I5548VTt/Y9/qp2oP7lcnIuRpOnVegmmieO7Rbpiq7x8aq+aefl7i+rHHXmnLly9HwTCZerPK6lv1/w57PWrrBu3Ju39n7ZmMSiqYimxg1ZEU/Cq5PhM/LhkmxOv2p4WtU6F1Q0WvRrtUT3cv7HuW+77u/bmJnifxqfCOY8OPGJ70fTcHSNNsadp2NaxsXHoii3bt0xTFMR8mM9Wdi6ZvvauRp2VZtU5tuia8LK7kd+xc48JifPifKYT05yblT/R9Xx4+vHlty+V8X6fRg/Qbqrrm/N5a7peoWcGnBw4quYtyxRMVVU+k4p5mZmJ9VM1+7asWK7965TbtW6ZqrrqniKYjxmZlVLsUxVTvbX6K/uqcOKZ+cVpH7X+5MnRum1rS8O5Nu5rGTGPcqifH0VMd6uPr9WPlMrMvu7qdJ1mWPQ3n5Luzf8Adi2+O0VqebrtWhdONEqz6+/NFGTXZqu13Zjzmi1T48fGf0Q6611j6zbWrozt47Nv39M5/hKq8CrH7sf5SmJin64Sj2cNhaftHYWFnVY9FWranZpyMq/VT60RVHeptxPsimJiOPfzKT79mzfs12b9qi7arpmmuiumJiqJ84mPazMc73tOPpeq5ZOXPlst9p4n6K8b77Q0RG1snZdeHetahcmM+xk25quWeKqY7nhMcT4z4+MT7Fio8vFSXr5snC2T1Zw8fSrfotN1C7Zy7FrjwtVTc4rpj4cxzHz4XZp+5j5NYZW27b+HcvNnycmPNe8sn7/NAGmddsnC6obi0ndVzTsPb+l05MUXLdqqb1VdFyIopjxnvTMc+HDHa+tHVzdd27n7L2jkUaXTM9ybeBVkd6I99flM/CPL4sHwtrWd69pXUNv5fe+xLmq5F3J7vhM27dVVUxHu5445+K6WnYOJp2BZwcHGtY2NYoii1at0xTTTTHlERDM9WW+7qdLj1XVzKXksxlveeb/whXoz1vzNwbkjZ+9NJ+1etzNVNq5Tbqt03KojnuVUVeNFXHjHsn4eHM5Ks9rrGsaL1P2fuHCt02su/XTVdqpjiaptXKJpmfjxPH1LS0+NMT8G8Le8r0Oh5OTefFyXdxvn6IZ6EdUtw743nr+jatj4FvH0+Kps1WLdVNc8XO7481TE+HyTJfu27Fmu9euU27dumaq66p4imI85mVXeyDPPU7d0/wAiv9qzztf7iydH6bWdLxLk27mr5UWLlUTxPoqYmquPrnux8plJlrHdcHS9Xlh0V5uS7s3/AH7Ma6hdo+7GrV6NsHSY1CuK+5GXdoqr9JP8i3T4zHumZ8fc6Knrb1h2/FvP3HtSa9PqmO9Vk6bcx4459lceET84lKPZq6fabtbY+FrN3Houaxqlim/ev1RzVRRVHept0+6IiY598/UlXLxsfLxrmNlWLV+xdpmi5buURVTXTPnExPhMMzHOzdrPH0vV82P2ufLcbfaeIw/pR1I0PqHpNeVp0V42XY4jKw7sx37Uz5Tz+FTPsmP6vJmqD9D6J6ltTq9Z3ZtPV8XG0b0nN3AuxX34t1RPftxMcxNMTxNPPl4e7mZwcmFtn3vLv9JnzXDXPNZT+V+oA07QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCe2ZoGVqOxdO1vGo79Ok5Uzfj3W7nFPe+qqKY+tmnQLemn7u6fad6G/R9sMKxRj5lnniqmqmOO9x7quOY9njx7JZ3qGHi6hg38HNsW8jGyLc27tq5HNNdMxxMTHu4Vo3X0J3rtTcVWu9LNUmqjvTVbsVZHosi1Ez9xFVXqV0flTHx583HlbjlvXZ5XPhy9P1F6jjx9Us1Z7/nFnlTO0xrFvqH1U0HZO3qoy68G9Niu5bnvR6a5NPf8vZRTTHM+z1vc+vL0ntO7lsTpWp3b2JiXPUuVzexbMTHt5m160x8I55Sd0M6Maf0+72q6hft6jrt2iaZvUxPo7FM+dNHPj4+2qfGfh485tufaTs4uXPm67XFjhccfe3t+kSLr1qLG0M+zT5W8C5TH1W5hAPYYp40zdVftnIx4/wDDX+9YfXbN3J0PPx7FMV3buNcoopmeOappmIjn5oe7KexN0bI07X7O5tPpw68rItVWYpv0XO9TTTVEz6szx5x5t38Udrm48r1fHlJ2kqbVT9VzqOmnawy9W1Oi5b0zULld2q7x4ejvx61fypr55+FMrYMA61dMtO6j6Fbs3LsYeqYneqw8qKeYjmPGiuPbRPh8Y849sSzl12Xr+nz5cJlx/ixu5/hnli9ayLNF6xcpuW66YqprpnmKonymJdJv/dOm7O2pna9ql6mi1j25mijniq7Xx6tFPxmVatK0LtF9P7f2n0OxeyMCmeLUWJtZNmOfxe/61EfDiHdaF0i6j9QNbx9V6taxet4WP61GJRep78z7opojuUR5c+1m8m5qRwXr+Xkx9GHFZl9fE/V1PYqrqub23BdrmJruYsVTMR76+Wd9svQ8nUNg4GsY9ua40vL717j2W64imZ/zop/SwzseW7drqTuq1Y+9WrNVFHyi7xCz2qYGJqmm5OnZ9ijIxcm3VavWq48K6ZjiYlccfu6cPQ8H2/w+8d99/wB2FdBt34G7enWm3rF+irMxLFGNmWufWouU0xHMx7quO9Hs8fhLPpmIjmZ4iFVdwdGOo+wtyV6300zrmXj8zNuLd6mi/RR+JXRXxTciPr590OSdK7SO97H2q1e9c03Tb1Xo8iu7FrH5pnzmYojvzHHsjwlmcl1qzu5OPrubjwnHycVuU+Xi/qxvtJ7rwd0dYMCxpt+nIxdKqtY3paJiaa7k3O9XxPtiJmI598SuTT9zHyVV3n2eta0m/tynaWN9tZtV9/U8q7kUW5qriuJiYpqmPViPZHK1VPhTET7l45e+2vhuHNjycuXNNW2fv9FWeiVFNXat3NVVHjRXnzT/AKWmP9q06BOlfTzd+idfdd3VqmmW7Gk5c5U2b0ZNuuau/ciafViZmPCPbCe2sPDl+GcefHxWZzV3VX+2zHO5dlR76rv9u2s9a+90/JBXah6f7r3pru1cjbmm0ZlnBrr+yapv0W+5FVdEx4VTHPhTPlynWiJi3Ee3gn4q102GWPPy2ztda/kq52P/AKSt2T76Kv2rMO2ZomRn7AwNYx7c1xpmXzd4/BouRxz/AJ0UR9bi7OPT3du0t6bh1LcGm0YmNmU1egqjIouTV/Cc+VMzx4e9OOqYGHqmnZGnahj28nEybc271quOaa6ZjiYlJN46dbpeky5OhvDnNW7/AL9mC9n7eGBuvpzpkWb9E52Bj0Y2XZ54qoqojiKuPdVERMezx49kpCqmKYmqqYiI85lV3dnRDfWy9wzr3S7UL1+1zM0Wqb8W8i1T+JPe4puU/Px+E+b5MzSO0pvPDq0nVvsjGwbk9y9N6qxjU1R7e96Piqqn4RExPuZnLZNWdzDrufhwnHycVuU+XeX9Uz4PWTaupdQrey9IozNRy7lc0fZNimmbETFM1VT3pnmYiInxiOEjov6H9ItP6eY1ebk3befreRT3buTFPq2qfD1LfMcxHPnPt8PklByYerX3vLvdJee8fq5/N9vl9ABp2gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABXDdvUDefTbrpXa3NqWXmbSza6rtij0dPdos1+Ed2eOZqtz5xzzMR8YWPYx1H2NoW/NCnStbs1epPfx8i1MRdsV8cd6mf8AZPhLOcuvuup1nDycmEvFlrKd58r9K7vRdV07WdMsalpeXay8S/RFdu7bq5iqGJdY+oWlbC2rkZd+/bualeomjCxYq9a5XMecx7KY85n6vOYQpd6AdSdvZtz+4/eePRjVz4VRkXsW5P5VNMTE/p+p220OzfmZWr29W6hbi+2dcVd6vGx666vS/Cu7XxPHviI+tx3PKzUnd0suq63kx+zx4tZfPfafV9PYx2rm4Gi6turOtVUU6pXTRi97zropmrvV/Kap4/orCuHBxcbBw7OHh2bdjHsURbtW6KeKaKYjiIiI8o4czkxx9M09DpennT8WPHPYAadgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//2Q=='
+// ── App instalable (PWA) ──
+let _instalarEvt=null
+function appStandalone(){return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}
+function appEsIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
+function appEsMovil(){return appEsIOS()||/android/i.test(navigator.userAgent)||window.matchMedia('(max-width:768px)').matches}
+function appInstalarUI(){
+  const puede=!appStandalone()&&(!!_instalarEvt||appEsMovil())
+  const b=document.getElementById('btn-instalar');if(b)b.style.display=puede?'':'none'
+  let cerrado=false;try{cerrado=localStorage.getItem('fos-aviso-instalar')==='no'}catch(e){}
+  const a=document.getElementById('aviso-instalar');if(a)a.style.display=puede&&appEsMovil()&&!cerrado?'':'none'
+}
+function appAvisoCerrar(){try{localStorage.setItem('fos-aviso-instalar','no')}catch(e){};appInstalarUI()}
+async function appInstalar(){
+  if(_instalarEvt){
+    _instalarEvt.prompt()
+    try{const r=await _instalarEvt.userChoice;if(r.outcome==='accepted')toast('Instalando la app…')}catch(e){}
+    _instalarEvt=null;appInstalarUI();return
+  }
+  const ios=appEsIOS()
+  document.getElementById('inst-ios').style.display=ios||!/android/i.test(navigator.userAgent)?'':'none'
+  document.getElementById('inst-android').style.display=!ios?'':'none'
+  openModal('modal-instalar')
+}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_instalarEvt=e;appInstalarUI()})
+window.addEventListener('appinstalled',()=>{_instalarEvt=null;appInstalarUI();toast('App instalada ✓')})
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW',e)))
+setTimeout(appInstalarUI,0)
+
 document.getElementById('login-logo').src='data:image/png;base64,'+LOGO_B64
 document.getElementById('sidebar-logo').src='data:image/png;base64,'+LOGO_B64
 
@@ -2589,54 +2664,210 @@ function cambiarFechaDash(delta){
 }
 function setFechaDash(val){dashFecha=val;loadDashboard()}
 
-// ── Recuadro comercial del Resumen: agenda de pendientes y habituales que no cargan ──
+// ── MI PLAN DE HOY (Resumen de cada comercial) ──
+// Lista única y ordenada de lo que hay que hacer hoy + objetivo diario de contactos.
+const MC_DIAS_SEGUIMIENTO=14   // contactar a cada cliente habitual al menos cada 14 días
+function mcObjetivo(){try{return parseInt(localStorage.getItem('fos-objetivo-'+currentPerfil?.id))||10}catch(e){return 10}}
+function mcCambiarObjetivo(){
+  const v=prompt('¿Cuántos contactos (llamadas, correos, visitas…) quieres hacer cada día?',mcObjetivo())
+  if(v===null)return;const n=parseInt(v);if(!(n>0)){toast('Pon un número mayor que 0','err');return}
+  try{localStorage.setItem('fos-objetivo-'+currentPerfil?.id,n)}catch(e){}
+  dashComercialRender()
+}
+function mcPlanDeHoy(filas){
+  const hoy=[]
+  filas.forEach(f=>{
+    if(f.estado==='descartado')return
+    const yaHoy=f.diasSinContacto===0
+    if(f.pend&&f.pend.dias>0){hoy.push({f,prio:1,cls:'b-low',tag:'Atrasado '+f.pend.dias+' d',motivo:(MC_TIPO_PENDIENTE[f.pend.tipo]||MC_TIPO_PENDIENTE.otro)[1]+(f.pend.nota?': '+f.pend.nota:''),tipo:f.pend.tipo});return}
+    if(f.pend&&f.pend.dias===0){hoy.push({f,prio:2,cls:'b-pending',tag:'Hoy',motivo:(MC_TIPO_PENDIENTE[f.pend.tipo]||MC_TIPO_PENDIENTE.otro)[1]+(f.pend.nota?': '+f.pend.nota:''),tipo:f.pend.tipo});return}
+    if(yaHoy)return
+    // Si se habló con él hace menos de 3 días, no se vuelve a proponer por "no carga" o "se retrasa"
+    const reciente=f.diasSinContacto!==null&&f.diasSinContacto<3
+    if(f.motivoAviso&&!reciente){hoy.push({f,prio:3,cls:'b-warn',tag:'No carga',motivo:f.diasSinPedir+' días sin cargar'+(f.intervalo?' (suele pedir cada '+f.intervalo+' d)':''),tipo:'llamada'});return}
+    if(f.retraso&&!reciente){hoy.push({f,prio:4,cls:'b-warn',tag:'Se retrasa',motivo:'Suele pedir cada '+f.intervalo+' d y lleva '+f.diasSinPedir+' d: buen momento para llamar',tipo:'llamada'});return}
+    if(!f.esProspecto&&!f.pend&&f.numPedidos&&(f.diasSinContacto===null||f.diasSinContacto>=MC_DIAS_SEGUIMIENTO)){
+      hoy.push({f,prio:5,cls:'b-ext',tag:'Seguimiento',motivo:f.diasSinContacto===null?'Nunca se ha registrado un contacto':f.diasSinContacto+' días sin hablar con él',tipo:'llamada'})}
+  })
+  return hoy.sort((a,b)=>a.prio-b.prio||(b.f.pend?.dias||0)-(a.f.pend?.dias||0)||(b.f.diasSinPedir||0)-(a.f.diasSinPedir||0)||(b.f.diasSinContacto??999)-(a.f.diasSinContacto??999))
+}
+// Estructura del recuadro (igual en el Resumen y en Mis clientes)
+function planEstructura(box,pre,enlaceMC){
+  box.innerHTML='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
+      '<div class="card-title" style="margin:0"><i class="ti ti-checklist"></i>Mi plan de hoy <span id="'+pre+'-quien" style="font-weight:400;color:var(--text2)"></span></div>'+
+      '<div id="'+pre+'-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>'+
+      '<div style="margin-left:auto;display:flex;gap:6px">'+
+        '<button class="btn btn-primary btn-sm" onclick="ttAbrir(null,\''+pre+'\')"><i class="ti ti-plus"></i>Nueva tarea</button>'+
+        (enlaceMC?'<button class="btn btn-sm" onclick="showPage(\'mis-clientes\',document.getElementById(\'nav-mis-clientes\'))">Mis clientes<i class="ti ti-arrow-right"></i></button>':'')+
+      '</div></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:18px" class="dash-plan-grid">'+
+      '<div><div id="'+pre+'-plan"><div class="loading"><i class="ti ti-loader ti-spin"></i></div></div></div>'+
+      '<div><div style="background:var(--bg3);border-radius:10px;padding:12px" id="'+pre+'-progreso"></div>'+
+        '<div id="'+pre+'-tareas-aviso"></div>'+
+        '<div id="'+pre+'-prox"></div>'+
+        '<div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5">Orden: atrasados → para hoy → no cargan → se retrasan → seguimiento (más de '+MC_DIAS_SEGUIMIENTO+' días sin hablar). Con <strong>Nueva tarea</strong> apuntas cualquier otra cosa: llamar a un proveedor, preparar una oferta, una visita…</div>'+
+      '</div></div>'
+}
+// Contexto de cada recuadro: para quién es y sus clientes (para el formulario de tareas)
+const _planCtx={}
+let _planTodo={}
+async function planCargarTareas(usuarioId){
+  if(!usuarioId)return {tareas:[],hechasHoy:[],ok:false}
+  const hoy=mcHoy(),hasta=mcSumarDias(7)
+  const [r1,r2]=await Promise.all([
+    db.from('tareas').select('*').eq('usuario_id',usuarioId).eq('hecha',false).lte('fecha',hasta).order('fecha').order('hora'),
+    db.from('tareas').select('*').eq('usuario_id',usuarioId).eq('hecha',true).gte('hecha_en',hoy+'T00:00:00')
+  ])
+  if(r1.error)return {tareas:[],hechasHoy:[],ok:false,error:r1.error}
+  return {tareas:r1.data||[],hechasHoy:(r2.data||[]).filter(t=>(t.hecha_en||'').slice(0,10)===hoy||new Date(t.hecha_en).toLocaleDateString('sv-SE')===hoy),ok:true}
+}
+const TT_TIPO={llamada:['ti-phone','Llamada'],email:['ti-mail','Correo'],whatsapp:['ti-brand-whatsapp','WhatsApp'],visita:['ti-map-pin','Visita'],oferta:['ti-file-dollar','Oferta'],tarea:['ti-checkbox','Tarea']}
+function planPintar(pre,ctx){
+  const {filas,seg,tareas,hechasHoy,usuario,tareasOk,tareasErr}=ctx
+  _planCtx[pre]={usuarioId:usuario?.id,clientes:filas.map(f=>f.c)}
+  const enc=v=>mcEsc(v)
+  const hoyStr=mcHoy()
+  document.getElementById(pre+'-quien').textContent=usuario&&usuario.id!==currentPerfil.id?'· '+usuario.nombre:''
+  // Progreso: contactos registrados hoy + tareas terminadas hoy
+  const hechosCli=new Set((seg||[]).filter(x=>x.fecha===hoyStr&&x.tipo!=='estado'&&(!x.creado_por||x.creado_por===usuario?.nombre)).map(x=>x.cliente_id))
+  const nHechos=hechosCli.size+(hechasHoy||[]).filter(t=>!t.cliente_id||!hechosCli.has(t.cliente_id)).length
+  const propio=usuario?.id===currentPerfil.id
+  const obj=mcObjetivo(),pct=Math.min(100,Math.round(nHechos/obj*100))
+  document.getElementById(pre+'-progreso').innerHTML=
+    '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:22px;font-weight:800;color:'+(nHechos>=obj?'var(--green-text)':'var(--text)')+'">'+nHechos+'</span><span style="font-size:13px;color:var(--text2)">de '+obj+' hechos hoy</span>'+
+    (propio?'<a href="#" onclick="event.preventDefault();mcCambiarObjetivo()" style="font-size:11px;color:var(--text3);margin-left:auto">cambiar objetivo</a>':'')+'</div>'+
+    '<div style="height:8px;background:var(--bg2);border-radius:99px;overflow:hidden;margin-top:6px"><div style="height:100%;width:'+pct+'%;background:'+(nHechos>=obj?'var(--green)':'var(--accent)')+';transition:width .4s"></div></div>'+
+    (nHechos>=obj?'<div style="font-size:12px;color:var(--green-text);margin-top:4px">¡Objetivo del día cumplido! 🎉</div>':'')
+  document.getElementById(pre+'-tareas-aviso').innerHTML=tareasOk?'':'<div style="font-size:11.5px;color:var(--orange-text);margin-top:8px"><i class="ti ti-alert-triangle"></i> Para apuntar tareas propias falta ejecutar en Supabase el SQL de la agenda de tareas.</div>'
+  // Lista del día: clientes + tareas propias
+  const plan=mcPlanDeHoy(filas).map(x=>({...x,clave:x.prio*10}))
+  const cliNom={};filas.forEach(f=>cliNom[f.c.id]=f.c)
+  ;(tareas||[]).filter(t=>t.fecha<=hoyStr).forEach(t=>{
+    const dias=mcDiasDesde(t.fecha)
+    plan.push({tarea:t,prio:dias>0?1:2,clave:(dias>0?1:2)*10+1,cls:dias>0?'b-low':'b-pending',tag:dias>0?'Atrasada '+dias+' d':(t.hora?t.hora.slice(0,5):'Hoy')})
+  })
+  plan.sort((a,b)=>a.clave-b.clave||((a.tarea?.hora||'99')<(b.tarea?.hora||'99')?-1:(a.tarea?.hora||'99')>(b.tarea?.hora||'99')?1:0))
+  const enlace=(c,t)=>{if(!c)return ''
+    if((t==='email'||t==='oferta')&&c.email)return '<a href="mailto:'+enc(c.email)+'" style="color:var(--accent)"><i class="ti ti-mail"></i> '+enc(c.email)+'</a>'
+    if(t==='whatsapp'&&c.telefono)return '<a href="https://wa.me/'+c.telefono.replace(/[^\d]/g,'')+'" target="_blank" style="color:var(--accent)"><i class="ti ti-brand-whatsapp"></i> '+enc(c.telefono)+'</a>'
+    if(c.telefono)return '<a href="tel:'+enc(c.telefono)+'" style="color:var(--accent)"><i class="ti ti-phone"></i> '+enc(c.telefono)+'</a>'
+    if(c.email)return '<a href="mailto:'+enc(c.email)+'" style="color:var(--accent)"><i class="ti ti-mail"></i> '+enc(c.email)+'</a>'
+    return '<span style="color:var(--orange-text)">sin teléfono ni email</span>'}
+  const num=i=>'<div style="width:22px;height:22px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">'+(i+1)+'</div>'
+  const filaPlan=(x,i)=>{
+    if(x.tarea){const t=x.tarea,c=t.cliente_id?cliNom[t.cliente_id]:null,[ico,txt]=TT_TIPO[t.tipo]||TT_TIPO.tarea
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+num(i)+
+        '<div style="flex:1;min-width:180px"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="badge '+x.cls+'" style="font-size:10px">'+x.tag+'</span><span class="badge b-ext" style="font-size:10px"><i class="ti '+ico+'"></i>'+txt+'</span><strong style="font-size:13px">'+enc(t.titulo)+'</strong></div>'+
+        (c||t.notas?'<div style="font-size:11.5px;color:var(--text2);margin-top:2px">'+(c?'<span style="cursor:pointer;font-weight:600" data-id="'+c.id+'" onclick="verFichaCliente(this.dataset.id)">'+enc(c.nombre)+'</span> · '+enlace(c,t.tipo):'')+(t.notas?(c?'<br>':'')+enc(t.notas):'')+'</div>':'')+'</div>'+
+        '<div style="display:flex;gap:4px"><button class="btn btn-sm btn-success" data-id="'+t.id+'" onclick="ttHecha(this.dataset.id)"><i class="ti ti-check"></i>Hecho</button>'+
+        '<button class="btn btn-sm" data-id="'+t.id+'" data-pre="'+pre+'" onclick="ttAbrir(this.dataset.id,this.dataset.pre)" title="Cambiar o pasar a otro día"><i class="ti ti-edit"></i></button></div></div>'}
+    const f=x.f
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+num(i)+
+      '<div style="flex:1;min-width:180px">'+
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="badge '+x.cls+'" style="font-size:10px">'+x.tag+'</span><strong style="font-size:13px;cursor:pointer" data-id="'+f.c.id+'" onclick="verFichaCliente(this.dataset.id)">'+enc(f.c.nombre)+'</strong>'+(f.esProspecto?'<span class="badge b-warn" style="font-size:9.5px">Nuevo</span>':'')+'</div>'+
+        '<div style="font-size:11.5px;color:var(--text2);margin-top:2px">'+enc(x.motivo)+'</div>'+
+        '<div style="font-size:11.5px;margin-top:2px">'+enlace(f.c,x.tipo)+(f.ultimoContacto?' <span style="color:var(--text3)">· último contacto '+fmt(f.ultimoContacto.fecha)+'</span>':'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:4px"><button class="btn btn-sm btn-success" data-id="'+f.c.id+'" onclick="abrirInteraccionMC(this.dataset.id)" title="Registrar lo hablado"><i class="ti ti-check"></i>Hecho</button>'+
+      '<button class="btn btn-sm" data-id="'+f.c.id+'" onclick="abrirPendienteMC(this.dataset.id)" title="Dejarlo para otro día"><i class="ti ti-calendar-time"></i></button></div></div>'}
+  const MAX=_planTodo[pre]?999:12
+  document.getElementById(pre+'-plan').innerHTML=plan.length?
+    plan.slice(0,MAX).map(filaPlan).join('')+(plan.length>MAX?'<div style="text-align:center;margin-top:8px"><button class="btn btn-sm" onclick="_planTodo[\''+pre+'\']=true;planRepintar(\''+pre+'\')">Ver las '+plan.length+' tareas</button></div>':''):
+    '<div class="empty" style="padding:16px">'+(nHechos?'Has terminado todo lo de hoy 👍':'No tienes nada urgente hoy. Buen momento para llamar a clientes nuevos o enviar la oferta semanal.')+'</div>'
+  // Próximos 7 días: pendientes de clientes + tareas
+  const prox=[...filas.filter(f=>f.pend&&f.pend.dias<0&&f.pend.dias>=-7).map(f=>({fecha:f.pend.fecha,html:mcBadgePendiente(f.pend,true)+' <span style="cursor:pointer" data-id="'+f.c.id+'" onclick="verFichaCliente(this.dataset.id)">'+enc(f.c.nombre)+'</span>'+(f.pend.nota?' <span style="color:var(--text3)">· '+enc(f.pend.nota)+'</span>':'')})),
+    ...(tareas||[]).filter(t=>t.fecha>hoyStr).map(t=>{const [ico]=TT_TIPO[t.tipo]||TT_TIPO.tarea;const c=t.cliente_id?cliNom[t.cliente_id]:null
+      return {fecha:t.fecha+(t.hora||''),html:'<span class="badge b-ext" style="font-size:10px"><i class="ti '+ico+'"></i>'+new Date(t.fecha+'T12:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric'})+(t.hora?' '+t.hora.slice(0,5):'')+'</span> <span style="cursor:pointer" data-id="'+t.id+'" data-pre="'+pre+'" onclick="ttAbrir(this.dataset.id,this.dataset.pre)">'+enc(t.titulo)+'</span>'+(c?' <span style="color:var(--text3)">· '+enc(c.nombre)+'</span>':'')}})]
+    .sort((a,b)=>a.fecha.localeCompare(b.fecha))
+  document.getElementById(pre+'-prox').innerHTML=prox.length?'<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 4px">Próximos 7 días</div>'+
+    prox.map(x=>'<div style="font-size:12px;padding:3px 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+x.html+'</div>').join(''):''
+  const n=p=>plan.filter(x=>x.prio===p).length
+  const chip=(v,txt,cls)=>v?'<span class="badge '+cls+'">'+v+' '+txt+'</span>':''
+  document.getElementById(pre+'-chips').innerHTML=chip(n(1),'atrasado'+(n(1)>1?'s':''),'b-low')+chip(n(2),'para hoy','b-pending')+chip(n(3)+n(4),'no cargan / se retrasan','b-warn')+chip(n(5),'seguimiento','b-ext')
+  _planCtx[pre].ultimo=ctx
+}
+function planRepintar(pre){const c=_planCtx[pre]?.ultimo;if(c)planPintar(pre,c)}
+
+// Resumen
 async function dashComercialRender(){
   const card=document.getElementById('dash-comercial');if(!card)return
   if(!currentPerfil||!mcEsComercial(currentPerfil)){card.style.display='none';return}
   card.style.display=''
+  if(!document.getElementById('dash-com-plan'))planEstructura(card,'dash-com',true)
   const {data:cli,error}=await db.from('clientes').select('*').eq('comercial_id',currentPerfil.id).order('nombre')
   const lista=(cli||[]).filter(c=>c.estado_comercial!=='descartado')
-  if(error||!lista.length){
-    document.getElementById('dash-com-chips').innerHTML=''
-    document.getElementById('dash-com-agenda').innerHTML='<div class="empty" style="padding:14px">'+(error?'No se pudo cargar':'Todavía no tienes clientes asignados')+'</div>'
-    document.getElementById('dash-com-avisos').innerHTML='';return
-  }
   const ids=lista.map(c=>c.id)
-  const [{data:ped},{data:seg}]=await Promise.all([
-    db.from('pedidos').select('id,cliente_id,fecha_recogida,palets,estado').in('cliente_id',ids),
-    db.from('clientes_seguimiento').select('*').in('cliente_id',ids).order('fecha',{ascending:false}).order('creado_en',{ascending:false})
+  const [{data:ped},{data:seg},tt]=await Promise.all([
+    ids.length?db.from('pedidos').select('id,cliente_id,fecha_recogida,palets,estado').in('cliente_id',ids):Promise.resolve({data:[]}),
+    ids.length?db.from('clientes_seguimiento').select('*').in('cliente_id',ids).order('fecha',{ascending:false}).order('creado_en',{ascending:false}):Promise.resolve({data:[]}),
+    planCargarTareas(currentPerfil.id)
   ])
+  if(error){document.getElementById('dash-com-plan').innerHTML='<div class="empty">No se pudo cargar: '+mcEsc(error.message)+'</div>';return}
   const filas=mcConstruirFilas(lista,(ped||[]).filter(p=>p.estado!=='Anulado'),seg||[])
+  await ncProgramarSemanales(filas)
   mcIndexar(filas) // para que funcionen los botones Hecho / Programar
-  const enc=v=>mcEsc(v)
-  // Agenda: atrasados, hoy y próximos 7 días
-  const pend=filas.filter(f=>f.pend).sort((a,b)=>a.pend.fecha.localeCompare(b.pend.fecha))
-  const urg=pend.filter(f=>f.pend.dias>=0),prox=pend.filter(f=>f.pend.dias<0&&f.pend.dias>=-7),masTarde=pend.length-urg.length-prox.length
-  const enlace=f=>{const c=f.c,t=f.pend.tipo
-    if((t==='llamada'||t==='whatsapp')&&c.telefono)return ' <a href="'+(t==='whatsapp'?'https://wa.me/'+c.telefono.replace(/[^\d]/g,''):'tel:'+enc(c.telefono))+'" style="color:var(--accent)" onclick="event.stopPropagation()">'+enc(c.telefono)+'</a>'
-    if((t==='email'||t==='oferta')&&c.email)return ' <a href="mailto:'+enc(c.email)+'" style="color:var(--accent)" onclick="event.stopPropagation()">'+enc(c.email)+'</a>'
-    return ''}
-  const filaAgenda=f=>'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+
-    '<div style="flex:1;min-width:160px"><div style="font-weight:600;font-size:13px;cursor:pointer" data-id="'+f.c.id+'" onclick="verFichaCliente(this.dataset.id)">'+enc(f.c.nombre)+'</div>'+
-    '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+mcBadgePendiente(f.pend)+enlace(f)+(f.pend.nota?'<div style="margin-top:2px">'+enc(f.pend.nota)+'</div>':'')+'</div></div>'+
-    '<button class="btn btn-sm btn-success" data-id="'+f.c.id+'" onclick="abrirInteraccionMC(this.dataset.id)" title="Registrar y marcar como hecho"><i class="ti ti-check"></i>Hecho</button></div>'
-  document.getElementById('dash-com-agenda').innerHTML=(urg.length||prox.length)?
-    urg.map(filaAgenda).join('')+(prox.length?'<div style="font-size:11px;color:var(--text3);margin:8px 0 0">Próximos 7 días</div>'+prox.map(filaAgenda).join(''):'')+
-    (masTarde?'<div style="font-size:11px;color:var(--text3);margin-top:6px">+'+masTarde+' más adelante</div>':''):
-    '<div class="empty" style="padding:14px">Nada pendiente esta semana 👍</div>'
-  // Habituales que no están cargando
-  const avisos=filas.filter(f=>f.motivoAviso).sort((a,b)=>b.diasSinPedir-a.diasSinPedir)
-  const MAX=8
-  document.getElementById('dash-com-avisos').innerHTML=avisos.length?
-    avisos.slice(0,MAX).map(f=>'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+
-      '<div style="flex:1;min-width:160px"><div style="font-weight:600;font-size:13px;cursor:pointer" data-id="'+f.c.id+'" onclick="verFichaCliente(this.dataset.id)">'+enc(f.c.nombre)+'</div>'+
-      '<div style="font-size:11px;color:var(--text2);margin-top:2px"><span style="color:var(--red-text);font-weight:600">'+f.diasSinPedir+' días sin cargar</span>'+(f.intervalo?' · suele pedir cada '+f.intervalo+' días':'')+' · último '+fmt(f.ultimoPedido)+
-      '<br>'+(f.ultimoContacto?'Último contacto: '+fmt(f.ultimoContacto.fecha):'Sin contactos registrados')+(f.c.telefono?' · <a href="tel:'+enc(f.c.telefono)+'" style="color:var(--accent)">'+enc(f.c.telefono)+'</a>':'')+'</div></div>'+
-      (f.pend?mcBadgePendiente(f.pend,true):'<button class="btn btn-sm" data-id="'+f.c.id+'" onclick="abrirPendienteMC(this.dataset.id,\'llamada\')" title="Programar una llamada"><i class="ti ti-bell-plus"></i>Programar</button>')+
-    '</div>').join('')+(avisos.length>MAX?'<div style="font-size:11px;color:var(--text3);margin-top:6px">+'+(avisos.length-MAX)+' más en Mis clientes</div>':''):
-    '<div class="empty" style="padding:14px">Todos tus clientes habituales están cargando con normalidad 👍</div>'
-  const chip=(n,txt,cls)=>n?'<span class="badge '+cls+'">'+n+' '+txt+'</span>':''
-  document.getElementById('dash-com-chips').innerHTML=chip(urg.filter(f=>f.pend.dias>0).length,'atrasado'+(urg.filter(f=>f.pend.dias>0).length>1?'s':''),'b-low')+chip(urg.filter(f=>f.pend.dias===0).length,'para hoy','b-pending')+chip(avisos.length,'sin cargar','b-warn')
+  planPintar('dash-com',{filas,seg:seg||[],tareas:tt.tareas,hechasHoy:tt.hechasHoy,usuario:currentPerfil,tareasOk:tt.ok})
+}
+// Mis clientes (cartera que se está viendo; el admin puede ver la de otro comercial)
+async function mcPlanRender(){
+  const card=document.getElementById('mc-plan-card');if(!card)return
+  if(_mc.comercialId==='sin'){card.style.display='none';return}
+  card.style.display=''
+  if(!document.getElementById('mc-plan'))planEstructura(card,'mc',false)
+  const usuario=_mc.comercialId===currentPerfil.id?currentPerfil:(_mc.comerciales||[]).find(p=>p.id===_mc.comercialId)||{id:_mc.comercialId,nombre:''}
+  const tt=await planCargarTareas(usuario.id)
+  planPintar('mc',{filas:_mc.filas,seg:_mc.seguimiento,tareas:tt.tareas,hechasHoy:tt.hechasHoy,usuario,tareasOk:tt.ok})
+}
+
+// ── Tareas propias de la agenda ──
+function ttAbrir(id,pre){
+  const ctx=_planCtx[pre]||_planCtx['mc']||_planCtx['dash-com']||{}
+  const t=id?(ctx.ultimo?.tareas||[]).find(x=>x.id===id):null
+  document.getElementById('tt-titulo-modal').textContent=t?'Editar tarea':'Nueva tarea'
+  document.getElementById('tt-id').value=t?.id||''
+  document.getElementById('tt-usuario').value=t?.usuario_id||ctx.usuarioId||currentPerfil.id
+  document.getElementById('tt-titulo').value=t?.titulo||''
+  document.getElementById('tt-tipo').value=t?.tipo||'llamada'
+  document.getElementById('tt-fecha').value=t?.fecha||mcHoy()
+  document.getElementById('tt-hora').value=t?.hora||''
+  document.getElementById('tt-notas').value=t?.notas||''
+  const sel=document.getElementById('tt-cliente')
+  sel.innerHTML='<option value="">— Sin cliente —</option>'+(ctx.clientes||[]).slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es')).map(c=>'<option value="'+c.id+'">'+mcEsc(c.nombre)+'</option>').join('')
+  sel.value=t?.cliente_id||''
+  document.getElementById('tt-borrar').style.display=t?'':'none'
+  document.getElementById('tt-err').style.display='none'
+  openModal('modal-tarea')
+  setTimeout(()=>document.getElementById('tt-titulo').focus(),50)
+}
+async function ttGuardar(){
+  const err=document.getElementById('tt-err');err.style.display='none'
+  const id=document.getElementById('tt-id').value
+  const datos={usuario_id:document.getElementById('tt-usuario').value,titulo:document.getElementById('tt-titulo').value.trim(),tipo:document.getElementById('tt-tipo').value,
+    fecha:document.getElementById('tt-fecha').value,hora:document.getElementById('tt-hora').value||null,notas:document.getElementById('tt-notas').value.trim()||null,
+    cliente_id:document.getElementById('tt-cliente').value||null}
+  if(!datos.titulo){err.textContent='Escribe qué hay que hacer';err.style.display='block';return}
+  if(!datos.fecha){err.textContent='Pon una fecha';err.style.display='block';return}
+  if(!id)datos.creado_por=currentPerfil?.nombre||null
+  const {error}=id?await db.from('tareas').update(datos).eq('id',id):await db.from('tareas').insert(datos)
+  if(error){err.innerHTML='No se ha podido guardar: '+mcEsc(error.message)+(/tareas/.test(error.message)?'<br>Falta ejecutar en Supabase el SQL de la agenda de tareas.':'');err.style.display='block';return}
+  toast(id?'Tarea actualizada ✓':'Tarea apuntada ✓')
+  closeModal('modal-tarea');mcRefrescar()
+}
+async function ttBorrar(){
+  const id=document.getElementById('tt-id').value;if(!id||!confirm('¿Borrar esta tarea?'))return
+  const {error}=await db.from('tareas').delete().eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  toast('Tarea borrada');closeModal('modal-tarea');mcRefrescar()
+}
+async function ttHecha(id){
+  const t=Object.values(_planCtx).flatMap(c=>c.ultimo?.tareas||[]).find(x=>x.id===id)
+  const {error}=await db.from('tareas').update({hecha:true,hecha_en:new Date().toISOString()}).eq('id',id)
+  if(error){toast('Error: '+error.message,'err');return}
+  // Si era un contacto con un cliente, queda también en su historial de seguimiento
+  if(t&&t.cliente_id&&['llamada','email','whatsapp','visita','oferta'].includes(t.tipo)){
+    await db.from('clientes_seguimiento').insert({cliente_id:t.cliente_id,fecha:mcHoy(),tipo:t.tipo==='oferta'?'email':t.tipo,observaciones:t.titulo+(t.notas?' — '+t.notas:''),creado_por:currentPerfil?.nombre||null})
+  }
+  toast('Hecho ✓');mcRefrescar()
 }
 async function loadDashboard(){
   dashComercialRender()
@@ -3933,7 +4164,7 @@ async function editarCliente(id){
   clPoblarDestinos(c.destino_mercancia);cargarDestinosMercancia().then(()=>clPoblarDestinos(c.destino_mercancia))
   document.getElementById('cl-origen').value=c.origen||''
   document.getElementById('cl-intereses').value=c.intereses||''
-  document.getElementById('cl-fase').value=c.fase_prospecto||'nuevo'
+  document.getElementById('cl-fase').value=c.fase_prospecto==='muestras'?'contactado':(c.fase_prospecto||'nuevo')
   document.getElementById('cl-prospecto').checked=c.estado_comercial==='prospecto'
   document.getElementById('cl-primera-accion').style.display='none'
   document.getElementById('cl-umbral-txt').textContent=NC_PEDIDOS_HABITUAL
@@ -4931,7 +5162,8 @@ async function asignarComercial(clienteId,comercialId){
 // hasta que hace NC_PEDIDOS_HABITUAL pedidos; entonces pasa solo a cliente habitual.
 const NC_PEDIDOS_HABITUAL=3
 const NC_DIAS_SIN_CONTACTO=7
-const NC_FASES=[['nuevo','Nuevo contacto','ti-user-plus'],['contactado','Contactado','ti-phone-check'],['muestras','Muestras enviadas','ti-package'],['oferta','Oferta enviada','ti-file-dollar'],['arranque','Primeros pedidos','ti-rocket']]
+const NC_NOTA_SEMANAL='Contacto semanal · todavía no ha hecho pedidos'
+const NC_FASES=[['nuevo','Nuevo contacto','ti-user-plus'],['contactado','Contactado','ti-phone-check'],['oferta','Oferta enviada','ti-file-dollar'],['arranque','Primeros pedidos','ti-rocket']]
 const NC_ORIGEN_FERIA='Fruit Attraction 2026'
 let _mcIdx={}
 let _nc={comerciales:[],filas:[],descartados:[]}
@@ -4962,7 +5194,9 @@ function mcConstruirFilas(clientes,pedidos,seguimiento){
     // Para posibles clientes solo cuentan los pedidos desde que entraron en seguimiento
     const desde=c.prospecto_desde||null
     const pedSeg=esProspecto?peds.filter(p=>!desde||p.fecha_recogida.slice(0,10)>=desde).length:peds.length
-    const etapa=esProspecto?((pedSeg||c.fase_prospecto==='arranque')?'arranque':(c.fase_prospecto||'nuevo')):null
+    // (la antigua fase "Muestras enviadas" ya no existe: cuenta como "Contactado")
+    const fase=c.fase_prospecto==='muestras'?'contactado':(c.fase_prospecto||'nuevo')
+    const etapa=esProspecto?((pedSeg||fase==='arranque')?'arranque':fase):null
     const diasAlta=mcDiasDesde(c.prospecto_desde||(c.creado_en||'').slice(0,10)||null)
     // Avisos de "sin pedir" solo para clientes en dinámica normal
     let motivoAviso=null
@@ -4970,6 +5204,8 @@ function mcConstruirFilas(clientes,pedidos,seguimiento){
       if(ultimoPedido&&diasSinPedir>umbral)motivoAviso='Más de '+umbral+' días sin pedir'
       else if(ultimoPedido&&intervalo&&diasSinPedir>Math.max(intervalo*2,14))motivoAviso='Suele pedir cada '+intervalo+' días'
     }
+    // Se retrasa: ya ha pasado su frecuencia habitual (+25 % y al menos 2 días) pero aún no es alarma
+    const retraso=!motivoAviso&&!esProspecto&&estado!=='descartado'&&ultimoPedido&&intervalo&&diasSinPedir>=Math.max(Math.ceil(intervalo*1.25),intervalo+2)?diasSinPedir-intervalo:0
     // Alertas de seguimiento especial
     const flags=[]
     if(esProspecto){
@@ -4979,7 +5215,7 @@ function mcConstruirFilas(clientes,pedidos,seguimiento){
       }else if(diasSinPedir>=21)flags.push({txt:'No repite pedido desde hace '+diasSinPedir+' d',cls:'b-low'})
       if(!pend)flags.push({txt:'Sin próxima acción',cls:'b-warn'})
     }
-    return {c,numPedidos:peds.length,pedSeg,palets:peds.reduce((s,p)=>s+(p.palets||0),0),ultimoPedido,diasSinPedir,intervalo,ultimoContacto,diasSinContacto,motivoAviso,pend,contactos,historial,estado,esProspecto,etapa,diasAlta,flags,urgente:flags.some(f=>f.cls==='b-low')}
+    return {c,numPedidos:peds.length,pedSeg,palets:peds.reduce((s,p)=>s+(p.palets||0),0),ultimoPedido,diasSinPedir,intervalo,ultimoContacto,diasSinContacto,motivoAviso,retraso,pend,contactos,historial,estado,esProspecto,etapa,diasAlta,flags,urgente:flags.some(f=>f.cls==='b-low')}
   })
 }
 
@@ -4991,6 +5227,25 @@ async function ncPromocionarAutomaticos(filas){
     if(!error){
       f.c.estado_comercial='activo';f.estado='activo';f.esProspecto=false;f.etapa=null;f.flags=[];f.urgente=false
       toast('🎉 '+f.c.nombre+' ya ha hecho '+f.pedSeg+' pedidos: pasa a cliente habitual')
+    }
+  }
+}
+
+// Posibles clientes sin pedidos: siempre tienen una tarea de contacto semanal en la agenda.
+// Si no tienen ninguna próxima acción, se crea sola 7 días después del último contacto (o hoy).
+// Cuando hacen su primer pedido, la tarea semanal automática se quita.
+async function ncProgramarSemanales(filas){
+  for(const f of filas){
+    if(!f.esProspecto)continue
+    if(!f.pedSeg&&!f.pend){
+      const base=f.ultimoContacto?.fecha
+      const fecha=base?(()=>{const d=new Date(base+'T12:00');d.setDate(d.getDate()+7);return d.toLocaleDateString('sv-SE')})():mcHoy()
+      const upd={pendiente_tipo:'llamada',pendiente_fecha:fecha,pendiente_nota:NC_NOTA_SEMANAL}
+      const {error}=await db.from('clientes').update(upd).eq('id',f.c.id)
+      if(!error){Object.assign(f.c,upd);f.pend={tipo:'llamada',fecha,nota:NC_NOTA_SEMANAL,dias:mcDiasDesde(fecha)};f.flags=f.flags.filter(x=>x.txt!=='Sin próxima acción')}
+    }else if(f.pedSeg&&f.pend&&f.pend.nota===NC_NOTA_SEMANAL){
+      const {error}=await db.from('clientes').update({pendiente_tipo:null,pendiente_fecha:null,pendiente_nota:null}).eq('id',f.c.id)
+      if(!error){f.c.pendiente_tipo=f.c.pendiente_fecha=f.c.pendiente_nota=null;f.pend=null}
     }
   }
 }
@@ -5103,6 +5358,7 @@ async function loadNuevosClientes(){
   }
   const filas=mcConstruirFilas(lista,ped.filter(p=>p.estado!=='Anulado'),seg)
   await ncPromocionarAutomaticos(filas)
+  await ncProgramarSemanales(filas)
   mcIndexar(filas)
   _nc.filas=filas.filter(f=>f.esProspecto)
   _nc.descartados=filas.filter(f=>f.estado==='descartado')
@@ -5126,7 +5382,7 @@ function renderNuevosClientes(){
   document.getElementById('nc-resumen').innerHTML='<div style="display:flex;gap:10px;flex-wrap:wrap">'+
     pill(filas.length,'En seguimiento','var(--text)')+
     pill(urg,'Necesitan atención',urg?'var(--red-text)':'var(--text)')+
-    pill(porEtapa('nuevo')+porEtapa('contactado')+porEtapa('muestras')+porEtapa('oferta'),'Aún sin pedir','var(--orange-text)')+
+    pill(porEtapa('nuevo')+porEtapa('contactado')+porEtapa('oferta'),'Aún sin pedir','var(--orange-text)')+
     pill(porEtapa('arranque'),'Con primeros pedidos','var(--green-text)')+
     (_nc.feriaTotal?pill(feria.filter(x=>x.numPedidos).length+' / '+_nc.feriaTotal,'Feria: ya han pedido','var(--accent)'):'')+
   '</div>'
@@ -5286,7 +5542,8 @@ async function loadMisClientes(){
     _mc.comercialId=currentPerfil.id
   }
 
-  ;['mc-kpis','mc-agenda','mc-avisos','mc-tabla'].forEach(id=>document.getElementById(id).innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>')
+  ;['mc-kpis','mc-tabla'].forEach(id=>document.getElementById(id).innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>')
+  document.getElementById('mc-plan-card').innerHTML='<div class="loading"><i class="ti ti-loader ti-spin"></i></div>'
 
   let q=db.from('clientes').select('*').order('nombre')
   q=_mc.comercialId==='sin'?q.is('comercial_id',null):q.eq('comercial_id',_mc.comercialId)
@@ -5298,8 +5555,7 @@ async function loadMisClientes(){
       'Todavía no tienes clientes asignados. El administrador los asigna desde <strong>Equipo comercial</strong>.':
       'Este comercial no tiene clientes asignados.'
     document.getElementById('mc-kpis').innerHTML=''
-    document.getElementById('mc-agenda').innerHTML='<div class="empty">Sin pendientes</div>'
-    document.getElementById('mc-avisos').innerHTML='<div class="empty">Sin avisos</div>'
+    document.getElementById('mc-plan-card').innerHTML=''
     document.getElementById('mc-tabla').innerHTML='<div class="empty" style="padding:40px">'+msg+'<br><br><button class="btn btn-primary btn-sm" onclick="abrirModalCliente(_mc.comercialId&&_mc.comercialId!==\'sin\'?_mc.comercialId:currentPerfil.id)"><i class="ti ti-user-plus"></i>Crear un cliente</button></div>'
     document.getElementById('mc-nuevos-card').style.display='none'
     actualizarBadgeMisClientes(0)
@@ -5314,6 +5570,7 @@ async function loadMisClientes(){
   _mc.seguimiento=seg||[]
   calcularFilasMisClientes()
   await ncPromocionarAutomaticos(_mc.filas)
+  await ncProgramarSemanales(_mc.filas)
   renderMisClientes()
 }
 
@@ -5365,27 +5622,8 @@ function renderMisClientes(){
   document.getElementById('mc-nuevos-card').style.display=posibles.length?'':'none'
   if(posibles.length)ncRenderTablero('mc-pipeline',posibles,false,{})
 
-  // Agenda: todos los pendientes ordenados por fecha
-  const agenda=filas.filter(f=>f.pend).sort((a,b)=>a.pend.fecha.localeCompare(b.pend.fecha))
-  document.getElementById('mc-agenda').innerHTML=agenda.length?
-    agenda.map(f=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+
-      '<div style="flex:1;min-width:150px"><div style="font-weight:600;font-size:13px">'+mcEsc(f.c.nombre)+'</div>'+
-      '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+mcBadgePendiente(f.pend)+(f.pend.nota?' <span style="margin-left:4px">'+mcEsc(f.pend.nota)+'</span>':'')+'</div></div>'+
-      '<button class="btn btn-sm btn-success" title="Registrar y marcar como hecho" onclick="abrirInteraccionMC(\''+f.c.id+'\')"><i class="ti ti-check"></i>Hecho</button>'+
-      '<button class="btn btn-sm" title="Cambiar pendiente" onclick="abrirPendienteMC(\''+f.c.id+'\')"><i class="ti ti-edit"></i>Cambiar</button>'+
-    '</div>').join(''):
-    '<div class="empty">No hay pendientes. Márcalos con el botón <i class="ti ti-bell-plus"></i> de cada cliente.</div>'
-
-  // Avisos: los que más tiempo llevan primero
-  const listaAvisos=avisos.slice().sort((a,b)=>b.diasSinPedir-a.diasSinPedir)
-  document.getElementById('mc-avisos').innerHTML=listaAvisos.length?
-    listaAvisos.map(f=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">'+
-      '<div style="flex:1;min-width:150px"><div style="font-weight:600;font-size:13px">'+mcEsc(f.c.nombre)+'</div>'+
-      '<div style="font-size:11px;color:var(--text2);margin-top:2px"><span style="color:var(--red-text);font-weight:600">'+f.diasSinPedir+' días</span> desde el último pedido ('+fmt(f.ultimoPedido)+') · '+mcEsc(f.motivoAviso)+
-      (f.ultimoContacto?'<br>Último contacto: '+fmt(f.ultimoContacto.fecha):'<br>Sin contactos registrados')+'</div></div>'+
-      (f.pend?mcBadgePendiente(f.pend,true):'<button class="btn btn-sm" title="Programar llamada" onclick="abrirPendienteMC(\''+f.c.id+'\',\'llamada\')"><i class="ti ti-bell-plus"></i>Programar</button>')+
-    '</div>').join(''):
-    '<div class="empty">Ningún cliente supera los '+umbral+' días sin pedir 👍</div>'
+  // Mi plan de hoy + agenda de tareas (mismo recuadro que en el Resumen)
+  mcPlanRender()
 
   // Tabla principal
   const buscar=(document.getElementById('mc-buscar').value||'').toLowerCase()
@@ -5415,6 +5653,7 @@ function renderMisClientes(){
     return '<tr'+(f.motivoAviso?' style="background:var(--red-bg)"':'')+'>'+
       '<td style="max-width:220px"><strong style="cursor:pointer;color:var(--accent)" onclick="verFichaCliente(\''+c.id+'\')">'+mcEsc(c.nombre)+'</strong>'+
         (f.esProspecto?' <span class="badge '+(f.etapa==='arranque'?'b-pass':'b-warn')+'" style="font-size:10px">'+(f.etapa==='arranque'?'Primeros pedidos':'Posible cliente')+'</span>':'')+
+        (f.retraso?' <span class="badge b-warn" style="font-size:10px" title="Ya ha pasado su frecuencia habitual de pedido">Se retrasa</span>':'')+
         '<div style="font-size:11px;color:var(--text3)">'+[[c.ciudad,c.pais].filter(Boolean).join(', '),c.destino_mercancia].filter(Boolean).map(mcEsc).join(' · ')+(datos?' '+datos:'')+'</div></td>'+
       '<td style="white-space:nowrap">'+ped+'</td>'+
       '<td style="text-align:center">'+f.numPedidos+'</td>'+
@@ -5471,11 +5710,12 @@ async function abrirInteraccionMC(clienteId){
     document.getElementById('mci-completar').checked=true
     document.getElementById('mci-pendiente-txt').textContent=(MC_TIPO_PENDIENTE[f.pend.tipo]||MC_TIPO_PENDIENTE.otro)[1]+' ('+fmt(f.pend.fecha)+')'+(f.pend.nota?' — '+f.pend.nota:'')
   }else wrap.style.display='none'
-  document.getElementById('mci-programar').checked=false
-  document.getElementById('mci-prox').style.display='none'
+  const semanal=f.esProspecto&&!f.pedSeg
+  document.getElementById('mci-programar').checked=semanal
+  document.getElementById('mci-prox').style.display=semanal?'block':'none'
   document.getElementById('mci-prox-tipo').value='llamada'
   document.getElementById('mci-prox-fecha').value=mcSumarDias(7)
-  document.getElementById('mci-prox-nota').value=''
+  document.getElementById('mci-prox-nota').value=semanal?NC_NOTA_SEMANAL:''
 
   const hist=f.historial||f.contactos||[]
   document.getElementById('mci-historial').innerHTML=hist.length?
@@ -5597,7 +5837,6 @@ async function quitarPendienteMC(){
 const FICHA_ESTADOS=[
   ['nuevo','Nuevo contacto','ti-user-plus','b-warn'],
   ['contactado','Contactado','ti-phone-check','b-warn'],
-  ['muestras','Muestras enviadas','ti-package','b-warn'],
   ['oferta','Oferta enviada','ti-file-dollar','b-warn'],
   ['arranque','Primeros pedidos','ti-rocket','b-pass'],
   ['activo','Cliente habitual','ti-circle-check','b-ok'],
