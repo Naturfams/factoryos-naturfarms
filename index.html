@@ -1252,9 +1252,10 @@ tr:hover td{background:var(--bg)}
       <div class="fg"><label>Idiomas etiqueta</label><input type="text" id="np-idiomas" readonly style="background:var(--bg)"></div>
     </div>
     <div class="frow">
-      <div class="fg"><label>Destinatario *</label><input type="text" id="np-dest" list="np-dest-list" autocomplete="off" oninput="this.dataset.auto='';this.style.background='';document.getElementById('np-dest-nota').innerHTML=''"><datalist id="np-dest-list"></datalist><div id="np-dest-nota" style="font-size:11px;margin-top:3px"></div></div>
-      <div class="fg"><label>Destino de la mercancía</label><select id="np-destino" onchange="npMarcarDestino();npActualizarCosteTransporte()"><option value="">— A la dirección del cliente —</option></select><div id="np-destino-nota" style="font-size:11px;margin-top:3px"></div>
-        <div id="np-almfinal-wrap" style="display:none;margin-top:8px"><label style="font-size:12px"><i class="ti ti-building-warehouse"></i> Almacén de descarga final</label><select id="np-almacen-final" onchange="npMarcarDestino();npActualizarCosteTransporte()"></select></div></div>
+      <div class="fg" style="flex:1 1 100%;grid-column:1/-1">
+        <div id="np-almfinal-wrap" style="display:none;margin-bottom:10px"><label style="font-size:12px"><i class="ti ti-building-warehouse"></i> Almacén de descarga final</label><select id="np-almacen-final" onchange="npAlmacenCambia()"></select></div>
+        <label>Destino de la mercancía</label><select id="np-destino" onchange="npMarcarDestino();npActualizarCosteTransporte()"><option value="">— A la dirección del cliente —</option></select><div id="np-destino-nota" style="font-size:11px;margin-top:3px"></div>
+</div>
     </div>
     <div class="frow">
       <div class="fg"><label>Transportista</label><select id="np-trans" onchange="npActualizarCosteTransporte()"><option value="">— Seleccionar —</option></select><div id="np-coste-transp" style="font-size:11.5px;margin-top:4px;color:var(--text2)"></div></div>
@@ -1322,7 +1323,7 @@ tr:hover td{background:var(--bg)}
     <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;background:var(--bg3);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px"><input type="checkbox" id="cl-recoge" onchange="clRecogeCambia()" style="margin-top:2px;width:auto;min-height:0">
       <span><strong>Recoge con transporte propio</strong><br><span style="font-size:12px;color:var(--text2)">El cliente viene a por la mercancía con su camión: no hay coste de transporte para nosotros.</span></span></label>
     <div id="cl-envio-wrap">
-    <div class="fg"><label>Destino mercancía (donde lo mandamos nosotros) <span style="font-weight:400;color:var(--text3)">· vacío = a la dirección del cliente</span></label><select id="cl-destino-mercancia" onchange="clDestinoCambia(this);clSegundoRuta()"><option value="">— A la dirección del cliente —</option></select></div>
+    <div class="fg"><label>Destino mercancía para su dirección (donde lo mandamos nosotros) <span style="font-weight:400;color:var(--text3)">· vacío = directo a su dirección</span></label><select id="cl-destino-mercancia" onchange="clDestinoCambia(this);clSegundoRuta()"><option value="">— A la dirección del cliente —</option></select></div>
     <div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px">
       <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="cl-segundo" onchange="document.getElementById('cl-segundo-wrap').style.display=this.checked?'block':'none';clSegundoRuta()" style="margin-top:2px;width:auto;min-height:0">
         <span><strong>Tiene un segundo transporte</strong> desde nuestro destino hasta el almacén del cliente</span></label>
@@ -2874,7 +2875,7 @@ function rentOrden(o){_rent.orden=_rent.orden===o?o+'_asc':o;rentRender()}
 function rentClave(p){
   const cli=(_cmc.cliTodos||{})[p.cliente_id]
   if(_rent.vista==='cliente')return {k:p.cliente_id||'__sin',nombre:cli?.nombre||'Sin cliente',sub:cli?.ciudad||''}
-  const env=envioInfo(p.destino_mercancia||cli?.destino_mercancia,cli)
+  const env=envioInfo(destinoDePedido(p,cli),cli,p.almacen_final_id)
   if(env.tipo==='recoge')return {k:'__recoge',nombre:'Recoge el cliente',sub:'transporte propio del cliente',especial:true}
   if(!env.zona||env.sinCiudad)return {k:'__sin',nombre:env.destino?env.destino+' (sin ciudad)':'Sin destino ni ciudad',sub:'',especial:true}
   return {k:cn(env.zona),nombre:env.zona,sub:env.tipo==='cliente'?'dir. cliente':env.destino}
@@ -2948,7 +2949,7 @@ function ttDatos(){
   const g={}
   peds.forEach(p=>{
     const cli=(_cmc.cliTodos||{})[p.cliente_id]
-    const env=envioInfo(p.destino_mercancia||cli?.destino_mercancia,cli,p.almacen_final_id)
+    const env=envioInfo(destinoDePedido(p,cli),cli,p.almacen_final_id)
     const grupo=(k,nombreTid)=>{const t=(transportistas||[]).find(x=>x.id===nombreTid);return g[k]=g[k]||{k,nombre:k==='__recoge'?'Recoge el cliente (sin coste)':k==='__sin'?'Sin transportista asignado':k==='__sin2'?'2º transporte sin transportista':(t?.nombre||'Transportista borrado'),especial:k.startsWith('__'),peds:[],euro:0,amer:0,importe:0,sinValorar:0,otro:0}}
     const pt=paletsPorTipo(_cmc.lineasPorPed[p.id],p.palets)
     const k=env.tipo==='recoge'?'__recoge':p.transportista_id||'__sin'
@@ -3180,7 +3181,7 @@ function cmcEconomia(p,cliente){
     if(pc&&k){coste+=pc*k;lineasCoste++}
   })
   // Transporte: €/palet del destino de mercancía del cliente (o €/camión si no hay precio por palet)
-  const destino=(p.destino_mercancia||cliente?.destino_mercancia||'').trim()
+  const destino=(destinoDePedido(p,cliente)||'').trim()
   const rT=transpCoste(destino,p.transportista_id,paletsPorTipo(lineas,p.palets),_cmc.transp,cliente,p.almacen_final_id)
   const r2=transpCoste2(destino,cliente,p.almacen_final_id,paletsPorTipo(lineas,p.palets),_cmc.transp)
   p._t2=r2;p._transp1=rT.importe
@@ -3621,7 +3622,7 @@ async function renderTablaPedidos(data){
       '<td>'+(p.proveedor?'<span class="badge b-ext" title="'+p.proveedor+'">'+p.proveedor.split(' ')[0]+'</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
       '<td style="max-width:170px;white-space:normal;line-height:1.4">'+ps+'</td>'+
       '<td>'+p.palets+'</td><td>'+(cajas||'—')+'</td><td>'+(p.lote||'—')+'</td>'+
-      '<td title="'+(p.destinatario||'')+'">'+(p.destinatario||'—')+'</td>'+
+      '<td title="'+pedDestTit(p)+'">'+pedDestTxt(p)+'</td>'+
       '<td>'+(p.transportistas?.nombre||'—')+'</td><td>'+fmt(p.fecha_recogida)+'</td>'+
       '<td>'+badgeHtml(p.estado)+'</td>'+
       '<td style="max-width:110px;white-space:normal;font-size:11px;color:var(--text2)">'+( p.observaciones||'—')+'</td>'+
@@ -3649,14 +3650,14 @@ async function renderTablaPedidos(data){
       '<div class="order-card-row"><span class="lbl">Origen</span><span>'+(p.proveedor?'<span class="badge b-ext">'+p.proveedor.split(' ')[0]+'</span>':'<span class="badge b-ok">Propio</span>')+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Palets / Cajas</span><span>'+p.palets+' pal. · '+(cajas||0)+' cajas</span></div>'+
       '<div class="order-card-row"><span class="lbl">Lote</span><span>'+(p.lote||'—')+'</span></div>'+
-      '<div class="order-card-row"><span class="lbl">Destinatario</span><span>'+(p.destinatario||'—')+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Destino</span><span>'+pedDestTxt(p)+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Transportista</span><span>'+(p.transportistas?.nombre||'—')+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Recogida</span><span>'+fmt(p.fecha_recogida)+'</span></div>'+
       (p.observaciones?'<div class="order-card-row"><span class="lbl">Obs.</span><span>'+p.observaciones+'</span></div>':'')+
       accionesBtns+
     '</div>'
   })
-  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Ref</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Palets</th><th>Cajas</th><th>Lote</th><th>Destinatario</th><th>Transp.</th><th>Recogida</th><th>Estado</th><th>Obs.</th><th>Auditoría</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>'
+  const tabla='<table class="desktop-table tabla-compacta"><thead><tr><th>Ref</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Palets</th><th>Cajas</th><th>Lote</th><th>Destino</th><th>Transp.</th><th>Recogida</th><th>Estado</th><th>Obs.</th><th>Auditoría</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>'
   const cardsWrap='<div class="mobile-cards">'+(cards||'<div class="empty">Sin pedidos</div>')+'</div>'
   return tabla+cardsWrap
 }
@@ -3667,12 +3668,11 @@ function abrirModalNuevoPedido(){
   document.getElementById('pedido-modal-titulo').childNodes[0].textContent='Nuevo pedido '
   document.getElementById('btn-guardar-pedido').innerHTML='<i class="ti ti-check"></i>Crear pedido'
   ;['np-cliente','np-tipopalet','np-trans'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})
-  ;['np-lote','np-dest','np-obs','np-idiomas','np-erp'].forEach(id=>document.getElementById(id).value='')
+  ;['np-lote','np-obs','np-idiomas','np-erp'].forEach(id=>document.getElementById(id).value='')
   _npHab={clienteId:null,porProducto:{},ultimo:null,ranking:[]}
   document.getElementById('np-habituales').style.display='none'
   _tp.cargadas=false;document.getElementById('np-coste-transp').innerHTML=''
-  npBuscablesFijos();npSyncClienteInput();npPoblarDestinos('','');npPoblarAlmacenFinal();document.getElementById('np-dest-nota').innerHTML='';document.getElementById('np-dest-list').innerHTML=''
-  const _d=document.getElementById('np-dest');_d.dataset.auto='';_d.style.background=''
+  npBuscablesFijos();npSyncClienteInput();npPoblarDestinos('','');npPoblarAlmacenFinal();_npHabHist=''
   setTimeout(()=>document.getElementById('np-cli-buscar').focus(),80)
   const spReset=document.getElementById('np-proveedor-select');if(spReset)spReset.value=''
   document.getElementById('np-palets').value='1'
@@ -3695,12 +3695,11 @@ async function editarPedido(id){
   document.getElementById('pedido-modal-titulo').childNodes[0].textContent='Editar '+p.referencia+' '
   document.getElementById('btn-guardar-pedido').innerHTML='<i class="ti ti-check"></i>Guardar cambios'
   document.getElementById('np-cliente').value=p.cliente_id||'';autoIdiomas();npSyncClienteInput()
-  {const _cli=(clientes||[]).find(c=>c.id===p.cliente_id);npPoblarDestinos(p.destino_mercancia||_cli?.destino_mercancia||'',_cli?.destino_mercancia||'');npPoblarAlmacenFinal(p.almacen_final_id||'')}
+  {const _cli=(clientes||[]).find(c=>c.id===p.cliente_id);npPoblarAlmacenFinal(p.almacen_final_id||'');npPoblarDestinos(destinoDePedido(p,_cli),destHabitual(_cli,npAlmFinal()))}
   npRecomendarDestino(p.cliente_id,false)
   document.getElementById('np-idiomas').value=(p.idiomas_etiqueta||[]).join(', ')
   document.getElementById('np-palets').value=p.palets||1
   document.getElementById('np-lote').value=p.lote||''
-  document.getElementById('np-dest').value=p.destinatario||''
   document.getElementById('np-trans').value=p.transportista_id||''
   document.getElementById('np-fecha').value=p.fecha_recogida||''
   document.getElementById('np-obs').value=p.observaciones||''
@@ -3736,7 +3735,7 @@ async function guardarPedido(){
   try{
     const idiomas=document.getElementById('np-idiomas').value.split(',').map(s=>s.trim()).filter(Boolean)
     const esExterno=origenActual!=='propio'
-    const datos={cliente_id:cid,palets,fruta:lineas[0].fruta,lote:document.getElementById('np-lote').value||null,destino_mercancia:document.getElementById('np-destino').value||null,numero_pedido_erp:document.getElementById('np-erp').value.trim()||null,destinatario:document.getElementById('np-dest').value||null,transportista_id:document.getElementById('np-trans').value||null,fecha_recogida:document.getElementById('np-fecha').value||null,observaciones:document.getElementById('np-obs').value||null,idiomas_etiqueta:idiomas,proveedor:esExterno?origenActual:null}
+    const datos={cliente_id:cid,palets,fruta:lineas[0].fruta,lote:document.getElementById('np-lote').value||null,destino_mercancia:document.getElementById('np-destino').value,numero_pedido_erp:document.getElementById('np-erp').value.trim()||null,transportista_id:document.getElementById('np-trans').value||null,fecha_recogida:document.getElementById('np-fecha').value||null,observaciones:document.getElementById('np-obs').value||null,idiomas_etiqueta:idiomas,proveedor:esExterno?origenActual:null}
     // Almacén de descarga final (solo si el cliente tiene varios)
     if(document.getElementById('np-almfinal-wrap').style.display!=='none')datos.almacen_final_id=document.getElementById('np-almacen-final').value||null
     let pedidoId=id
@@ -3869,7 +3868,7 @@ async function loadClientes(){
     const alms=almDe(c.id)
     const t2=c.segundo_transporte&&!c.recoge_cliente?(transportistas||[]).find(t=>t.id===c.segundo_transportista_id)?.nombre:null
     const envio=c.recoge_cliente?'<span class="badge b-prep" style="font-size:10px"><i class="ti ti-truck-loading"></i>Transporte propio</span>':
-      (c.destino_mercancia?'<i class="ti ti-map-pin" style="color:var(--text3)"></i> '+e(destEtiqueta(c.destino_mercancia)):'<span style="color:var(--text3)"><i class="ti ti-home"></i> A su dirección</span>')+
+      (dh=>dh?'<i class="ti ti-map-pin" style="color:var(--text3)"></i> '+e(destEtiqueta(dh)):'<span style="color:var(--text3)"><i class="ti ti-home"></i> Directo</span>')(destHabitual(c,c.almacen_final_id))+
       (c.segundo_transporte&&!c.recoge_cliente?'<div class="cl-sub"><i class="ti ti-truck-delivery"></i> 2º transporte'+(t2?': '+e(t2):'')+(c.segundo_transporte_pagamos?' · lo pagamos':'')+'</div>':'')
     const almTxt=alms.length?'<div class="cl-sub" title="'+e(alms.map(a=>a.nombre+(a.ciudad?' ('+a.ciudad+')':'')).join(', '))+'"><i class="ti ti-building-warehouse"></i> +'+alms.length+' almacén'+(alms.length>1?'es':'')+(c.almacen_final_id&&almInfo(c.almacen_final_id)?' · descarga en '+e(almInfo(c.almacen_final_id).nombre):'')+'</div>':''
     const contacto=[c.contacto?'<div class="cl-trunc"><i class="ti ti-user"></i> '+e(c.contacto)+'</div>':'',c.telefono?'<div class="cl-trunc"><i class="ti ti-phone"></i> <a href="tel:'+e(c.telefono)+'">'+e(c.telefono)+'</a></div>':'',c.email?'<div class="cl-trunc"><i class="ti ti-mail"></i> <a href="mailto:'+e(c.email)+'">'+e(c.email)+'</a></div>':''].join('')
@@ -3962,13 +3961,16 @@ function clAlmAnadir(a,silencio){
     '<input type="text" class="ca-dir" value="'+v(a?.direccion)+'" placeholder="Dirección, CP" style="'+st+';flex:2 1 200px">'+
     '<input type="text" class="ca-ciudad" value="'+v(a?.ciudad)+'" placeholder="Ciudad *" list="ds-ciudades-list" oninput="clAlmSelect()" style="'+st+';flex:1 1 110px">'+
     '<input type="text" class="ca-pais" value="'+v(a?.pais)+'" placeholder="País" list="ds-paises-list" style="'+st+';flex:1 1 90px">'+
+    '<select class="ca-destino" onchange="clSegundoRuta()" title="Destino de la mercancía para este almacén: dónde lo mandamos nosotros" style="'+st+';flex:1 1 240px;'+(a?.destino_mercancia?'':'color:var(--text2)')+'"><option value="">Destino de la mercancía: directo a este almacén</option>'+
+      destOrdenados().map(d=>'<option value="'+v(d.nombre)+'"'+(a?.destino_mercancia&&cn(a.destino_mercancia)===cn(d.nombre)?' selected':'')+'>Destino de la mercancía: '+v(destEtiqueta(d.nombre))+'</option>').join('')+
+      (a?.destino_mercancia&&!destInfo(a.destino_mercancia)?'<option selected value="'+v(a.destino_mercancia)+'">Destino de la mercancía: '+v(a.destino_mercancia)+'</option>':'')+'</select>'+
     '<button type="button" class="btn btn-sm" onclick="this.closest(\'.cl-alm-fila\').remove();clAlmSelect()" title="Quitar"><i class="ti ti-trash"></i></button></div>')
   if(!silencio){clAlmSelect();document.querySelector('#cl-almacenes .cl-alm-fila:last-child .ca-nombre')?.focus()}
 }
 function clAlmLeer(){
   return [...document.querySelectorAll('#cl-almacenes .cl-alm-fila')].map(f=>({key:f.dataset.key,id:f.dataset.id||null,
     nombre:f.querySelector('.ca-nombre').value.trim(),direccion:f.querySelector('.ca-dir').value.trim()||null,
-    ciudad:f.querySelector('.ca-ciudad').value.trim()||null,pais:f.querySelector('.ca-pais').value.trim()||null}))
+    ciudad:f.querySelector('.ca-ciudad').value.trim()||null,pais:f.querySelector('.ca-pais').value.trim()||null,destino_mercancia:f.querySelector('.ca-destino').value||null}))
     .filter(a=>a.nombre||a.direccion||a.ciudad)
 }
 function clAlmSelect(valor){
@@ -3988,12 +3990,12 @@ function clSegundoPoblar(v){
 }
 function clSegundoRuta(){
   const box=document.getElementById('cl-segundo-ruta');if(!box)return
-  const dest=document.getElementById('cl-destino-mercancia')?.value
   const k=document.getElementById('cl-almacen-final')?.value
   const fila=k?document.querySelector('#cl-almacenes .cl-alm-fila[data-key="'+k+'"]'):null
+  const dest=fila?fila.querySelector('.ca-destino').value:document.getElementById('cl-destino-mercancia')?.value
   const ciudadFin=fila?fila.querySelector('.ca-ciudad').value.trim():document.getElementById('cl-ciudad').value.trim()
   const lugar=fila?(fila.querySelector('.ca-nombre').value.trim()||'su almacén'):'su dirección'
-  box.innerHTML=!dest?'<span style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> Elige arriba el destino de mercancía: el 2º transporte sale desde allí.</span>':
+  box.innerHTML=!dest?'<span style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> Elige el destino de mercancía '+(fila?'de ese almacén':'de arriba')+': el 2º transporte sale desde allí.</span>':
     '<i class="ti ti-route"></i> Ruta: <strong>'+tpEsc(destZona(dest))+'</strong> → <strong>'+tpEsc(ciudadFin||'?')+'</strong> ('+tpEsc(lugar)+')'+(ciudadFin?'':' <span style="color:var(--orange-text)">· falta la ciudad final</span>')+
     '<div style="color:var(--text3);font-size:11px">El precio de esta ruta se pone en Envíos → Transportes, dentro del 2º transportista.</div>'
 }
@@ -4003,9 +4005,10 @@ async function clAlmGuardar(cid,filas){
   if(quitar.length){const {error}=await db.from('clientes_almacenes').delete().in('id',quitar);if(error)return error.message}
   const mapa={}
   for(const f of filas){
-    const datos={cliente_id:cid,nombre:f.nombre,direccion:f.direccion,ciudad:f.ciudad,pais:f.pais}
-    if(f.id){const {error}=await db.from('clientes_almacenes').update(datos).eq('id',f.id);if(error)return error.message;mapa[f.key]=f.id}
-    else{const {data,error}=await db.from('clientes_almacenes').insert(datos).select().single();if(error)return error.message;mapa[f.key]=data?.id}
+    const datos={cliente_id:cid,nombre:f.nombre,direccion:f.direccion,ciudad:f.ciudad,pais:f.pais,destino_mercancia:f.destino_mercancia}
+    const sqlTxt=m=>m+(/destino_mercancia/.test(m)?' — ejecuta el SQL del destino por almacén':'')
+    if(f.id){const {error}=await db.from('clientes_almacenes').update(datos).eq('id',f.id);if(error)return sqlTxt(error.message);mapa[f.key]=f.id}
+    else{const {data,error}=await db.from('clientes_almacenes').insert(datos).select().single();if(error)return sqlTxt(error.message);mapa[f.key]=data?.id}
   }
   const k=document.getElementById('cl-almacen-final').value
   const {error}=await db.from('clientes').update({almacen_final_id:k?(mapa[k]||null):null}).eq('id',cid)
@@ -4473,7 +4476,7 @@ async function cmrCargarPedido(id){
   cmrSet('cmr-remitente',CMR_REMITENTE)
   cmrSet('cmr-destinatario',dirCli)
   document.getElementById('cmr-guardar-dir').checked=false
-  const _dm=p.destino_mercancia||cli?.destino_mercancia
+  const _dm=destinoDePedido(p,cli)
   const _di=destInfo(_dm)
   const _dirDest=_di?[_di.direccion,[_di.ciudad,_di.pais].filter(Boolean).join(', ')].filter(Boolean).join(', '):''
   cmrSet('cmr-entrega',[_di&&_dirDest?_dm+'\n'+_dirDest:null,p.destinatario&&p.destinatario!==_dm?p.destinatario:null,!_di&&_dm&&_dm!==p.destinatario?_dm:null].filter(Boolean).join('\n')||(f=>[cli?.nombre,f?.esAlmacen?f.nombre:null,f?.direccion,[f?.ciudad,f?.pais].filter(Boolean).join(', ')].filter(Boolean).join('\n'))(destinoFinal(cli,p.almacen_final_id)))
@@ -6049,7 +6052,7 @@ function qcInfoExtra(p,prods){
   const t=(transportistas||[]).find(x=>x.id===p.transportista_id)
   const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
   const cel=(lbl,val,full)=>'<div class="info-cell"'+(full?' style="grid-column:1/-1"':'')+'><div class="lbl">'+lbl+'</div><div class="val" style="font-size:13px;white-space:normal">'+val+'</div></div>'
-  const _dm=p.destino_mercancia||c.destino_mercancia
+  const _dm=destinoDePedido(p,c)
   const destino=[p.destinatario,_dm&&_dm!==p.destinatario?_dm:null,[c.ciudad,c.pais].filter(Boolean).join(', ')].filter(Boolean).map(esc).join('<br>')
   const cajas=(prods||[]).reduce((a,x)=>a+(parseInt(x.num_cajas)||0),0)
   const peso=(prods||[]).reduce((a,x)=>a+(parseFloat(x.peso_bruto)||0),0)
@@ -6642,7 +6645,7 @@ async function loadEnvios(){
           '<td>'+(p.clientes?.nombre||'—')+'</td>'+
           '<td style="max-width:180px;white-space:normal">'+ps+'</td>'+
           '<td>'+p.palets+'</td>'+
-          '<td title="'+(p.destinatario||'')+'">'+(p.destinatario||'—')+'</td>'+
+          '<td title="'+pedDestTit(p)+'">'+pedDestTxt(p)+'</td>'+
           '<td style="font-weight:600;color:var(--accent);white-space:nowrap">'+precioVentaHtml+'</td>'+
           '<td>'+badgeHtml(p.estado)+'</td>'+
           '<td>'+transportEstadoHtml+' <button class="btn btn-sm" data-id="'+p.id+'" onclick="abrirCMRPedido(this.dataset.id)" title="Hacer CMR"><i class="ti ti-file-certificate"></i>CMR</button></td></tr>'
@@ -6655,7 +6658,7 @@ async function loadEnvios(){
           '<div class="order-card-prods">'+ps+'</div>'+
           '<div class="order-card-row"><span class="lbl">Origen</span><span>'+(p.proveedor?'<span class="badge b-ext">'+p.proveedor.split(' ')[0]+'</span>':'<span class="badge b-ok">Propio</span>')+'</span></div>'+
           '<div class="order-card-row"><span class="lbl">Palets</span><span>'+p.palets+'</span></div>'+
-          '<div class="order-card-row"><span class="lbl">Destinatario</span><span>'+(p.destinatario||'—')+'</span></div>'+
+          '<div class="order-card-row"><span class="lbl">Destino</span><span>'+pedDestTxt(p)+'</span></div>'+
           '<div class="order-card-actions">'+transportEstadoHtml+'</div>'+
         '</div>'
       })
@@ -6664,7 +6667,7 @@ async function loadEnvios(){
         '<div style="display:flex;align-items:center;gap:10px"><i class="ti ti-truck" style="font-size:16px;color:var(--text2)"></i>'+
         '<div><div style="font-weight:600;font-size:13px">'+trans+'</div><div style="font-size:11px;color:var(--text3)">'+g.tel+' · '+g.pedidos.length+' pedido'+(g.pedidos.length>1?'s':'')+' · '+totalPalets+' palets</div></div></div>'+
         '<span class="badge b-warn">Pendiente</span></div>'+
-        '<table class="desktop-table tabla-compacta" style="width:100%"><thead><tr><th>Ref</th><th>Origen</th><th>Cliente</th><th>Productos</th><th>Palets</th><th>Destinatario</th><th>€/kg venta</th><th>Estado</th><th>Transporte</th></tr></thead><tbody>'+filas+'</tbody></table>'+
+        '<table class="desktop-table tabla-compacta" style="width:100%"><thead><tr><th>Ref</th><th>Origen</th><th>Cliente</th><th>Productos</th><th>Palets</th><th>Destino</th><th>€/kg venta</th><th>Estado</th><th>Transporte</th></tr></thead><tbody>'+filas+'</tbody></table>'+
         '<div class="mobile-cards" style="padding:10px">'+cardsTrans+'</div>'+
       '</div>'
     })
@@ -6694,7 +6697,7 @@ async function loadEnviosHistorico(){
   ;(enviados||[]).forEach(p=>{
     evRows+='<tr><td>'+p.referencia+'</td><td>'+(p.proveedor?'<span class="badge b-ext">Externo</span>':'<span class="badge b-ok">Propio</span>')+'</td>'+
       '<td>'+(p.clientes?.nombre||'—')+'</td><td>'+p.palets+'</td><td>'+(p.lote||'—')+'</td>'+
-      '<td title="'+(p.destinatario||'')+'">'+(p.destinatario||'—')+'</td>'+
+      '<td title="'+pedDestTit(p)+'">'+pedDestTxt(p)+'</td>'+
       '<td>'+(p.transportistas?.nombre||'—')+'</td><td>'+fmt(p.fecha_recogida)+'</td></tr>'
 
     evCards+='<div class="order-card">'+
@@ -6704,12 +6707,12 @@ async function loadEnviosHistorico(){
       '</div>'+
       '<div class="order-card-row"><span class="lbl">Palets</span><span>'+p.palets+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Lote</span><span>'+(p.lote||'—')+'</span></div>'+
-      '<div class="order-card-row"><span class="lbl">Destinatario</span><span>'+(p.destinatario||'—')+'</span></div>'+
+      '<div class="order-card-row"><span class="lbl">Destino</span><span>'+pedDestTxt(p)+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Transportista</span><span>'+(p.transportistas?.nombre||'—')+'</span></div>'+
       '<div class="order-card-row"><span class="lbl">Fecha</span><span>'+fmt(p.fecha_recogida)+'</span></div>'+
     '</div>'
   })
-  const tablaEv='<table class="desktop-table"><thead><tr><th>Ref</th><th>Origen</th><th>Cliente</th><th>Palets</th><th>Lote</th><th>Destinatario</th><th>Transportista</th><th>Fecha</th></tr></thead><tbody>'+evRows+(evRows?'':'<tr><td colspan="8" class="empty">Sin envíos</td></tr>')+'</tbody></table>'
+  const tablaEv='<table class="desktop-table"><thead><tr><th>Ref</th><th>Origen</th><th>Cliente</th><th>Palets</th><th>Lote</th><th>Destino</th><th>Transportista</th><th>Fecha</th></tr></thead><tbody>'+evRows+(evRows?'':'<tr><td colspan="8" class="empty">Sin envíos</td></tr>')+'</tbody></table>'
   const cardsEvWrap='<div class="mobile-cards">'+(evCards||'<div class="empty">Sin envíos</div>')+'</div>'
   document.getElementById('tabla-envios').innerHTML=tablaEv+cardsEvWrap
 }
@@ -7353,7 +7356,7 @@ async function subsanarIncidencia(id){
 async function generarPDF(controlId){
   // Buscar datos del control
   const {data:ctrl}=await db.from('controles_calidad')
-    .select('*,pedidos(referencia,fruta,palets,lote,confeccion,tipo_palet,proveedor,idiomas_etiqueta,observaciones,destinatario,fecha_recogida,clientes(nombre),transportistas(nombre))')
+    .select('*,pedidos(referencia,fruta,palets,lote,confeccion,tipo_palet,proveedor,idiomas_etiqueta,observaciones,destinatario,destino_mercancia,fecha_recogida,clientes(nombre),transportistas(nombre))')
     .eq('id',controlId).single()
   if(!ctrl){toast('No se encontró el informe','err');return}
 
@@ -7454,7 +7457,7 @@ async function generarPDF(controlId){
       <div class="dato"><div class="lbl">Lote</div><div class="val">${p.lote||'—'}</div></div>
       <div class="dato"><div class="lbl">Transportista</div><div class="val">${p.transportistas?.nombre||'—'}</div></div>
       <div class="dato"><div class="lbl">Idiomas etiqueta</div><div class="val">${(p.idiomas_etiqueta||[]).join(', ')||'—'}</div></div>
-      <div class="dato"><div class="lbl">Destinatario</div><div class="val">${p.destinatario||'—'}</div></div>
+      <div class="dato"><div class="lbl">Destino</div><div class="val">${p.destino_mercancia||p.destinatario||'Dirección del cliente'}</div></div>
     </div>
     <table class="productos-tabla">
       <thead><tr><th>Producto</th><th>Calibre</th><th>Palets</th><th>Confección</th><th>Tipo palet</th><th>Cajas</th></tr></thead>
@@ -7562,7 +7565,7 @@ async function imprimirTransportes(fechaParam){
         '<td>'+(p.clientes?.nombre||'—')+'</td>'+
         '<td style="max-width:240px">'+psStr+'</td>'+
         '<td style="text-align:center;font-weight:700">'+p.palets+'</td>'+
-        '<td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.destinatario||'—')+'</td>'+
+        '<td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+pedDestTxt(p)+'</td>'+
         '<td style="text-align:center">'+transpHtml+'</td>'+
       '</tr>'
     })
@@ -7573,7 +7576,7 @@ async function imprimirTransportes(fechaParam){
       '</div>'+
       '<table><thead><tr>'+
         '<th>Ref</th><th>Cliente</th><th>Productos · Cal · Pal · Conf · Caj · €/kg</th>'+
-        '<th style="text-align:center">Pal</th><th>Destinatario</th><th style="text-align:center">Transporte</th>'+
+        '<th style="text-align:center">Pal</th><th>Destino</th><th style="text-align:center">Transporte</th>'+
       '</tr></thead><tbody>'+filas+'</tbody></table>'+
     '</div>'
   })
@@ -7656,7 +7659,7 @@ async function imprimirPedidosHoy(fechaParam){
       '<td style="max-width:260px">'+psStr+(precioCompraStr?'<br><span style="color:#A32D2D;font-size:9px;font-weight:600">'+precioCompraStr+'</span>':'')+'</td>'+
       '<td style="text-align:center;font-weight:700">'+p.palets+'</td>'+
       '<td>'+(p.lote||'—')+'</td>'+
-      '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.destinatario||'—')+'</td>'+
+      '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+pedDestTxt(p)+'</td>'+
       '<td style="white-space:nowrap">'+(p.transportistas?.nombre||'—')+'</td>'+
       '<td style="max-width:100px;font-size:9px;color:#6b6b67">'+(p.observaciones||'')+'</td>'+
       '<td><span class="estado" style="background:'+eBg+';color:'+eColor+'">'+p.estado+'</span></td>'+
@@ -7688,7 +7691,7 @@ async function imprimirPedidosHoy(fechaParam){
     '<table><thead><tr>'+
     '<th>Ref</th><th>Cliente</th><th>Proveedor</th><th>Productos · Cal · Pal · Conf · Caj</th>'+
     '<th style="text-align:center">Pal</th><th>Lote</th>'+
-    '<th>Destinatario</th><th>Transp.</th><th>Obs.</th><th>Estado</th>'+
+    '<th>Destino</th><th>Transp.</th><th>Obs.</th><th>Estado</th>'+
     '</tr></thead><tbody>'+
     (filas||'<tr><td colspan="9" style="text-align:center;padding:20px;color:#9d9d98">Sin pedidos hoy</td></tr>')+
     '</tbody></table>'+
@@ -8103,7 +8106,7 @@ function renderTablaPedProv(data,mostrarBoton=true){
       '<td style="max-width:220px;white-space:normal;font-size:12px">'+psStr+'<div style="margin-top:4px;font-size:11px">'+precioCompraHtml+'</div></td>'+
       '<td>'+p.palets+'</td>'+
       '<td>'+(p.lote||'—')+'</td>'+
-      '<td>'+(p.destinatario||'—')+'</td>'+
+      '<td>'+pedDestTxt(p)+'</td>'+
       '<td>'+fmt(p.fecha_recogida)+'</td>'+
       '<td>'+badgeHtml(p.estado)+'</td>'+
       '<td>'+estadoProv+'</td>'+
@@ -8127,7 +8130,7 @@ function renderTablaPedProv(data,mostrarBoton=true){
   })
 
   const tabla='<table class="desktop-table tabla-compacta"><thead><tr>'+
-    '<th>Ref</th><th>Proveedor</th><th>Cliente</th><th>Productos · €/kg venta · €/kg compra</th><th>Pal</th><th>Lote</th><th>Destinatario</th><th>Recogida</th><th>Estado</th><th>Enviado a prov.</th><th></th>'+
+    '<th>Ref</th><th>Proveedor</th><th>Cliente</th><th>Productos · €/kg venta · €/kg compra</th><th>Pal</th><th>Lote</th><th>Destino</th><th>Recogida</th><th>Estado</th><th>Enviado a prov.</th><th></th>'+
     '</tr></thead><tbody>'+rows+(rows?'':'<tr><td colspan="11" class="empty">Sin pedidos</td></tr>')+'</tbody></table>'
   const cardsWrap='<div class="mobile-cards">'+(cards||'<div class="empty">Sin pedidos</div>')+'</div>'
   return tabla+cardsWrap
@@ -8678,24 +8681,50 @@ async function guardarReclamacion(){
     datos.enviada_proveedor_por=currentPerfil?.nombre
   }
 
-  let reclamacionId=id
-  if(id){
-    await db.from('reclamaciones').update(datos).eq('id',id)
-    await db.from('reclamaciones_fotos').delete().eq('reclamacion_id',id)
-    toast('Reclamación actualizada ✓')
-  } else {
-    const {data:nuevo,error}=await db.from('reclamaciones').insert(datos).select().single()
-    if(error){err.textContent='Error: '+error.message;err.style.display='block';return}
-    reclamacionId=nuevo.id
-    toast('Reclamación registrada ✓')
+  const btn=document.querySelector('#modal-reclamacion [onclick="guardarReclamacion()"]')
+  if(btn?.disabled)return
+  if(btn){btn.disabled=true;btn.dataset.txt=btn.innerHTML;btn.innerHTML='<i class="ti ti-loader ti-spin"></i>Guardando…'}
+  try{
+    // Si a la tabla le falta alguna columna, se guarda sin ella y se avisa (en vez de no guardar nada)
+    const r=await dbGuardarTolerante('reclamaciones',datos,id)
+    if(r.error){
+      err.innerHTML='<strong>No se ha podido guardar.</strong><br>'+tpEsc(r.error.message)+dbErrorAyuda(r.error)
+      err.style.display='block';console.error('guardarReclamacion',r.error);return
+    }
+    const reclamacionId=id||r.data?.id
+    if(id){const {error:ef}=await db.from('reclamaciones_fotos').delete().eq('reclamacion_id',id);if(ef)console.error(ef)}
+    if(rcFotosSubidas.length&&reclamacionId){
+      const {error:ef}=await db.from('reclamaciones_fotos').insert(rcFotosSubidas.map(url=>({reclamacion_id:reclamacionId,url})))
+      if(ef)toast('Reclamación guardada, pero las fotos no: '+ef.message,'err')
+    }
+    toast((id?'Reclamación actualizada ✓':'Reclamación registrada ✓')+(r.quitadas.length?' (sin: '+r.quitadas.join(', ')+' — falta ejecutar un SQL)':''),r.quitadas.length?'err':undefined)
+    closeModal('modal-reclamacion')
+    loadReclamaciones()
+  }catch(e){
+    err.innerHTML='<strong>No se ha podido guardar.</strong><br>'+tpEsc(e.message||String(e));err.style.display='block';console.error(e)
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML=btn.dataset.txt||'Guardar reclamación'}
   }
-
-  if(rcFotosSubidas.length){
-    await db.from('reclamaciones_fotos').insert(rcFotosSubidas.map(url=>({reclamacion_id:reclamacionId,url})))
+}
+// Inserta o actualiza; si Supabase dice que falta una columna, la quita y reintenta (máx. 6)
+async function dbGuardarTolerante(tabla,datos,id){
+  const d={...datos},quitadas=[]
+  for(let i=0;i<7;i++){
+    const q=id?db.from(tabla).update(d).eq('id',id).select().single():db.from(tabla).insert(d).select().single()
+    const {data,error}=await q
+    if(!error)return {data,error:null,quitadas}
+    const m=(error.message||'').match(/find the '([^']+)' column|column "?([a-z_]+)"? of relation|column [a-z_]+\.([a-z_]+) does not exist/i)
+    const col=m&&(m[1]||m[2]||m[3])
+    if(!col||!(col in d)||i===6)return {data:null,error,quitadas}
+    delete d[col];quitadas.push(col)
   }
-
-  closeModal('modal-reclamacion')
-  loadReclamaciones()
+}
+function dbErrorAyuda(e){
+  const m=(e?.message||'')+' '+(e?.code||'')
+  if(/row-level security|42501|permission denied/i.test(m))return '<div style="margin-top:6px;font-size:12px">Es un problema de permisos: tu usuario no está activo en Usuarios o falta la regla de seguridad de esta tabla. Avisa al administrador.</div>'
+  if(/check constraint|23514/i.test(m))return '<div style="margin-top:6px;font-size:12px">Algún valor no es válido para la base de datos (estado o gravedad).</div>'
+  if(/foreign key|23503/i.test(m))return '<div style="margin-top:6px;font-size:12px">El pedido elegido ya no existe. Vuelve a abrir el formulario.</div>'
+  return ''
 }
 
 function renderTablaReclamaciones(data){
@@ -9998,16 +10027,26 @@ function npPoblarAlmacenFinal(valor){
   if(!cli||!alms.length){wrap.style.display='none';sel.innerHTML='';return}
   const hab=cli.almacen_final_id||''
   const et=(id,txt)=>txt+(id===hab?' ★ habitual':'')
-  sel.innerHTML='<option value="">'+tpEsc(et('','Su dirección'+(cli.ciudad?' · '+cli.ciudad:'')))+'</option>'+alms.map(a=>'<option value="'+a.id+'">'+tpEsc(et(a.id,a.nombre+(a.ciudad?' · '+a.ciudad:'')))+'</option>').join('')
+  const via=d=>d?' (vía '+d+')':' (directo)'
+  sel.innerHTML='<option value="">'+tpEsc(et('','Su dirección'+(cli.ciudad?' · '+cli.ciudad:'')+via(cli.destino_mercancia)))+'</option>'+alms.map(a=>'<option value="'+a.id+'">'+tpEsc(et(a.id,a.nombre+(a.ciudad?' · '+a.ciudad:'')+via(a.destino_mercancia)))+'</option>').join('')
   sel.value=valor!==undefined?valor:hab
   if(sel.value!==(valor!==undefined?valor:hab))sel.value=''
   wrap.style.display=''
 }
+// Al elegir almacén se propone el destino de mercancía de ese almacén
+function npAlmacenCambia(){
+  const cli=(clientes||[]).find(c=>c.id===document.getElementById('np-cliente').value)
+  const hab=destHabitual(cli,npAlmFinal())
+  npPoblarDestinos(hab,hab)
+  npActualizarCosteTransporte()
+}
 function npAlmFinal(){const w=document.getElementById('np-almfinal-wrap');return w&&w.style.display!=='none'?document.getElementById('np-almacen-final').value||null:null}
+let _npHabHist=''
 function npMarcarDestino(){
   const sel=document.getElementById('np-destino'),nota=document.getElementById('np-destino-nota');if(!sel||!nota)return
   const cli=(clientes||[]).find(c=>c.id===document.getElementById('np-cliente').value)
-  const hab=cli?.destino_mercancia||''
+  const almSel=almInfo(npAlmFinal())
+  const hab=destHabitual(cli,npAlmFinal())||_npHabHist||''
   const v=sel.value
   sel.style.background=v&&hab&&v===hab?'var(--green-bg)':''
   const zonaTxt=v&&destSinCiudad(v)?'<div style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> Este destino no tiene ciudad: complétalo en Envíos → Destinos para calcular el transporte</div>':
@@ -10019,28 +10058,27 @@ function npMarcarDestino(){
   const t2n=v&&cli?.segundo_transporte?(transportistas||[]).find(t=>t.id===cli.segundo_transportista_id)?.nombre:null
   const segTxt=v&&cli?.segundo_transporte?'<div style="color:var(--text2)"><i class="ti ti-truck-delivery"></i> Desde aquí, 2º transporte'+(t2n?' con <strong>'+tpEsc(t2n)+'</strong>':'')+' hasta '+(fin?.esAlmacen?'su almacén '+tpEsc(fin.nombre):'el cliente')+(fin?.ciudad?' ('+tpEsc(fin.ciudad)+')':'')+(cli.segundo_transporte_notas?' · '+tpEsc(cli.segundo_transporte_notas):'')+'</div>':''
   nota.innerHTML=(!cli?'':!hab?'':
-    (v===hab?'<span style="color:var(--green-text)"><i class="ti ti-star"></i> Destino habitual del cliente</span>':
+    (v===hab?'<span style="color:var(--green-text)"><i class="ti ti-star"></i> '+(almSel?'Destino habitual para '+tpEsc(almSel.nombre):hab===_npHabHist&&!cli?.destino_mercancia?'Destino habitual según sus últimos pedidos':'Destino habitual del cliente')+'</span>':
      v?'<span style="color:var(--orange-text)">Distinto del habitual ('+hab.replace(/</g,'&lt;')+') · <a href="#" onclick="event.preventDefault();document.getElementById(\'np-destino\').value=\''+hab.replace(/'/g,"\\'")+'\';npMarcarDestino();npActualizarCosteTransporte()">usar habitual</a></span>':''))+aDirTxt+zonaTxt+segTxt
 }
 async function npRecomendarDestino(clienteId,esNuevo){
   const cli=(clientes||[]).find(c=>c.id===clienteId)
   if(!_destMerc.length)await cargarDestinosMercancia()
-  if(esNuevo)npPoblarDestinos(cli?.destino_mercancia||'',cli?.destino_mercancia||'')
-  else npPoblarDestinos(document.getElementById('np-destino').value,cli?.destino_mercancia||'')
-  // Destinatarios usados antes con este cliente: el más repetido se propone
-  const dl=document.getElementById('np-dest-list')
-  dl.innerHTML=''
-  if(!clienteId)return
-  const {data}=await db.from('pedidos').select('destinatario,fecha_recogida').eq('cliente_id',clienteId).neq('estado','Anulado').order('fecha_recogida',{ascending:false}).limit(40)
+  const habAlm=destHabitual(cli,npAlmFinal())
+  if(esNuevo)npPoblarDestinos(habAlm,habAlm)
+  else npPoblarDestinos(document.getElementById('np-destino').value,habAlm)
+  // Si el cliente no tiene destino habitual (ni almacenes), se propone el más usado en sus últimos pedidos
+  _npHabHist=''
+  if(!clienteId||habAlm||cli?.recoge_cliente||almDe(cli.id).length)return
+  const {data}=await db.from('pedidos').select('destino_mercancia,destinatario').eq('cliente_id',clienteId).neq('estado','Anulado').order('fecha_recogida',{ascending:false}).limit(40)
   if(document.getElementById('np-cliente').value!==clienteId)return
-  const cuenta={};(data||[]).forEach(p=>{const d=(p.destinatario||'').trim();if(d)cuenta[d]=(cuenta[d]||0)+1})
-  const orden=Object.entries(cuenta).sort((a,b)=>b[1]-a[1]).map(x=>x[0])
-  dl.innerHTML=orden.map(d=>'<option value="'+d.replace(/"/g,'&quot;')+'">').join('')
-  const el=document.getElementById('np-dest')
-  if(esNuevo&&orden.length&&(!el.value||el.dataset.auto==='1')){
-    el.value=orden[0];el.dataset.auto='1';el.style.background='var(--green-bg)'
-    document.getElementById('np-dest-nota').innerHTML='<span style="color:var(--green-text)"><i class="ti ti-star"></i> Destinatario habitual ('+cuenta[orden[0]]+' pedido'+(cuenta[orden[0]]>1?'s':'')+')'+(orden.length>1?' · hay '+(orden.length-1)+' más en la lista':'')+'</span>'
-  }else document.getElementById('np-dest-nota').innerHTML=orden.length>1?'<span style="color:var(--text3)">'+orden.length+' destinatarios usados con este cliente: despliega para elegir</span>':''
+  const cuenta={};(data||[]).forEach(p=>{const d=(p.destino_mercancia||(destInfo(p.destinatario)?destInfo(p.destinatario).nombre:'')||'').trim();if(d)cuenta[d]=(cuenta[d]||0)+1})
+  const top=Object.entries(cuenta).sort((a,b)=>b[1]-a[1])[0]
+  if(!top||top[1]<2)return
+  _npHabHist=top[0]
+  const sel=document.getElementById('np-destino')
+  npPoblarDestinos(esNuevo&&!sel.value?top[0]:sel.value,top[0])
+  npActualizarCosteTransporte()
 }
 
 // ── DESTINOS DE MERCANCÍA Y TRANSPORTES ──────────────────────
@@ -10069,7 +10107,23 @@ function destinoFinal(cli,almId){
   if(a)return {esAlmacen:true,id:a.id,nombre:a.nombre,direccion:a.direccion,ciudad:a.ciudad||cli.ciudad,pais:a.pais||cli.pais}
   return {esAlmacen:false,nombre:cli.nombre,direccion:cli.direccion,ciudad:cli.ciudad,pais:cli.pais}
 }
+// Destino de la mercancía habitual según dónde descarga: cada almacén del cliente tiene el suyo;
+// su dirección usa el destino de la ficha del cliente. Vacío = se manda directo.
+function destHabitual(cli,almId){
+  if(!cli)return ''
+  const a=almId?almInfo(almId):null
+  if(a&&a.cliente_id===cli.id)return a.destino_mercancia||''
+  return cli.destino_mercancia||''
+}
+// Destino real de un pedido: el que tiene guardado o, si no, el habitual de su almacén / del cliente
+// ('' = se eligió mandarlo directo; null = pedido antiguo sin destino guardado → se usa el habitual)
+function destinoDePedido(p,cli){
+  if(p&&p.destino_mercancia!=null)return p.destino_mercancia
+  return destHabitual(cli,p?.almacen_final_id||cli?.almacen_final_id||'')
+}
 function destinoFinalTxt(f){return f?[f.esAlmacen?f.nombre:null,f.direccion,[f.ciudad,f.pais].filter(Boolean).join(', ')].filter(Boolean).join(', '):''}
+function pedDestTxt(p){return p?.destino_mercancia||p?.destinatario||'<span style="color:var(--text3)">Dir. cliente</span>'}
+function pedDestTit(p){return String(p?.destino_mercancia||p?.destinatario||'').replace(/"/g,'&quot;')}
 function tpEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
 // Coste de transporte de un pedido: palets × €/palet del transportista al destino del cliente.
@@ -10246,7 +10300,7 @@ async function tpCargarUso(cli){
   const sumar=(k,base,pt,p)=>{const u=_tp.uso[k]=_tp.uso[k]||{...base,n:0,euro:0,amer:0,ultimo:''};u.n++;u.euro+=pt.euro;u.amer+=pt.amer;if((p.fecha_recogida||'')>u.ultimo)u.ultimo=p.fecha_recogida}
   lista.forEach(p=>{
     const c=cliId[p.cliente_id]
-    const destino=p.destino_mercancia||c?.destino_mercancia
+    const destino=destinoDePedido(p,c)
     const pt=paletsPorTipo(porPed[p.id],p.palets)
     const env=envioInfo(destino,c,p.almacen_final_id)
     if(p.transportista_id&&env.zona&&!env.sinCiudad)sumar(tpUsoKey(p.transportista_id,env.zona),{tid:p.transportista_id,destino:env.zona},pt,p)
@@ -10629,7 +10683,7 @@ async function npActualizarCosteTransporte(){
   if(!_tp.cargadas){const {data}=await db.from('tarifas_transporte').select('*');_tp.tarifas=data||[];_tp.cargadas=true}
   const lineasPal=[...document.querySelectorAll('#productos-container .producto-linea')].map(d=>{const id=d.id.replace('linea-','');return {num_palets:document.getElementById('lpa-'+id)?.value,tipo_palet:document.getElementById('ltp-'+id)?.value}})
   const pal=paletsPorTipo(lineasPal,document.getElementById('np-palets').value)
-  const destPed=document.getElementById('np-destino')?.value||cli?.destino_mercancia
+  const destPed=document.getElementById('np-destino')?.value||''
   const almF=npAlmFinal()
   const r=transpCoste(destPed,tid,pal,_tp.tarifas,cli,almF)
   const nomT=(transportistas||[]).find(t=>t.id===tid)?.nombre
