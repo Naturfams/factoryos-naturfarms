@@ -4639,6 +4639,14 @@ const CMR_REMITENTE='Natur Fams S.L.\nC/ Gustavo Adolfo Bécquer, 42\n41310 Bren
 const CMR_LUGAR='Brenes'
 function cmrEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function cmrV(id){return document.getElementById(id).value}
+// Aviso bajo la casilla 3 si al destino le faltan datos
+function cmrAvisoEntrega(dm,di){
+  const ta=document.getElementById('cmr-entrega');if(!ta)return
+  let av=document.getElementById('cmr-entrega-aviso')
+  if(!av){av=document.createElement('div');av.id='cmr-entrega-aviso';av.style.cssText='font-size:11.5px;margin-top:3px';ta.after(av)}
+  const falta=dm&&(!di?['dirección','ciudad','país']:[!di.direccion&&'dirección',!di.ciudad&&'ciudad',!di.pais&&'país'].filter(Boolean))
+  av.innerHTML=dm?(falta.length?'<span style="color:var(--orange-text)"><i class="ti ti-alert-triangle"></i> Al destino «'+cmrEsc(dm)+'» le falta '+falta.join(', ')+'. Complétalo en Envíos → Destinos y vuelve a cargar el pedido.</span>':'<span style="color:var(--text3)">Destino de la mercancía: '+cmrEsc(dm)+'</span>'):'<span style="color:var(--text3)">Sin destino de mercancía: va directo al cliente</span>'
+}
 function cmrSet(id,v){document.getElementById(id).value=v??''}
 
 async function loadCMR(preseleccion){
@@ -4710,7 +4718,12 @@ async function cmrCargarPedido(id){
   const _dm=destinoDePedido(p,cli)
   const _di=destInfo(_dm)
   const _dirDest=_di?[_di.direccion,[_di.ciudad,_di.pais].filter(Boolean).join(', ')].filter(Boolean).join(', '):''
-  cmrSet('cmr-entrega',[_di&&_dirDest?_dm+'\n'+_dirDest:null,p.destinatario&&p.destinatario!==_dm?p.destinatario:null,!_di&&_dm&&_dm!==p.destinatario?_dm:null].filter(Boolean).join('\n')||(f=>[cli?.nombre,f?.esAlmacen?f.nombre:null,f?.direccion,[f?.ciudad,f?.pais].filter(Boolean).join(', ')].filter(Boolean).join('\n'))(destinoFinal(cli,p.almacen_final_id)))
+  // Casilla 3 · Lugar de entrega = destino de la mercancía (nombre, dirección, ciudad y país).
+  // Si el pedido va directo (sin destino), la dirección de descarga del cliente o de su almacén.
+  cmrSet('cmr-entrega',_dm?
+    [_di?.nombre||_dm,_di?.direccion,[_di?.ciudad,_di?.pais].filter(Boolean).join(', ')].filter(Boolean).join('\n'):
+    (f=>[f?.esAlmacen?f.nombre:cli?.nombre,f?.direccion,[f?.ciudad,f?.pais].filter(Boolean).join(', ')].filter(Boolean).join('\n'))(destinoFinal(cli,p.almacen_final_id)))
+  cmrAvisoEntrega(_dm,_di)
   const ciudadRem=CMR_LUGAR
   cmrSet('cmr-carga','Brenes (Sevilla), España\n'+(p.fecha_recogida?fmt(p.fecha_recogida):''))
   cmrSet('cmr-docs',['Albarán'+(p.numero_pedido_erp?' nº '+p.numero_pedido_erp:' '+p.referencia),'Certificado ecológico'].join(' · '))
